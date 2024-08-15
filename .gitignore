@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.mp3
+*.m4a
+whisperforge_full_transcription.txt
+whisperforge_*_chunk_*.* 
+whisperforge_*_transcription.txt
