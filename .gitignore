@@ -51,3 +51,5 @@ Thumbs.db
 *.m4a
 *.ogg
 temp/
+cache.pkl
+whisperforge.log

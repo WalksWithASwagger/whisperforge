@@ -276,12 +276,36 @@ def setup_advanced_settings():
             }
 
 def process_with_gpt(text, mode, custom_prompt="", settings=None):
-    """Process text with GPT, handling long content by chunking."""
+    """Process text with GPT, handling long content by chunking.
+    
+    Args:
+        text (str): The input text to process
+        mode (str): Processing mode ('summarize', 'extract insights', or 'custom instructions')
+        custom_prompt (str, optional): Custom instructions for processing. Defaults to "".
+        settings (dict, optional): Processing settings including:
+            - chunk_size (int): Maximum tokens per chunk (default: 4000)
+            - show_chunks (bool): Whether to show chunk processing progress (default: False)
+    
+    Returns:
+        str: Processed text result, or None if processing fails
+        
+    Error Handling:
+        - Displays warnings for large texts (>100k estimated tokens)
+        - Provides actionable solutions for token limit errors
+        - Shows detailed progress for chunk processing when enabled
+    """
     if settings is None:
         settings = {"chunk_size": 4000, "show_chunks": False}
     
     try:
         chunks = chunk_text(text, max_tokens=settings["chunk_size"])
+        
+        # Add token size warning if text is very large
+        total_chars = len(text)
+        estimated_tokens = total_chars // 4  # Rough estimate
+        if estimated_tokens > 100000:  # Arbitrary large number
+            st.warning(f"⚠️ Large text detected (~{estimated_tokens:,} tokens). Processing may take longer.")
+        
         all_results = []
         
         # Create a progress bar for chunks
@@ -290,35 +314,51 @@ def process_with_gpt(text, mode, custom_prompt="", settings=None):
             chunk_status = st.empty()
         
         for i, chunk in enumerate(chunks):
-            if settings["show_chunks"]:
-                chunk_status.write(f"Processing chunk {i+1} of {len(chunks)}...")
-                chunk_progress.progress((i + 1) / len(chunks))
-            
-            # Handle custom instructions specially
-            if mode == "custom instructions":
-                if custom_prompt.lower().strip() == "in spanish":
-                    prompt = f"Translate the following text to Spanish:\n\n{chunk}"
+            try:
+                if settings["show_chunks"]:
+                    chunk_status.write(f"Processing chunk {i+1} of {len(chunks)}...")
+                    chunk_progress.progress((i + 1) / len(chunks))
+                
+                # Handle custom instructions specially
+                if mode == "custom instructions":
+                    if custom_prompt.lower().strip() == "in spanish":
+                        prompt = f"Translate the following text to Spanish:\n\n{chunk}"
+                    else:
+                        prompt = f"{custom_prompt}\n\n{chunk}"
+                elif mode == "summarize":
+                    prompt = f"Please summarize the following text. Focus on key points and main ideas:\n\n{chunk}"
+                elif mode == "extract insights":
+                    prompt = f"""Analyze the following text and provide:
+                    **One-line Summary:**
+                    **Key Themes:**
+                    **Notable Points:**\n\n{chunk}"""
+                
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant skilled in analyzing and processing text."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=2000
+                )
+                
+                result = response.choices[0].message.content
+                all_results.append(result)
+                
+            except Exception as chunk_error:
+                if "maximum context length" in str(chunk_error).lower():
+                    st.error(f"""
+                        🚫 Token limit exceeded in chunk {i+1}!
+                        Try one of these solutions:
+                        1. Reduce the chunk size in Advanced Settings
+                        2. Use a shorter custom prompt
+                        3. Process a smaller portion of the text
+                        
+                        Technical details: {str(chunk_error)}
+                    """)
                 else:
-                    prompt = f"{custom_prompt}\n\n{chunk}"
-            elif mode == "summarize":
-                prompt = f"Please summarize the following text. Focus on key points and main ideas:\n\n{chunk}"
-            elif mode == "extract insights":
-                prompt = f"""Analyze the following text and provide:
-                **One-line Summary:**
-                **Key Themes:**
-                **Notable Points:**\n\n{chunk}"""
-            
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant skilled in analyzing and processing text."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000
-            )
-            
-            result = response.choices[0].message.content
-            all_results.append(result)
+                    st.error(f"Error processing chunk {i+1}: {str(chunk_error)}")
+                return None
         
         # Clear chunk progress indicators
         if settings["show_chunks"]:
