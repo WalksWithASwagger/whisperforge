@@ -1,14 +1,42 @@
+"""
+WhisperForge - AI-powered audio transcription and analysis tool.
+
+This module contains the main Streamlit application code for WhisperForge,
+integrating OpenAI's Whisper model with Notion for documentation.
+"""
+
 import streamlit as st
 from streamlit.components.v1 import html
 import tempfile
 import os
 from pathlib import Path
 from openai import OpenAI
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from notion_client import Client
+import hashlib
+import pickle
+from dotenv import load_dotenv
+import logging
+import time
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('whisperforge.log')
+    ]
+)
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize the OpenAI client
-client = None
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Define a simple cache dictionary
+cache = {}
 
 def local_css():
     st.markdown("""
@@ -20,6 +48,7 @@ def local_css():
             --accent-color: #ff4d4d;
             --border-color: rgba(255,255,255,0.1);
             --secondary-bg: #1a1a1a;
+            --hover-bg: #2a2a2a;
         }
         
         /* Global styles */
@@ -28,19 +57,29 @@ def local_css():
             color: var(--text-color);
         }
         
-        /* Header styling */
-        .brand-header {
-            text-align: left;
-            padding: 1.5rem 0;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 2rem;
+        /* Sidebar styling */
+        .css-1d391kg {  /* Sidebar */
+            background-color: var(--main-bg-color);
         }
         
-        .brand-name {
-            font-size: 2.5rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+        /* Button styling */
+        .stButton > button {
+            width: 100%;
+            background-color: var(--secondary-bg);
             color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin: 5px 0;
+            text-align: left;
+        }
+        
+        .stButton > button:hover {
+            background-color: var(--hover-bg);
+            border-color: var(--accent-color);
         }
         
         /* Input fields */
@@ -48,48 +87,32 @@ def local_css():
             background-color: var(--secondary-bg);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-        }
-        
-        /* Dropdowns */
-        .stSelectbox select {
-            background-color: var(--secondary-bg);
-            color: var(--text-color);
+            border-radius: 12px;
+            padding: 12px;
         }
         
         /* File uploader */
         .stFileUploader {
             background-color: var(--secondary-bg);
-            border: 1px dashed var(--border-color);
-            padding: 1rem;
+            border: 2px dashed var(--border-color);
+            padding: 20px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
         }
         
-        /* Buttons */
-        .stButton > button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-        }
-        
-        /* Progress bar */
-        .stProgress > div > div {
-            background-color: var(--accent-color);
-        }
-        
-        /* Tabs */
-        .stTabs [data-baseweb="tab-list"] {
-            background-color: var(--secondary-bg);
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            color: var(--text-color);
+        .stFileUploader:hover {
+            border-color: var(--accent-color);
         }
         
         /* Expander */
         .streamlit-expanderHeader {
             background-color: var(--secondary-bg);
-            color: var(--text-color);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .streamlit-expanderHeader:hover {
+            background-color: var(--hover-bg);
         }
         
         /* Text areas */
@@ -97,6 +120,28 @@ def local_css():
             background-color: var(--secondary-bg);
             color: var(--text-color);
             border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+        }
+        
+        /* Select boxes */
+        .stSelectbox > div > div {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+        
+        /* Progress bars */
+        .stProgress > div > div {
+            background-color: var(--accent-color);
+        }
+        
+        /* Success/Info messages */
+        .stSuccess, .stInfo {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -180,94 +225,150 @@ def transcribe_chunks(chunk_files):
     status_text.empty()
     return transcriptions
 
-def process_with_gpt(text, mode, custom_prompt=""):
-    # Convert mode to lowercase and handle spaces
-    mode = mode.lower().replace(" ", "_")
-    
-    prompts = {
-        "extract_insights": """Analyze this text and extract:
-
-1. Key Insights (5-7 bullet points)
-- Focus on main themes and important realizations
-- Start each point with a dash (-)
-- Be specific and actionable
-
-2. Actionable Takeaways (3-5 bullet points)
-- Focus on practical steps or applications
-- Start each point with a dash (-)
-- Make them specific and implementable
-
-3. Notable Quotes (2-3 quotes)
-- Select the most impactful or meaningful quotes
-- Start each with a dash (-)
-- Include context if necessary
-
-Format the output with these exact headers and bullet points.""",
-        "summarize": """Create a structured summary of this text with:
-
-1. A one-line summary (max 20 words)
-2. Key themes (3-5 bullet points)
-3. Main conclusions (2-3 bullet points)
-
-Format with headers and bullet points.""",
-        "custom_instructions": custom_prompt
-    }
-    
-    try:
-        prompt = prompts.get(mode, custom_prompt)
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": text}
-            ]
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        st.error(f"Error processing with GPT: {str(e)}")
-        return None
-
-def chunk_text(text, limit=1900):
-    """Split text into chunks, trying to break at sentences."""
-    if len(text) <= limit:
-        return [text]
-    
+def chunk_text(text, max_tokens=6000):
+    """Split text into chunks that fit within token limits."""
+    # Rough estimate: 1 token ≈ 4 characters
+    chunk_size = max_tokens * 4
     chunks = []
-    current_chunk = ""
     
-    # Split into sentences (roughly)
-    sentences = text.replace("\n", ". ").split(". ")
+    # Split into paragraphs first
+    paragraphs = text.split('\n')
+    current_chunk = []
+    current_length = 0
     
-    for sentence in sentences:
-        if len(current_chunk) + len(sentence) < limit:
-            current_chunk += sentence + ". "
+    for paragraph in paragraphs:
+        if current_length + len(paragraph) > chunk_size:
+            # Save current chunk and start new one
+            chunks.append('\n'.join(current_chunk))
+            current_chunk = [paragraph]
+            current_length = len(paragraph)
         else:
-            # Save current chunk
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-            current_chunk = sentence + ". "
+            current_chunk.append(paragraph)
+            current_length += len(paragraph)
     
-    # Add the last chunk if it exists
+    # Add the last chunk
     if current_chunk:
-        chunks.append(current_chunk.strip())
+        chunks.append('\n'.join(current_chunk))
     
     return chunks
 
+def setup_advanced_settings():
+    """Setup advanced settings in sidebar."""
+    with st.sidebar:
+        with st.expander("Advanced Settings", expanded=False):
+            chunk_size = st.slider(
+                "Chunk Size (tokens)", 
+                min_value=1000, 
+                max_value=6000, 
+                value=4000,
+                help="Adjust the size of text chunks sent to GPT. Lower this if you get token limit errors."
+            )
+            
+            show_chunks = st.checkbox(
+                "Show Chunk Processing", 
+                value=False,
+                help="Show detailed progress of chunk processing"
+            )
+            
+            return {
+                "chunk_size": chunk_size,
+                "show_chunks": show_chunks
+            }
+
+def process_with_gpt(text, mode, custom_prompt="", settings=None):
+    """Process text with GPT, handling long content by chunking."""
+    if settings is None:
+        settings = {"chunk_size": 4000, "show_chunks": False}
+    
+    try:
+        chunks = chunk_text(text, max_tokens=settings["chunk_size"])
+        all_results = []
+        
+        # Create a progress bar for chunks
+        if settings["show_chunks"]:
+            chunk_progress = st.progress(0)
+            chunk_status = st.empty()
+        
+        for i, chunk in enumerate(chunks):
+            if settings["show_chunks"]:
+                chunk_status.write(f"Processing chunk {i+1} of {len(chunks)}...")
+                chunk_progress.progress((i + 1) / len(chunks))
+            
+            # Handle custom instructions specially
+            if mode == "custom instructions":
+                if custom_prompt.lower().strip() == "in spanish":
+                    prompt = f"Translate the following text to Spanish:\n\n{chunk}"
+                else:
+                    prompt = f"{custom_prompt}\n\n{chunk}"
+            elif mode == "summarize":
+                prompt = f"Please summarize the following text. Focus on key points and main ideas:\n\n{chunk}"
+            elif mode == "extract insights":
+                prompt = f"""Analyze the following text and provide:
+                **One-line Summary:**
+                **Key Themes:**
+                **Notable Points:**\n\n{chunk}"""
+            
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant skilled in analyzing and processing text."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2000
+            )
+            
+            result = response.choices[0].message.content
+            all_results.append(result)
+        
+        # Clear chunk progress indicators
+        if settings["show_chunks"]:
+            chunk_status.empty()
+            chunk_progress.empty()
+        
+        # Combine results
+        combined_result = "\n\n".join(all_results)
+        
+        # For translation, we don't need a final summary
+        if mode == "custom instructions" and custom_prompt.lower().strip() == "in spanish":
+            return combined_result
+        
+        # Final summary if multiple chunks
+        if len(chunks) > 1:
+            if settings["show_chunks"]:
+                st.write("Creating final summary...")
+            
+            final_summary = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant skilled in synthesizing information."},
+                    {"role": "user", "content": f"Please provide a cohesive summary combining these sections:\n\n{combined_result}"}
+                ],
+                max_tokens=2000
+            )
+            return final_summary.choices[0].message.content
+        
+        return combined_result
+        
+    except Exception as e:
+        logging.error(f"Error processing with GPT: {str(e)}")
+        st.error(f"Error processing with GPT: {str(e)}")
+        return None
+
 def generate_title_summary_tags(text):
-    """Generate a 5-word title, one-line summary, and 3 relevant tags using GPT."""
+    """Generate a title, one-line summary, and 5 relevant tags using GPT."""
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": """Generate:
-                1. A compelling 5-word title that captures the essence
+                1. A compelling title that captures the essence (5-7 words)
                 2. A one-line summary (max 15 words)
-                3. Three relevant tags (single words or short phrases)
+                3. Five relevant tags (single words or short phrases)
 
                 Format as:
-                TITLE: [5 words]
+                TITLE: [title]
                 SUMMARY: [one line]
-                TAGS: [tag1], [tag2], [tag3]"""},
+                TAGS: [tag1], [tag2], [tag3], [tag4], [tag5]"""},
                 {"role": "user", "content": text}
             ]
         )
@@ -302,46 +403,33 @@ def parse_processed_text(text):
             
     return sections
 
-def send_to_notion(transcription, processed_text, notion_key, filename, database_id="124c6f79-9a33-8065-93b1-c7afdc34ef94"):
+def send_to_notion(transcription, processed_text, notion_key, filename):
+    """Send transcription and processed text to Notion with rich formatting."""
     try:
         notion = Client(auth=notion_key)
+        database_id = "124c6f799a33806593b1c7afdc34ef94"
+        
+        # Generate title, summary, and tags using GPT
+        title, summary, tags = generate_title_summary_tags(transcription)
         
         # Parse the processed text into sections
         sections = parse_processed_text(processed_text)
         
-        # Split transcription into chunks for Notion's block limit
-        transcription_chunks = chunk_text(transcription)
-        
-        # Generate title, summary, and tags
-        title, summary, tags = generate_title_summary_tags(transcription)
-        
-        # Get current timestamp for Created Date
-        current_time = datetime.now().isoformat()
-        
-        # Create the page structure
+        # Create the page content with rich formatting
         children = [
-            # Divider before summary
-            {
-                "object": "block",
-                "type": "divider",
-                "divider": {}
-            },
-            # Summary in callout block with black square
+            # Summary Callout with black square
             {
                 "object": "block",
                 "type": "callout",
                 "callout": {
                     "rich_text": [{"text": {"content": summary}}],
-                    "icon": {"emoji": "💡"}
+                    "icon": {"emoji": "⬛"}
                 }
             },
-            # Divider after summary
-            {
-                "object": "block",
-                "type": "divider",
-                "divider": {}
-            },
-            # Key Insights toggle
+            # Divider
+            {"object": "block", "type": "divider", "divider": {}},
+            
+            # Key Insights Toggle
             {
                 "object": "block",
                 "type": "toggle",
@@ -358,7 +446,8 @@ def send_to_notion(transcription, processed_text, notion_key, filename, database
                     ]
                 }
             },
-            # Actionable Takeaways toggle
+            
+            # Actionable Takeaways Toggle
             {
                 "object": "block",
                 "type": "toggle",
@@ -375,7 +464,8 @@ def send_to_notion(transcription, processed_text, notion_key, filename, database
                     ]
                 }
             },
-            # Notable Quotes toggle
+            
+            # Notable Quotes Toggle
             {
                 "object": "block",
                 "type": "toggle",
@@ -384,73 +474,86 @@ def send_to_notion(transcription, processed_text, notion_key, filename, database
                     "children": [
                         {
                             "object": "block",
-                            "type": "bulleted_list_item",
-                            "bulleted_list_item": {
+                            "type": "quote",
+                            "quote": {
                                 "rich_text": [{"text": {"content": quote}}]
                             }
                         } for quote in sections["quotes"]
                     ]
                 }
             },
-            # Transcription toggle
+            
+            # Divider before transcription
+            {"object": "block", "type": "divider", "divider": {}},
+            
+            # Full Transcription Toggle
             {
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"text": {"content": "Transcription"}}],
-                    "children": [
-                        {
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [{"text": {"content": chunk}}]
-                            }
-                        } for chunk in transcription_chunks
-                    ]
+                    "rich_text": [{"text": {"content": "Full Transcription"}}],
+                    "children": split_transcription_into_blocks(transcription)
                 }
             }
         ]
-        
-        # Create the page
-        base_filename = os.path.splitext(filename)[0]
-        page_title = f"{title} - {base_filename}"
-        
+
+        # Create the page with combined title and filename
+        combined_title = f"{title} - {filename}"
         response = notion.pages.create(
             parent={"database_id": database_id},
             properties={
                 "Name": {
-                    "title": [
-                        {
-                            "text": {
-                                "content": page_title
-                            }
-                        }
-                    ]
+                    "title": [{"text": {"content": combined_title}}]
                 },
                 "Created Date": {
                     "date": {
-                        "start": current_time
+                        "start": datetime.now(tz=timezone(timedelta(hours=-8))).isoformat()
                     }
                 },
                 "Tags": {
-                    "multi_select": [
-                        {"name": tag.lower()} for tag in tags + ["transcription"]
-                    ]
+                    "multi_select": [{"name": tag} for tag in tags] + [{"name": "transcription"}]
                 }
             },
             children=children
         )
         
-        # Get the page URL
-        page_id = response["id"]
-        page_url = f"https://notion.so/{page_id.replace('-', '')}"
+        return True, "Successfully sent to Notion!", f"https://notion.so/{response['id'].replace('-', '')}"
         
-        return True, "Successfully sent to Notion database!", page_url
     except Exception as e:
-        st.error(f"Detailed error: {str(e)}")
-        if hasattr(e, 'response'):
-            st.error(f"Response content: {e.response.text}")
+        logging.error(f"Notion export error: {str(e)}")
         return False, f"Error sending to Notion: {str(e)}", None
+
+def split_transcription_into_blocks(transcription, max_length=1800):
+    """Split transcription into Notion blocks."""
+    chunks = []
+    words = transcription.split()
+    current_chunk = []
+    current_length = 0
+    
+    for word in words:
+        if current_length + len(word) + 1 > max_length:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [word]
+            current_length = len(word)
+        else:
+            current_chunk.append(word)
+            current_length += len(word) + 1
+            
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+    
+    return [
+        {
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [{
+                    "text": {"content": chunk}
+                }]
+            }
+        }
+        for chunk in chunks
+    ]
 
 def setup_notion_integration():
     st.sidebar.markdown("### Notion Integration")
@@ -471,7 +574,153 @@ def cleanup_temp_files():
     except Exception as e:
         st.error(f"Error cleaning up temporary files: {str(e)}")
 
+def get_cache_key(file_path):
+    """Generate a unique cache key based on the file content."""
+    with open(file_path, "rb") as f:
+        return hashlib.md5(f.read()).hexdigest()
+
+def load_cache():
+    """Load cache from a file if it exists."""
+    global cache
+    if os.path.exists("cache.pkl"):
+        with open("cache.pkl", "rb") as f:
+            cache = pickle.load(f)
+        logging.info("Cache loaded successfully.")
+    else:
+        logging.info("No cache file found. Starting with an empty cache.")
+
+def save_cache():
+    """Save cache to a file."""
+    with open("cache.pkl", "wb") as f:
+        pickle.dump(cache, f)
+    logging.info(f"Cache saved successfully. Contains {len(cache)} items.")
+    # Only rerun if not in the middle of processing
+    if not st.session_state.get('processing_complete'):
+        st.rerun()
+
+def transcribe_with_cache(file_path):
+    """Transcribe audio with caching and verification."""
+    cache_key = get_cache_key(file_path)
+    
+    logging.info(f"File: {os.path.basename(file_path)}")
+    logging.info(f"Cache key: {cache_key}")
+    logging.info(f"Current cache size: {len(cache)} items")
+    
+    if cache_key in cache:
+        cached_text = cache[cache_key]
+        logging.info(f"Cache HIT! Text length: {len(cached_text)}")
+        st.success(f"🎯 Using cached transcription! (Cache key: {cache_key[:8]}...)")
+        
+        # Add verification UI
+        with st.expander("Verify cached content"):
+            st.info("Cached transcription preview:")
+            st.code(cached_text[:200] + "...")
+        return cached_text
+    
+    logging.info("Cache MISS - Performing new transcription")
+    transcription = transcribe_audio(file_path)
+    cache[cache_key] = transcription
+    save_cache()
+    
+    return transcription
+
+def transcribe_audio(file_path):
+    """Transcribe audio using OpenAI's Whisper model with progress updates."""
+    logging.info(f"Starting transcription for file: {file_path}")
+    
+    # Get file size for progress estimation
+    file_size = os.path.getsize(file_path)
+    st.write(f"Processing {file_size/1024/1024:.1f}MB audio file...")
+    
+    # Create a progress placeholder
+    progress_placeholder = st.empty()
+    
+    start_time = time.time()
+    try:
+        with open(file_path, "rb") as audio_file:
+            # Show initial progress message
+            progress_placeholder.info("Starting transcription... (this may take a few minutes)")
+            
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
+            
+            # Show completion time
+            duration = time.time() - start_time
+            progress_placeholder.success(f"Transcription completed in {duration:.1f} seconds!")
+            
+            logging.info(f"Completed transcription for file: {file_path}")
+            return response.text
+            
+    except Exception as e:
+        progress_placeholder.error(f"Transcription error: {str(e)}")
+        raise e
+
+def clear_cache():
+    """Clear the cache file."""
+    if os.path.exists("cache.pkl"):
+        os.remove("cache.pkl")
+        st.sidebar.success("Cache cleared!")
+        global cache
+        cache = {}
+
+def setup_cache_display():
+    """Setup cache display in sidebar"""
+    # Move cache controls into an expander
+    with st.sidebar.expander("🔧 Developer Tools", expanded=False):
+        st.markdown("### 💾 Cache Status")
+        
+        # Force refresh cache status
+        if os.path.exists("cache.pkl"):
+            try:
+                with open("cache.pkl", "rb") as f:
+                    current_cache = pickle.load(f)
+                    st.success(f"📦 Cache contains {len(current_cache)} items")
+                    if st.checkbox("Show Cache Details"):
+                        for key in current_cache.keys():
+                            st.code(f"Cache Key: {key[:8]}...")
+                    st.session_state.cache_initialized = True
+            except Exception as e:
+                st.warning(f"Error reading cache: {str(e)}")
+        else:
+            st.warning("🚫 No cache file exists")
+            st.session_state.cache_initialized = False
+
+        if st.button("🧹 Clear Cache"):
+            if os.path.exists("cache.pkl"):
+                os.remove("cache.pkl")
+                st.success("Cache cleared!")
+                st.session_state.cache_initialized = False
+                st.rerun()
+
+def create_download_button(text, filename, button_text):
+    """Create a download button for text content."""
+    try:
+        # Create a temporary file with the content
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as tmp_file:
+            tmp_file.write(text)
+            tmp_file.flush()
+            
+            # Read the file in binary mode for download
+            with open(tmp_file.name, 'rb') as f:
+                return st.download_button(
+                    label=button_text,
+                    data=f.read(),
+                    file_name=filename,
+                    mime='text/plain'
+                )
+    except Exception as e:
+        st.error(f"Error creating download button: {str(e)}")
+        return None
+
 def main():
+    # Load cache at startup
+    load_cache()
+    
+    # Setup cache display
+    setup_cache_display()
+    
     local_css()
     render_header()
 
@@ -484,11 +733,11 @@ def main():
     # Sidebar configuration
     with st.sidebar:
         st.markdown("### Configuration")
-        api_key = st.text_input("OpenAI API Key", type="password")
+        api_key = os.getenv("OPENAI_API_KEY")
         notion_key = None
         enable_notion = st.checkbox("Enable Notion Export")
         if enable_notion:
-            notion_key = st.text_input("Notion API Key", type="password")
+            notion_key = os.getenv("NOTION_API_KEY")
 
     # Main content area
     col1, col2 = st.columns([2, 1])
@@ -515,99 +764,96 @@ def main():
     # Process button
     if uploaded_file:
         if st.button("Process Audio"):
-            if not api_key:
-                st.error("Please enter your OpenAI API key")
-                return
-            
             try:
-                cleanup_temp_files()  # Clean up any leftover files
-                st.session_state.processing_complete = False
-                st.session_state.current_file = uploaded_file.name
+                # Create status containers
+                main_status = st.empty()
+                progress_bar = st.progress(0)
+                step_status = st.empty()
                 
-                # Initialize OpenAI client
-                global client
-                client = OpenAI(api_key=api_key)
+                # Step 1: Load File (10%)
+                main_status.info("📂 Processing Audio File...")
+                step_status.write("Step 1/4: Loading audio file")
+                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+                    tmp_file.write(uploaded_file.getvalue())
+                    audio_path = tmp_file.name
+                progress_bar.progress(0.1)
                 
-                # First Phase: Transcription
-                with st.spinner("Transcribing audio..."):
-                    # Save uploaded file temporarily
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-                        tmp_file.write(uploaded_file.getvalue())
-                        audio_path = tmp_file.name
-
-                    # Split audio
-                    chunk_files = split_audio(audio_path, chunk_length * 60 * 1000)
-                    transcriptions = []
-                    
-                    # Display progress message
-                    progress_message = st.empty()
-                    for i, chunk_file in enumerate(chunk_files):
-                        progress_message.markdown(f"<div class='progress-message'>Transcribing chunk {i + 1} of {len(chunk_files)}...</div>", unsafe_allow_html=True)
-                        transcription = transcribe_chunks([chunk_file])
-                        transcriptions.append(transcription[0])  # Assuming transcribe_chunks returns a list
-
-                    # Combine transcriptions
-                    transcription_text = "\n".join(transcriptions)
-                    st.session_state.transcription_text = transcription_text
-
-                    st.success("Transcription completed!")
-
-                # Second Phase: Post-Processing
-                with st.spinner("Processing with GPT..."):
-                    processed_text = process_with_gpt(transcription_text, processing_mode.lower(), custom_prompt)
-                    st.session_state.processed_text = processed_text
+                # Step 2: Transcribe (40%)
+                step_status.write("Step 2/4: Transcribing audio")
+                transcription = transcribe_with_cache(audio_path)
+                if not transcription:
+                    raise Exception("Transcription failed")
+                st.session_state.transcription_text = transcription
+                progress_bar.progress(0.4)
                 
-                if processed_text:
-                    st.success("Processing completed!")
-
-                # Third Phase: Notion Export
-                if enable_notion and notion_key:
-                    with st.spinner("Sending to Notion..."):
-                        success, message, page_url = send_to_notion(
-                            transcription_text,
-                            processed_text,
-                            notion_key,
-                            uploaded_file.name
-                        )
-                        if success:
-                            st.success("✅ " + message)
-                            st.markdown(f"[Open in Notion]({page_url})", unsafe_allow_html=True)
-                        else:
-                            st.error("❌ " + message)
-
-                # Download buttons
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.download_button(
-                        "Download Transcription",
-                        st.session_state.transcription_text,
-                        "transcription.txt",
-                        "text/plain"
+                # Step 3: Process with GPT (70%)
+                step_status.write("Step 3/4: Processing with GPT")
+                if processing_mode == "Custom Instructions":
+                    advanced_settings = setup_advanced_settings()
+                    processed_text = process_with_gpt(
+                        transcription, 
+                        processing_mode.lower(), 
+                        custom_prompt,
+                        settings=advanced_settings
                     )
-                with col2:
-                    if st.session_state.processed_text:
-                        st.download_button(
-                            "Download Processed Result",
-                            st.session_state.processed_text,
-                            "processed_result.txt",
-                            "text/plain"
-                        )
-
-                st.session_state.processing_complete = True
-
+                else:
+                    processed_text = process_with_gpt(transcription, processing_mode.lower())
+                if not processed_text:
+                    raise Exception("GPT processing failed")
+                st.session_state.processed_text = processed_text
+                progress_bar.progress(0.7)
+                
+                # Step 4: Export to Notion (100%)
+                step_status.write("Step 4/4: Exporting to Notion")
+                if enable_notion and notion_key:
+                    success, message, url = send_to_notion(
+                        transcription,
+                        processed_text,
+                        notion_key,
+                        uploaded_file.name
+                    )
+                    if success:
+                        main_status.success(f"✅ Complete! View in Notion: {url}")
+                    else:
+                        main_status.error(message)
+                else:
+                    main_status.success("✅ Processing complete!")
+                
+                progress_bar.progress(1.0)
+                step_status.empty()
+                
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+                main_status.error(f"Error: {str(e)}")
+                logging.error(f"Processing error: {str(e)}")
             finally:
-                cleanup_temp_files()  # Clean up after processing
+                cleanup_temp_files()
 
     # Show results if they exist in session state
     if st.session_state.transcription_text:
-        st.text_area("Full Transcription", st.session_state.transcription_text, height=300)
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            st.text_area("Full Transcription", st.session_state.transcription_text, height=300)
+        with col2:
+            create_download_button(
+                st.session_state.transcription_text,
+                "transcription.txt",
+                "⬇️ Download Transcription"
+            )
         
     if st.session_state.processed_text:
-        st.text_area("Processed Result", st.session_state.processed_text, height=300)
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            st.text_area("Processed Result", st.session_state.processed_text, height=300)
+        with col2:
+            create_download_button(
+                st.session_state.processed_text,
+                "processed_result.txt",
+                "⬇️ Download Results"
+            )
 
     render_footer()
 
 if __name__ == "__main__":
     main()
+
+
