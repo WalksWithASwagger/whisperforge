@@ -1,0 +1,11 @@
+version: '3'
+services:
+  whisperforge:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NOTION_API_KEY=${NOTION_API_KEY} 

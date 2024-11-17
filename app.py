@@ -446,6 +446,7 @@ def parse_processed_text(text):
 def send_to_notion(transcription, processed_text, notion_key, filename):
     """Send transcription and processed text to Notion with rich formatting."""
     try:
+        logging.info("Starting Notion export...")
         notion = Client(auth=notion_key)
         database_id = "124c6f799a33806593b1c7afdc34ef94"
         
@@ -557,11 +558,14 @@ def send_to_notion(transcription, processed_text, notion_key, filename):
             children=children
         )
         
-        return True, "Successfully sent to Notion!", f"https://notion.so/{response['id'].replace('-', '')}"
+        url = f"https://notion.so/{response['id'].replace('-', '')}"
+        logging.info(f"Successfully created Notion page: {url}")
+        return True, "Successfully sent to Notion!", url
         
     except Exception as e:
-        logging.error(f"Notion export error: {str(e)}")
-        return False, f"Error sending to Notion: {str(e)}", None
+        error_msg = f"Notion export error: {str(e)}"
+        logging.error(error_msg)
+        return False, error_msg, None
 
 def split_transcription_into_blocks(transcription, max_length=1800):
     """Split transcription into Notion blocks."""
@@ -634,8 +638,9 @@ def save_cache():
     with open("cache.pkl", "wb") as f:
         pickle.dump(cache, f)
     logging.info(f"Cache saved successfully. Contains {len(cache)} items.")
-    # Only rerun if not in the middle of processing
-    if not st.session_state.get('processing_complete'):
+    # Only rerun if explicitly requested
+    if st.session_state.get('force_rerun', False):
+        st.session_state.force_rerun = False
         st.rerun()
 
 def transcribe_with_cache(file_path):
@@ -650,11 +655,6 @@ def transcribe_with_cache(file_path):
         cached_text = cache[cache_key]
         logging.info(f"Cache HIT! Text length: {len(cached_text)}")
         st.success(f"🎯 Using cached transcription! (Cache key: {cache_key[:8]}...)")
-        
-        # Add verification UI
-        with st.expander("Verify cached content"):
-            st.info("Cached transcription preview:")
-            st.code(cached_text[:200] + "...")
         return cached_text
     
     logging.info("Cache MISS - Performing new transcription")
@@ -662,6 +662,8 @@ def transcribe_with_cache(file_path):
     cache[cache_key] = transcription
     save_cache()
     
+    # Add logging to track flow
+    logging.info("Transcription completed and cached, continuing with processing...")
     return transcription
 
 def transcribe_audio(file_path):
@@ -754,6 +756,13 @@ def create_download_button(text, filename, button_text):
         st.error(f"Error creating download button: {str(e)}")
         return None
 
+def reset_processing_state():
+    """Reset all processing-related state variables."""
+    st.session_state.transcription_text = None
+    st.session_state.processed_text = None
+    st.session_state.notion_url = None
+    st.session_state.processing_complete = False
+
 def main():
     # Load cache at startup
     load_cache()
@@ -769,6 +778,10 @@ def main():
         st.session_state.transcription_text = None
     if 'processed_text' not in st.session_state:
         st.session_state.processed_text = None
+    if 'notion_url' not in st.session_state:
+        st.session_state.notion_url = None
+    if 'processing_complete' not in st.session_state:
+        st.session_state.processing_complete = False
 
     # Sidebar configuration
     with st.sidebar:
@@ -805,66 +818,60 @@ def main():
     if uploaded_file:
         if st.button("Process Audio"):
             try:
-                # Create status containers
-                main_status = st.empty()
-                progress_bar = st.progress(0)
-                step_status = st.empty()
-                
-                # Step 1: Load File (10%)
-                main_status.info("📂 Processing Audio File...")
-                step_status.write("Step 1/4: Loading audio file")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-                    tmp_file.write(uploaded_file.getvalue())
-                    audio_path = tmp_file.name
-                progress_bar.progress(0.1)
-                
-                # Step 2: Transcribe (40%)
-                step_status.write("Step 2/4: Transcribing audio")
-                transcription = transcribe_with_cache(audio_path)
-                if not transcription:
-                    raise Exception("Transcription failed")
-                st.session_state.transcription_text = transcription
-                progress_bar.progress(0.4)
-                
-                # Step 3: Process with GPT (70%)
-                step_status.write("Step 3/4: Processing with GPT")
-                if processing_mode == "Custom Instructions":
-                    advanced_settings = setup_advanced_settings()
-                    processed_text = process_with_gpt(
-                        transcription, 
-                        processing_mode.lower(), 
-                        custom_prompt,
-                        settings=advanced_settings
-                    )
-                else:
-                    processed_text = process_with_gpt(transcription, processing_mode.lower())
-                if not processed_text:
-                    raise Exception("GPT processing failed")
-                st.session_state.processed_text = processed_text
-                progress_bar.progress(0.7)
-                
-                # Step 4: Export to Notion (100%)
-                step_status.write("Step 4/4: Exporting to Notion")
-                if enable_notion and notion_key:
-                    success, message, url = send_to_notion(
-                        transcription,
-                        processed_text,
-                        notion_key,
-                        uploaded_file.name
-                    )
-                    if success:
-                        main_status.success(f"✅ Complete! View in Notion: {url}")
+                with st.status("Processing audio file...") as status:
+                    # Step 1: Load File
+                    status.update(label="Loading audio file...")
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        audio_path = tmp_file.name
+                    
+                    # Step 2: Transcribe
+                    status.update(label="Transcribing audio...")
+                    logging.info("Starting transcription step...")
+                    transcription = transcribe_with_cache(audio_path)
+                    if not transcription:
+                        raise Exception("Transcription failed")
+                    logging.info("Transcription successful, length: %d", len(transcription))
+                    st.session_state.transcription_text = transcription
+                    
+                    # Step 3: Process with GPT
+                    status.update(label="Processing with GPT...")
+                    logging.info(f"Starting GPT processing with mode: {processing_mode}")
+                    if processing_mode == "Custom Instructions":
+                        advanced_settings = setup_advanced_settings()
+                        processed_text = process_with_gpt(
+                            transcription, 
+                            processing_mode.lower(), 
+                            custom_prompt,
+                            settings=advanced_settings
+                        )
                     else:
-                        main_status.error(message)
-                else:
-                    main_status.success("✅ Processing complete!")
-                
-                progress_bar.progress(1.0)
-                step_status.empty()
-                
+                        processed_text = process_with_gpt(transcription, processing_mode.lower())
+                    
+                    if not processed_text:
+                        raise Exception("GPT processing failed")
+                    logging.info("GPT processing completed successfully")
+                    st.session_state.processed_text = processed_text
+                    
+                    # Step 4: Export to Notion
+                    if enable_notion and notion_key:
+                        status.update(label="Exporting to Notion...")
+                        success, message, url = send_to_notion(
+                            transcription,
+                            processed_text,
+                            notion_key,
+                            uploaded_file.name
+                        )
+                        if success:
+                            st.session_state.notion_url = url
+                            
+                    status.update(label="Complete!", state="complete")
+                    st.session_state.processing_complete = True
+                    
             except Exception as e:
-                main_status.error(f"Error: {str(e)}")
+                st.error(f"Error during processing: {str(e)}")
                 logging.error(f"Processing error: {str(e)}")
+                reset_processing_state()
             finally:
                 cleanup_temp_files()
 
@@ -890,6 +897,22 @@ def main():
                 "processed_result.txt",
                 "⬇️ Download Results"
             )
+
+    # After processing is complete
+    if st.session_state.processing_complete:
+        with st.expander("Processing Results", expanded=True):
+            if st.session_state.transcription_text:
+                st.text_area("Transcription", st.session_state.transcription_text, height=200)
+                
+            if st.session_state.processed_text:
+                st.text_area("Processed Text", st.session_state.processed_text, height=200)
+                
+            if st.session_state.notion_url:
+                st.markdown(f"""
+                ### Notion Export
+                ✅ Successfully exported to Notion  
+                [View Document]({st.session_state.notion_url})
+                """)
 
     render_footer()
 
