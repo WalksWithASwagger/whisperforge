@@ -1,53 +1,65 @@
-WhisperForge
+# WhisperForge
 
-WhisperForge is a Python tool that transcribes large audio files by splitting them into smaller chunks, processing each chunk using the OpenAI Whisper model, and then combining the transcriptions into a single output file.
+WhisperForge is an AI-powered audio transcription and analysis tool that integrates OpenAI's Whisper model with Notion for documentation.
 
-Features
+## Features
+- Audio file transcription (MP3, WAV, M4A, OGG)
+- Automatic chunking of large audio files
+- Language detection and support
+- Direct export to Notion
+- Insights extraction from transcribed content
 
-- Splits large audio files into manageable chunks
-- Transcribes each chunk using the OpenAI API
-- Combines transcriptions into a single file
-- Supports various audio formats (e.g., MP3)
-- Generates uniquely named output files based on the original audio file
+## Prerequisites
+- Python 3.11 (required for audioop support)
+- ffmpeg
+- OpenAI API key
+- Notion API key and integration
 
-Installation
+## Installation
 
-1. Clone the repository:
+1. Create Python virtual environment:
 
-   git clone https://github.com/yourusername/whisperforge.git
-   cd whisperforge
+```bash
+python3.11 -m venv whisperforge-
+```
 
-2. Install the required Python packages:
+2. Install dependencies:
 
-   pip install -r requirements.txt
+```bash
+pip install -r requirements.txt
+```
 
-3. Ensure `ffmpeg` is installed:
+3. Install ffmpeg:
 
-   - macOS: `brew install ffmpeg`
-   - Windows: `choco install ffmpeg`
-   - Linux: `sudo apt-get install ffmpeg`
+```bash
+# macOS
+brew install ffmpeg
 
-Usage
+# Ubuntu/Debian
+sudo apt-get install ffmpeg
+```
 
-To transcribe an audio file, run the following command:
+## Configuration
+1. Create `.env` file with your API keys:
 
-   python whisperforge.py /path/to/your/audiofile.m4a
+```env
+OPENAI_API_KEY=your_openai_key_here
+NOTION_API_KEY=your_notion_key_here
+```
 
-Example
+2. Set up Notion integration:
+   - Create a new integration at https://www.notion.so/my-integrations
+   - Share your target Notion page with the integration
 
-   python whisperforge.py meeting_recording.m4a
+## Usage
+Run the Streamlit app:
 
-This will generate transcription files like:
+```bash
+streamlit run app.py
+```
 
-- whisperforge_meeting_recording_chunk_0.mp3
-- whisperforge_meeting_recording_chunk_0_transcription.txt
-- whisperforge_meeting_recording_full_transcription.txt
+## Contributing
+[Your contribution guidelines here]
 
-Contributing
-
-Contributions are welcome! Feel free to open an issue or submit a pull request.
-
-License
-
-This project is licensed under the MIT License.
-"""
+## License
+[Your chosen license here]

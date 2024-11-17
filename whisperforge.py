@@ -3,6 +3,11 @@ from pydub import AudioSegment
 from openai import OpenAI
 import time
 import os
+import asyncio
+import aiofiles
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
+from pathlib import Path
 
 # Initialize the OpenAI client
 client = OpenAI()

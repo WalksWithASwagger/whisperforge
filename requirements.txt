@@ -1,2 +1,5 @@
-pydub
+streamlit
 openai
+pydub
+notion-client
+python-dotenv
