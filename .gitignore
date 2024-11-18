@@ -43,3 +43,4 @@ whisperforge.log
 *.swo
 .DS_Store
 backups/
+.env*
