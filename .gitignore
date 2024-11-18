@@ -1,3 +1,6 @@
+# Environment variables
+.env
+
 # Python
 __pycache__/
 *.py[cod]
@@ -22,34 +25,20 @@ wheels/
 *.egg
 
 # Virtual Environment
-whisperforge-env/
 venv/
 ENV/
 
-# Environment Variables
-.env
-.env.local
+# Cache files
+cache.pkl
+*.cache
 
-# IDE
+# Logs
+*.log
+whisperforge.log
+
+# IDE specific files
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Project specific
-*.mp3
-*.wav
-*.m4a
-*.ogg
-temp/
-cache.pkl
-whisperforge.log

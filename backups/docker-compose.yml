@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      - transcription
+      - processing
+      - storage
+    environment:
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    volumes:
+      - frontend_cache:/app/cache
+
+  transcription:
+    build: ./services/transcription
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    volumes:
+      - audio_cache:/app/cache
+
+  processing:
+    build: ./services/processing
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    volumes:
+      - processing_cache:/app/cache
+
+  storage:
+    build: ./services/storage
+    environment:
+      - NOTION_API_KEY=${NOTION_API_KEY}
+      - SERVICE_TOKEN=${SERVICE_TOKEN}
+    volumes:
+      - storage_cache:/app/cache
+
+volumes:
+  frontend_cache:
+  audio_cache:
+  processing_cache:
+  storage_cache:
