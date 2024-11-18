@@ -8,263 +8,194 @@ integrating OpenAI's Whisper model with Notion for documentation.
 import streamlit as st
 import requests
 import logging
+import time
 import os
-from pathlib import Path
-import json
-from typing import Optional
-from datetime import datetime
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Enhanced logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-# Service URLs from environment/config
-TRANSCRIPTION_URL = "http://transcription:8000"  # Use container name
-PROCESSING_URL = "http://processing:8000"
-STORAGE_URL = "http://storage:8000"
-SERVICE_TOKEN = os.getenv("SERVICE_TOKEN")
+def create_retrying_session(
+    retries=3,
+    backoff_factor=0.3,
+    status_forcelist=(500, 502, 504)
+):
+    session = requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
 
-class ServiceClient:
-    def __init__(self):
-        self.headers = {
-            "X-API-Key": SERVICE_TOKEN
-        }
+def check_services():
+    """Check if all required services are available"""
+    services = {
+        'transcription': 'http://transcription:8000/health',
+        'processing': 'http://processing:8000/health'
+    }
     
-    def check_services_health(self) -> dict:
-        """Check health of all services"""
-        health = {}
-        services = {
-            "transcription": f"{TRANSCRIPTION_URL}/health",
-            "processing": f"{PROCESSING_URL}/health",
-            "storage": f"{STORAGE_URL}/health"
-        }
-        
-        for service, url in services.items():
-            try:
-                response = requests.get(url, timeout=2)  # Add timeout
-                health[service] = "✅" if response.status_code == 200 else "❌"
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Health check failed for {service}: {str(e)}")
-                health[service] = "❌"
-        
-        return health
-    
-    def transcribe_audio(self, audio_file) -> Optional[str]:
-        """Send audio file to transcription service"""
+    status = {}
+    for service, url in services.items():
         try:
-            files = {"file": audio_file}
-            response = requests.post(
-                f"{TRANSCRIPTION_URL}/transcribe",
-                headers=self.headers,
-                files=files
-            )
-            response.raise_for_status()
-            return response.json()["text"]
+            response = requests.get(url, timeout=5)
+            status[service] = response.ok
+            logger.info(f"Service {service} status: {response.ok}")
         except Exception as e:
-            logger.error(f"Transcription error: {str(e)}")
-            st.error(f"Transcription failed: {str(e)}")
-            return None
-    
-    def process_text(self, text: str, mode: str, custom_prompt: str = "", language: str = None) -> Optional[str]:
-        """Send text to processing service"""
-        try:
-            data = {
-                "text": text,
-                "mode": mode.lower(),
-                "custom_prompt": custom_prompt,
-                "language": language
-            }
-            response = requests.post(
-                f"{PROCESSING_URL}/process",
-                headers=self.headers,
-                json=data
-            )
-            response.raise_for_status()
-            return response.json()["processed_text"]
-        except Exception as e:
-            logger.error(f"Processing error: {str(e)}")
-            st.error(f"Processing failed: {str(e)}")
-            return None
-    
-    def store_results(self, transcription: str, processed_text: str, filename: str) -> Optional[str]:
-        """Send results to storage service"""
-        try:
-            data = {
-                "transcription": transcription,
-                "processed_text": processed_text,
-                "file_name": filename,
-                "timestamp": datetime.now().isoformat(),
-                "metadata": {
-                    "processing_mode": st.session_state.get("processing_mode", "default"),
-                    "language": st.session_state.get("language", "en"),
-                    "file_size": st.session_state.get("file_size", "unknown"),
-                    "duration": st.session_state.get("duration", "unknown")
-                }
-            }
-            
-            response = requests.post(
-                f"{STORAGE_URL}/store",
-                headers=self.headers,
-                json=data
-            )
-            response.raise_for_status()
-            return response.json().get("url")  # Now returns the actual Notion URL
-        except Exception as e:
-            logger.error(f"Storage error: {str(e)}")
-            st.error(f"Storage failed: {str(e)}")
-            return None
+            status[service] = False
+            logger.error(f"Service {service} error: {str(e)}")
+    return status
 
-def render_header():
-    """Render the app header"""
-    st.title("WhisperForge")
-    st.markdown("🎙️ Audio Transcription & Analysis")
-
-def render_sidebar(client: ServiceClient):
-    """Render the sidebar with service status"""
-    with st.sidebar:
-        st.header("Service Status")
-        health = client.check_services_health()
-        for service, status in health.items():
-            st.text(f"{service.title()}: {status}")
-
-def call_service(service_url: str, method: str = "GET", data: dict = None, files: dict = None) -> dict:
-    """Make authenticated call to service"""
-    headers = {"Authorization": f"Bearer {os.getenv('SERVICE_TOKEN')}"}
-    
-    try:
-        if method == "GET":
-            response = requests.get(service_url, headers=headers)
-        elif method == "POST":
-            if files:
-                response = requests.post(service_url, headers=headers, files=files)
-            else:
-                response = requests.post(service_url, headers=headers, json=data)
-        
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Service call failed: {str(e)}")
-        raise
+def get_api_key():
+    """Get API key from environment variable"""
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        st.error("OpenAI API key not found in environment variables")
+        logger.error("OpenAI API key missing")
+    return api_key
 
 def main():
+    st.title("WhisperForge")
+    st.subheader("🎙️ Audio Transcription & Analysis")
+
+    # Create a session with retry logic
+    session = create_retrying_session()
+
     # Initialize session state
-    if 'client' not in st.session_state:
-        st.session_state.client = ServiceClient()
-    
-    if 'processing_complete' not in st.session_state:
-        st.session_state.processing_complete = False
-    
-    # Render UI components
-    render_header()
-    render_sidebar(st.session_state.client)
-    
-    # File upload
+    if 'widget_keys' not in st.session_state:
+        st.session_state.widget_keys = {
+            'uploader': f"uploader_{time.time_ns()}",
+            'mode': f"mode_{time.time_ns()}",
+            'language': f"lang_{time.time_ns()}",
+            'process': f"process_{time.time_ns()}"
+        }
+
+    # File uploader
     uploaded_file = st.file_uploader(
         "Upload Audio File",
         type=['mp3', 'wav', 'm4a', 'ogg'],
-        help="Upload an audio file for transcription"
+        key=st.session_state.widget_keys['uploader']
     )
-    
+
     # Processing options
     col1, col2 = st.columns(2)
     with col1:
-        processing_mode = st.selectbox(
+        mode = st.selectbox(
             "Processing Mode",
-            ["Summarize", "Extract Insights", "Custom"]
+            ["summarize", "extract insights", "custom"],
+            key=st.session_state.widget_keys['mode']
         )
-    
     with col2:
         language = st.selectbox(
             "Output Language",
-            ["English", "Spanish", "French", "German", None],
-            index=0
+            ["english", "spanish", "french"],
+            key=st.session_state.widget_keys['language']
         )
-    
-    if processing_mode == "Custom":
-        custom_prompt = st.text_area(
-            "Custom Instructions",
-            help="Enter custom processing instructions"
-        )
-    else:
-        custom_prompt = ""
-    
+
     # Process button
-    if uploaded_file and st.button("Process Audio", type="primary"):
-        with st.status("Processing...", expanded=True) as status:
+    if st.button("Process Audio", key=st.session_state.widget_keys['process'], disabled=not uploaded_file):
+        if uploaded_file:
             try:
-                # Step 1: Transcription
-                status.update(label="Transcribing audio...")
-                transcription = st.session_state.client.transcribe_audio(uploaded_file)
+                # Get API key once
+                api_key = get_api_key()
+                if not api_key:
+                    return
+
+                # Different headers for file upload vs JSON
+                file_headers = {
+                    "X-API-Key": api_key
+                }
+
+                json_headers = {
+                    "X-API-Key": api_key,
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                }
                 
-                if transcription:
-                    # Step 2: Processing
-                    status.update(label="Processing text...")
-                    processed_text = st.session_state.client.process_text(
-                        transcription,
-                        processing_mode,
-                        custom_prompt,
-                        language
+                # Show progress
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Step 1: Transcription
+                status_text.text("Transcribing audio...")
+                progress_bar.progress(25)
+                
+                logger.debug("Sending request to transcription service")
+                response = session.post(
+                    "http://transcription:8000/transcribe",
+                    files={"file": uploaded_file},
+                    headers=file_headers,
+                    timeout=30
+                )
+                logger.debug(f"Transcription response status: {response.status_code}")
+                
+                if not response.ok:
+                    st.error(f"Transcription failed: {response.text}")
+                    logger.error(f"Transcription error: {response.text}")
+                    return
+                
+                transcription = response.json()["text"]
+                progress_bar.progress(50)
+                
+                # Step 2: Processing
+                status_text.text("Processing transcription...")
+                logger.debug("Sending request to processing service")
+                response = session.post(
+                    "http://processing:8000/process",
+                    json={
+                        "text": transcription,
+                        "mode": mode.lower(),
+                        "language": language,
+                        "custom_prompt": ""
+                    },
+                    headers=json_headers
+                )
+                
+                logger.debug(f"Processing response status: {response.status_code}")
+                result = response.json()
+                processed_text = result["result"]
+                progress_bar.progress(100)
+                status_text.text("Done!")
+                
+                # Show results
+                with st.expander("Original Transcription", expanded=False):
+                    st.text(transcription)
+                
+                st.subheader("Processed Result")
+                st.write(processed_text)
+                
+                # Download buttons
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.download_button(
+                        "Download Transcription",
+                        transcription.encode(),
+                        f"transcription_{uploaded_file.name}.txt",
+                        "text/plain"
                     )
-                    
-                    if processed_text:
-                        # Step 3: Storage
-                        status.update(label="Storing results...")
-                        notion_url = st.session_state.client.store_results(
-                            transcription,
-                            processed_text,
-                            uploaded_file.name
-                        )
-                        
-                        # Update session state
-                        st.session_state.transcription = transcription
-                        st.session_state.processed_text = processed_text
-                        st.session_state.notion_url = notion_url
-                        st.session_state.processing_complete = True
-                        
-                        status.update(label="Complete!", state="complete")
+                with col2:
+                    st.download_button(
+                        "Download Processed Result",
+                        processed_text.encode(),
+                        f"processed_{uploaded_file.name}.txt",
+                        "text/plain"
+                    )
                 
             except Exception as e:
-                st.error(f"Processing failed: {str(e)}")
-                logger.error(f"Processing error: {str(e)}")
-    
-    # Display results
-    if st.session_state.processing_complete:
-        st.header("Results")
-        
-        with st.expander("Original Transcription", expanded=False):
-            col1, col2 = st.columns([6, 1])
-            with col1:
-                st.text_area(
-                    "Transcribed Text",
-                    st.session_state.transcription,
-                    height=200
-                )
-            with col2:
-                st.download_button(
-                    "⬇️ Download",
-                    st.session_state.transcription,
-                    file_name="transcription.txt",
-                    mime="text/plain"
-                )
-        
-        st.subheader("Processed Result")
-        col1, col2 = st.columns([6, 1])
-        with col1:
-            st.text_area(
-                "Processed Text",
-                st.session_state.processed_text,
-                height=300
-            )
-        with col2:
-            st.download_button(
-                "⬇️ Download",
-                st.session_state.processed_text,
-                file_name="processed_result.txt",
-                mime="text/plain"
-            )
-        
-        if st.session_state.notion_url:
-            st.success(f"✅ Results saved to Notion: [View Document]({st.session_state.notion_url})")
+                logger.exception("Error during processing")
+                st.error(f"Processing error: {str(e)}")
+                st.error(f"Processing error: {str(e)}")
+                st.error(f"Processing error: {str(e)}")
 
 if __name__ == "__main__":
     main()

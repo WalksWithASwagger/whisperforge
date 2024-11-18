@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from shared.security import SecurityHandler
 from shared.config import Config
 from pydantic import BaseModel
 import openai
 import logging
 from typing import Optional, Literal
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -66,83 +67,39 @@ def get_processing_prompt(mode: str, text: str, custom_prompt: str = "", languag
     
     return f"{base_prompt}:\n\n{text}"
 
+async def verify_api_key(x_api_key: str = Header(None)):
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key is missing")
+    
+    expected_key = os.getenv("OPENAI_API_KEY")
+    if not expected_key:
+        raise HTTPException(status_code=500, detail="Server API key not configured")
+    
+    if x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    return x_api_key
+
 @app.post("/process")
-async def process_text(
-    request: ProcessingRequest,
-    authenticated: bool = Depends(security.verify_token)
-):
-    """Process text using GPT-4 based on specified mode"""
+async def process_text(request: Request, data: ProcessingRequest, api_key: str = Depends(verify_api_key)):
     try:
-        logger.info(f"Processing request with mode: {request.mode}")
+        logger.info(f"Processing text with mode: {data.mode}")
         
-        # Split text into chunks if needed
-        chunks = chunk_text(request.text, request.chunk_size)
-        processed_chunks = []
+        prompt = get_processing_prompt(data.mode, data.text, data.custom_prompt, data.language)
         
-        for i, chunk in enumerate(chunks):
-            logger.info(f"Processing chunk {i+1} of {len(chunks)}")
-            
-            try:
-                prompt = get_processing_prompt(
-                    request.mode,
-                    chunk,
-                    request.custom_prompt,
-                    request.language
-                )
-                
-                response = client.chat.completions.create(
-                    model=Config.GPT_MODEL,
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant skilled in analysis and summarization."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                
-                processed_chunks.append(response.choices[0].message.content)
-                
-            except openai.RateLimitError:
-                logger.error("Rate limit exceeded")
-                raise HTTPException(
-                    status_code=429,
-                    detail="Rate limit exceeded. Please try again later."
-                )
-            except openai.APIError as e:
-                logger.error(f"OpenAI API error: {str(e)}")
-                raise ProcessingError(f"OpenAI API error: {str(e)}")
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant skilled in analyzing text."},
+                {"role": "user", "content": prompt}
+            ]
+        )
         
-        # Combine chunks if multiple
-        if len(processed_chunks) > 1:
-            logger.info("Combining processed chunks")
-            final_prompt = f"Please provide a coherent combination of these processed sections:\n\n{' '.join(processed_chunks)}"
-            
-            final_response = client.chat.completions.create(
-                model=Config.GPT_MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant skilled in combining and synthesizing information."},
-                    {"role": "user", "content": final_prompt}
-                ],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            
-            final_text = final_response.choices[0].message.content
-        else:
-            final_text = processed_chunks[0]
+        return {"result": response.choices[0].message.content}
         
-        logger.info("Processing completed successfully")
-        return {
-            "status": "success",
-            "processed_text": final_text,
-            "chunks_processed": len(chunks)
-        }
-        
-    except ProcessingError as e:
-        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check():
