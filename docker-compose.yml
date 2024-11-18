@@ -1,5 +1,9 @@
 version: '3.8'
 
+networks:
+  whisperforge:
+    driver: bridge
+
 services:
   frontend:
     build:
@@ -8,16 +12,12 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - SERVICE_TOKEN=${SERVICE_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - NOTION_API_KEY=${NOTION_API_KEY}
-      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
     networks:
-      - whisperforge_net
+      - whisperforge
     depends_on:
       - transcription
       - processing
-      - storage
 
   transcription:
     build:
@@ -25,13 +25,10 @@ services:
       dockerfile: services/transcription/Dockerfile
     ports:
       - "8000:8000"
-    env_file:
-      - .env
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SERVICE_TOKEN=${SERVICE_TOKEN}
     networks:
-      - whisperforge_net
+      - whisperforge
 
   processing:
     build:
@@ -39,13 +36,10 @@ services:
       dockerfile: services/processing/Dockerfile
     ports:
       - "8001:8000"
-    env_file:
-      - .env
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - SERVICE_TOKEN=${SERVICE_TOKEN}
     networks:
-      - whisperforge_net
+      - whisperforge
 
   storage:
     build:
@@ -61,11 +55,27 @@ services:
     env_file:
       - .env
     networks:
-      - whisperforge_net
+      - whisperforge
 
-networks:
-  whisperforge_net:
-    driver: bridge
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - whisperforge
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    depends_on:
+      - prometheus
+    networks:
+      - whisperforge
 
 volumes:
   frontend_cache:
