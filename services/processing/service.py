@@ -15,6 +15,7 @@ app = FastAPI(title="WhisperForge Processing Service")
 security = SecurityHandler()
 client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
 
+
 class ProcessingRequest(BaseModel):
     text: str
     mode: Literal["summarize", "extract insights", "custom"]
@@ -22,9 +23,12 @@ class ProcessingRequest(BaseModel):
     chunk_size: Optional[int] = 4000
     language: Optional[str] = None
 
+
 class ProcessingError(Exception):
     """Custom exception for processing errors"""
+
     pass
+
 
 def chunk_text(text: str, max_tokens: int = 4000) -> list[str]:
     """Split text into chunks to avoid token limits"""
@@ -32,7 +36,7 @@ def chunk_text(text: str, max_tokens: int = 4000) -> list[str]:
     chunks = []
     current_chunk = []
     current_length = 0
-    
+
     for word in words:
         # Rough estimate: 1 word ≈ 1.3 tokens
         word_tokens = len(word) * 1.3
@@ -43,13 +47,16 @@ def chunk_text(text: str, max_tokens: int = 4000) -> list[str]:
         else:
             current_chunk.append(word)
             current_length += word_tokens
-    
+
     if current_chunk:
         chunks.append(" ".join(current_chunk))
-    
+
     return chunks
 
-def get_processing_prompt(mode: str, text: str, custom_prompt: str = "", language: str = None) -> str:
+
+def get_processing_prompt(
+    mode: str, text: str, custom_prompt: str = "", language: str = None
+) -> str:
     """Generate appropriate prompt based on processing mode"""
     if mode == "summarize":
         base_prompt = "Please provide a concise summary of the following text"
@@ -64,42 +71,52 @@ def get_processing_prompt(mode: str, text: str, custom_prompt: str = "", languag
 
     if language:
         base_prompt += f" in {language}"
-    
+
     return f"{base_prompt}:\n\n{text}"
+
 
 async def verify_api_key(x_api_key: str = Header(None)):
     if not x_api_key:
         raise HTTPException(status_code=401, detail="API key is missing")
-    
+
     expected_key = os.getenv("OPENAI_API_KEY")
     if not expected_key:
         raise HTTPException(status_code=500, detail="Server API key not configured")
-    
+
     if x_api_key != expected_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
-    
+
     return x_api_key
 
+
 @app.post("/process")
-async def process_text(request: Request, data: ProcessingRequest, api_key: str = Depends(verify_api_key)):
+async def process_text(
+    request: Request, data: ProcessingRequest, api_key: str = Depends(verify_api_key)
+):
     try:
         logger.info(f"Processing text with mode: {data.mode}")
-        
-        prompt = get_processing_prompt(data.mode, data.text, data.custom_prompt, data.language)
-        
+
+        prompt = get_processing_prompt(
+            data.mode, data.text, data.custom_prompt, data.language
+        )
+
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant skilled in analyzing text."},
-                {"role": "user", "content": prompt}
-            ]
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant skilled in analyzing text.",
+                },
+                {"role": "user", "content": prompt},
+            ],
         )
-        
+
         return {"result": response.choices[0].message.content}
-        
+
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/health")
 async def health_check():
@@ -107,5 +124,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "processing",
-        "openai_api": "connected" if Config.OPENAI_API_KEY else "not configured"
+        "openai_api": "connected" if Config.OPENAI_API_KEY else "not configured",
     }
