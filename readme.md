@@ -63,3 +63,9 @@ streamlit run app.py
 
 ## License
 [Your chosen license here]
+
+## Development Status
+Currently implementing:
+- Notion integration for permanent storage
+- Monitoring and observability with Prometheus/Grafana
+- Service health checks and logging
