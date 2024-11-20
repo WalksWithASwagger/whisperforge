@@ -18,7 +18,7 @@ client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
 
 class ProcessingRequest(BaseModel):
     text: str
-    mode: Literal["summarize", "extract insights", "custom"]
+    mode: Literal["transcribe", "extract_insights", "full_analysis"]
     custom_prompt: Optional[str] = ""
     chunk_size: Optional[int] = 4000
     language: Optional[str] = None
@@ -91,7 +91,9 @@ async def verify_api_key(x_api_key: str = Header(None)):
 
 @app.post("/process")
 async def process_text(
-    request: Request, data: ProcessingRequest, api_key: str = Depends(verify_api_key)
+    request: Request, 
+    data: ProcessingRequest, 
+    api_key: str = Depends(security.verify_token)  # Changed this line
 ):
     try:
         logger.info(f"Processing text with mode: {data.mode}")

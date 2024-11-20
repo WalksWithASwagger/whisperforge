@@ -1,81 +1,61 @@
 version: '3.8'
 
-networks:
-  whisperforge:
-    driver: bridge
-
 services:
   frontend:
     build:
       context: .
       dockerfile: services/frontend/Dockerfile
+    env_file:
+      - .env
     ports:
       - "8501:8501"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
-      - whisperforge
+      - whisperforge-net
     depends_on:
-      - transcription
-      - processing
+      transcription:
+        condition: service_healthy
+      processing:
+        condition: service_healthy
+    volumes:
+      - frontend_cache:/app/cache
 
   transcription:
     build:
       context: .
       dockerfile: services/transcription/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
     networks:
-      - whisperforge
+      - whisperforge-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - audio_cache:/app/cache
 
   processing:
     build:
       context: .
       dockerfile: services/processing/Dockerfile
-    ports:
-      - "8001:8000"
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    networks:
-      - whisperforge
-
-  storage:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8000"
-    environment:
-      - NOTION_API_KEY=${NOTION_API_KEY}
-      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
-      - SERVICE_TOKEN=${SERVICE_TOKEN}
-    command: uvicorn services.storage.service:app --host 0.0.0.0 --port 8000
     env_file:
       - .env
     networks:
-      - whisperforge
-
-  prometheus:
-    image: prom/prometheus
+      - whisperforge-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - whisperforge
+      - processing_cache:/app/cache
 
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-    depends_on:
-      - prometheus
-    networks:
-      - whisperforge
+networks:
+  whisperforge-net:
+    driver: bridge
 
 volumes:
   frontend_cache:
