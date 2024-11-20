@@ -1,6 +1,38 @@
 version: '3.8'
 
 services:
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/whisperforge
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - whisperforge-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=whisperforge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - whisperforge-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
   frontend:
     build:
       context: .
@@ -62,3 +94,4 @@ volumes:
   audio_cache:
   processing_cache:
   storage_cache:
+  postgres_data:
