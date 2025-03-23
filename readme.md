@@ -44,7 +44,7 @@ sudo apt-get install ffmpeg
 
 ```env
 OPENAI_API_KEY=your_openai_key_here
-NOTION_API_KEY=your_notion_key_here
+NOTION_API_KEY=your_notion_key_here  # Optional if using Notion integration
 ```
 
 2. Set up Notion integration:
