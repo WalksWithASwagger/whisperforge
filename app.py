@@ -224,13 +224,13 @@ def generate_summary(text, title):
         return "Summary generation failed"
 
 def generate_short_title(text):
-    """Generate a 5-word descriptive title from the transcript"""
+    """Generate a 5-7 word descriptive title from the transcript"""
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[
-                {"role": "system", "content": "Create a concise, descriptive 5-word title that captures the main topic or theme of this content. Make it clear and engaging. Return ONLY the 5 words, nothing else."},
-                {"role": "user", "content": f"Generate a 5-word title for this transcript:\n\n{text[:2000]}..."} # First 2000 chars for context
+                {"role": "system", "content": "Create a concise, descriptive 5-7 word title that captures the main topic or theme of this content. Make it clear and engaging. Return ONLY the title words, nothing else."},
+                {"role": "user", "content": f"Generate a 5-7 word title for this transcript:\n\n{text[:2000]}..."} # First 2000 chars for context
             ]
         )
         return response.choices[0].message.content.strip()
@@ -242,110 +242,122 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                                outline="", social_posts="", image_prompts="", article=""):
     """Create a comprehensive Notion entry with all generated content"""
     try:
+        # Generate a 5-7 word descriptive title
+        short_title = generate_short_title(transcript)
+        
+        # Create the page title with WHISPER prefix
+        notion_title = f"WHISPER: {short_title}"
+        
         # Generate summary
         summary = generate_summary(transcript, title)
         
-        # Helper function to create a toggle block
+        # Get original audio filename if available
+        original_filename = ""
+        if audio_file:
+            original_filename = audio_file.name
+        
+        # Helper function to chunk text into 2000-character blocks
+        def chunk_text_for_notion(text):
+            if not text:
+                return [{"type": "text", "text": {"content": "Not yet generated."}}]
+            
+            # Split text into chunks of 2000 characters max
+            chunks = []
+            text_length = len(text)
+            
+            for i in range(0, text_length, 2000):
+                chunk = text[i:min(i + 2000, text_length)]
+                chunks.append({"type": "text", "text": {"content": chunk}})
+            
+            return chunks
+        
+        # Helper function to create a toggle block with potentially large content
         def create_toggle(title, content_text, color):
+            # Build the children blocks for the toggle
+            children = []
+            
+            # Create paragraph blocks from chunked content
+            chunks = chunk_text_for_notion(content_text)
+            for chunk in chunks:
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [chunk]
+                    }
+                })
+            
+            # Create the toggle block
             return {
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
                     "rich_text": [{"type": "text", "text": {"content": title}}],
                     "color": color,
-                    "children": [
-                        {
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                            }
-                        }
-                        for chunk in [content_text[i:i+1900] for i in range(0, len(content_text), 1900)]
-                    ]
+                    "children": children
                 }
             }
-
-        blocks = [
-            # Original filename
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": f"Original File: {audio_file.name}"},
-                            "annotations": {"italic": True, "color": "gray"}
-                        }
-                    ]
-                }
-            },
-            # Summary callout
-            {
-                "object": "block",
-                "type": "callout",
-                "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": summary}}],
-                    "icon": {"emoji": "💜"},
-                    "color": "purple_background"
-                }
-            },
-            # Spacing
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {"rich_text": []}
-            }
-        ]
-
-        # Add all toggle sections (only add those with content)
-        toggle_sections = [
-            ("Original Audio", "Audio file attached", "gray_background"),
-            ("Transcription", transcript, "brown_background"),
-            ("Wisdom", wisdom, "brown_background")
-        ]
         
-        if outline:
-            toggle_sections.append(("Outline", outline, "blue_background"))
-        
-        if social_posts:
-            toggle_sections.append(("Socials", social_posts, "default"))
-            
-        if image_prompts:
-            toggle_sections.append(("Image Prompts", image_prompts, "green_background"))
-            
-        if article:
-            toggle_sections.append(("Draft Post", article, "purple_background"))
-
-        for section_title, content_text, color in toggle_sections:
-            blocks.append(create_toggle(section_title, content_text, color))
-            # Add spacing after each toggle
-            blocks.append({
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {"rich_text": []}
-            })
-
-        # Create the page
-        response = notion_client.pages.create(
+        # Create the new page
+        new_page = notion_client.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
-                "Name": {
-                    "title": [{"text": {"content": title}}]
-                },
-                "Created Date": {
-                    "date": {"start": datetime.now().isoformat()}
-                },
-                "Tags": {
-                    "multi_select": [{"name": "transcription"}, {"name": "content"}]
+                "title": {
+                    "title": [{"text": {"content": notion_title}}]
                 }
             },
-            children=blocks
+            children=[
+                # Purple callout at the top with summary
+                {
+                    "object": "block",
+                    "type": "callout",
+                    "callout": {
+                        "rich_text": [{"type": "text", "text": {"content": summary}}],
+                        "color": "purple",
+                        "icon": {
+                            "type": "emoji",
+                            "emoji": "💜"
+                        }
+                    }
+                },
+                # Original Audio filename
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text", 
+                                "text": {"content": f"Original Audio File: {original_filename}"},
+                                "annotations": {"bold": True}
+                            }
+                        ]
+                    }
+                },
+                # Original Audio toggle
+                create_toggle("▶️ Original Audio", "Audio file uploaded to WhisperForge", "default"),
+                
+                # Transcription toggle
+                create_toggle("▶️ Transcription", transcript, "brown"),
+                
+                # Wisdom toggle
+                create_toggle("▶️ Wisdom", wisdom, "brown_background"),
+                
+                # Socials toggle
+                create_toggle("▶️ Socials", social_posts, "yellow_background"),
+                
+                # Image Prompts toggle
+                create_toggle("▶️ Image Prompts", image_prompts, "green_background"),
+                
+                # Outline toggle
+                create_toggle("▶️ Outline", outline, "blue_background"),
+                
+                # Draft Post toggle
+                create_toggle("▶️ Draft Post", article, "purple_background")
+            ]
         )
         
-        page_id = response['id'].replace('-', '')
-        return f"https://notion.so/{page_id}"
+        return f"https://notion.so/{new_page['id'].replace('-', '')}"
     
     except Exception as e:
         st.error(f"Notion API Error: {str(e)}")
