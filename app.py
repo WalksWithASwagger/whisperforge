@@ -58,18 +58,12 @@ def load_prompts():
     prompts_dir = 'prompts'
     
     if not os.path.exists(prompts_dir):
-        st.sidebar.error(f"Directory not found: {prompts_dir}")
         return users
-    
-    # Debug output
-    st.sidebar.write("Loading prompts...")
     
     # Get all user directories
     for user_dir in os.listdir(prompts_dir):
         user_path = os.path.join(prompts_dir, user_dir)
         if os.path.isdir(user_path) and not user_dir.startswith('.'):
-            st.sidebar.write(f"Found user: {user_dir}")
-            
             users[user_dir] = {
                 'prompts': {},
                 'knowledge_base': load_user_knowledge_base(user_dir)
@@ -90,17 +84,9 @@ def load_prompts():
                                     prompt_dir = os.path.basename(os.path.dirname(file_path))
                                     prompt_name = prompt_dir.replace('_', ' ').title()
                                     users[user_dir]['prompts'][prompt_name] = content
-                                    st.sidebar.write(f"✓ Loaded prompt: {prompt_name}")
                             except Exception as e:
-                                st.warning(f"Could not load prompt file {file_path}: {str(e)}")
-            else:
-                st.sidebar.warning(f"No prompts directory found for user {user_dir}")
-    
-    if not users:
-        st.sidebar.warning("No prompts found in any user directory")
-    else:
-        st.sidebar.write("All prompts loaded successfully!")
-    
+                                st.error(f"Error loading prompt {file_path}")
+            
     return users
 
 def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
