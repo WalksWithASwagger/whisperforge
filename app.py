@@ -38,21 +38,73 @@ LLM_MODELS = {
     }
 }
 
-def load_prompts():
-    """Load all prompt files from the prompts directory"""
-    prompts = {}
-    prompt_files = glob.glob('prompts/*.md')
+def load_user_knowledge_base(user):
+    """Load knowledge base files for a specific user"""
+    knowledge_base = {}
+    kb_path = f'prompts/{user}/knowledge_base'
     
-    for file_path in prompt_files:
-        with open(file_path, 'r') as f:
-            content = f.read()
-            name = os.path.splitext(os.path.basename(file_path))[0].replace('_', ' ').title()
-            prompts[name] = content
+    if os.path.exists(kb_path):
+        for file in os.listdir(kb_path):
+            if file.endswith(('.txt', '.md')):
+                with open(os.path.join(kb_path, file), 'r') as f:
+                    name = os.path.splitext(file)[0].replace('_', ' ').title()
+                    knowledge_base[name] = f.read()
     
-    return prompts
+    return knowledge_base
 
-def apply_prompt(text, prompt_content, provider, model):
-    """Apply a specific prompt using the selected model and provider"""
+def load_prompts():
+    """Load prompts organized by user"""
+    users = {}
+    prompts_dir = 'prompts'
+    
+    if not os.path.exists(prompts_dir):
+        st.sidebar.error(f"Directory not found: {prompts_dir}")
+        return users
+    
+    # Debug output
+    st.sidebar.write("Loading prompts...")
+    
+    # Get all user directories
+    for user_dir in os.listdir(prompts_dir):
+        user_path = os.path.join(prompts_dir, user_dir)
+        if os.path.isdir(user_path) and not user_dir.startswith('.'):
+            st.sidebar.write(f"Found user: {user_dir}")
+            
+            users[user_dir] = {
+                'prompts': {},
+                'knowledge_base': load_user_knowledge_base(user_dir)
+            }
+            
+            # Load prompts for this user
+            prompts_path = os.path.join(user_path, 'prompts')
+            if os.path.exists(prompts_path):
+                # Recursively find all .md files
+                for root, _, files in os.walk(prompts_path):
+                    for file in files:
+                        if file.endswith('.md') and not file.startswith('.'):
+                            file_path = os.path.join(root, file)
+                            try:
+                                with open(file_path, 'r') as f:
+                                    content = f.read()
+                                    # Use the parent directory name as the prompt name
+                                    prompt_dir = os.path.basename(os.path.dirname(file_path))
+                                    prompt_name = prompt_dir.replace('_', ' ').title()
+                                    users[user_dir]['prompts'][prompt_name] = content
+                                    st.sidebar.write(f"✓ Loaded prompt: {prompt_name}")
+                            except Exception as e:
+                                st.warning(f"Could not load prompt file {file_path}: {str(e)}")
+            else:
+                st.sidebar.warning(f"No prompts directory found for user {user_dir}")
+    
+    if not users:
+        st.sidebar.warning("No prompts found in any user directory")
+    else:
+        st.sidebar.write("All prompts loaded successfully!")
+    
+    return users
+
+def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
+    """Apply a specific prompt using the selected model and provider, incorporating user knowledge"""
     try:
         prompt_parts = prompt_content.split('## Prompt')
         if len(prompt_parts) > 1:
@@ -60,11 +112,27 @@ def apply_prompt(text, prompt_content, provider, model):
         else:
             prompt_text = prompt_content
 
+        # Include knowledge base context if available
+        system_prompt = prompt_text
+        if user_knowledge:
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in user_knowledge.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis and match the user's style and perspective:
+
+{knowledge_context}
+
+When analyzing the content, please incorporate these perspectives and style guidelines.
+
+Original Prompt:
+{prompt_text}"""
+
         if provider == "OpenAI":
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": prompt_text},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ],
                 max_tokens=1500
@@ -75,7 +143,7 @@ def apply_prompt(text, prompt_content, provider, model):
             response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
-                system=prompt_text,
+                system=system_prompt,
                 messages=[
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ]
@@ -91,7 +159,7 @@ def apply_prompt(text, prompt_content, provider, model):
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": prompt_text},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ]
             }
@@ -153,102 +221,124 @@ def transcribe_chunk(chunk_path, i, total_chunks):
         except:
             pass
 
-def create_notion_blocks(content):
-    """Split content into Notion blocks of acceptable size"""
-    MAX_BLOCK_SIZE = 1900  # Slightly under Notion's 2000 limit for safety
-    blocks = []
-    
-    # Split content into chunks of MAX_BLOCK_SIZE
-    for i in range(0, len(content), MAX_BLOCK_SIZE):
-        chunk = content[i:i + MAX_BLOCK_SIZE]
-        blocks.append({
-            "object": "block",
-            "type": "paragraph",
-            "paragraph": {
-                "rich_text": [{"text": {"content": chunk}}]
-            }
-        })
-    
-    return blocks
+def generate_summary(text, title):
+    """Generate a one-sentence summary of the audio content"""
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "Create a single, concise sentence that summarizes the main topic or content of this audio transcript. Use an engaging, descriptive style."},
+                {"role": "user", "content": f"Title: {title}\n\nTranscript: {text[:2000]}..."} # Send first 2000 chars for context
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"Summary generation error: {str(e)}")
+        return "Summary generation failed"
+
+def generate_short_title(text):
+    """Generate a 5-word descriptive title from the transcript"""
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": "Create a concise, descriptive 5-word title that captures the main topic or theme of this content. Make it clear and engaging. Return ONLY the 5 words, nothing else."},
+                {"role": "user", "content": f"Generate a 5-word title for this transcript:\n\n{text[:2000]}..."} # First 2000 chars for context
+            ]
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        st.error(f"Title generation error: {str(e)}")
+        return "Untitled Audio Transcription"
 
 def create_notion_entry(title, audio_file, content, analysis):
-    """Create a new entry in Notion database with audio, transcription and analysis"""
+    """Create a new entry in Notion database with structured sections"""
     try:
-        # Create blocks for transcription and analysis
-        blocks = [
-            # Audio section toggle
-            {
+        # Generate summary and AI title
+        summary = generate_summary(content, title)
+        ai_title = generate_short_title(content)
+        notion_title = f"WHISPER: {ai_title}"
+        
+        # Helper function to create a toggle block
+        def create_toggle(title, content_text, color):
+            return {
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"text": {"content": "🎧 Original Audio"}}],
+                    "rich_text": [{"type": "text", "text": {"content": title}}],
+                    "color": color,
                     "children": [
                         {
                             "object": "block",
                             "type": "paragraph",
                             "paragraph": {
-                                "rich_text": [{"text": {"content": "Audio file attached"}}]
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
                             }
                         }
-                    ]
-                }
-            },
-            # Divider
-            {
-                "object": "block",
-                "type": "divider",
-                "divider": {}
-            },
-            # Transcription toggle
-            {
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"text": {"content": "📝 Transcription"}}],
-                    "children": [
-                        {
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [{"text": {"content": chunk}}]
-                            }
-                        }
-                        for chunk in [content[i:i+1900] for i in range(0, len(content), 1900)]
-                    ]
-                }
-            },
-            # Divider
-            {
-                "object": "block",
-                "type": "divider",
-                "divider": {}
-            },
-            # Analysis toggle
-            {
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"text": {"content": "🔍 Analysis & Insights"}}],
-                    "children": [
-                        {
-                            "object": "block",
-                            "type": "paragraph",
-                            "paragraph": {
-                                "rich_text": [{"text": {"content": chunk}}]
-                            }
-                        }
-                        for chunk in [analysis[i:i+1900] for i in range(0, len(analysis), 1900)]
+                        for chunk in [content_text[i:i+1900] for i in range(0, len(content_text), 1900)]
                     ]
                 }
             }
+
+        blocks = [
+            # Original filename
+            {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": f"Original File: {audio_file.name}"},
+                            "annotations": {"italic": True, "color": "gray"}
+                        }
+                    ]
+                }
+            },
+            # Summary callout
+            {
+                "object": "block",
+                "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": summary}}],
+                    "icon": {"emoji": "💜"},
+                    "color": "purple_background"
+                }
+            },
+            # Spacing
+            {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {"rich_text": []}
+            }
         ]
-        
-        # Create the page
+
+        # Add all toggle sections
+        toggle_sections = [
+            ("Original Audio", "Audio file attached", "gray_background"),
+            ("Transcription", content, "brown_background"),
+            ("Wisdom", analysis, "brown_background"),
+            ("Socials", "Social media content will go here", "default"),
+            ("Image Prompts", "Image generation prompts will go here", "green_background"),
+            ("Outline", "Content outline will go here", "blue_background"),
+            ("Draft Post", "Draft post content will go here", "purple_background")
+        ]
+
+        for title, content_text, color in toggle_sections:
+            blocks.append(create_toggle(title, content_text, color))
+            # Add spacing after each toggle
+            blocks.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {"rich_text": []}
+            })
+
+        # Create the page with the new title format
         response = notion_client.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
                 "Name": {
-                    "title": [{"text": {"content": title}}]
+                    "title": [{"text": {"content": notion_title}}]
                 },
                 "Created Date": {
                     "date": {"start": datetime.now().isoformat()}
@@ -260,7 +350,6 @@ def create_notion_entry(title, audio_file, content, analysis):
             children=blocks
         )
         
-        # Return the URL of the created page
         page_id = response['id'].replace('-', '')
         return f"https://notion.so/{page_id}"
     
@@ -310,9 +399,21 @@ def main():
     st.title("WhisperForge")
     st.write("AI-powered audio transcription and analysis tool")
 
-    # Load available prompts
-    prompts = load_prompts()
-
+    # Load available users and their prompts/knowledge bases
+    users = load_prompts()
+    
+    # User selection
+    selected_user = st.sidebar.selectbox(
+        "Select User",
+        options=list(users.keys()),
+        format_func=lambda x: x.replace('_', ' ').title()
+    )
+    
+    if selected_user:
+        st.sidebar.write(f"### Available Knowledge Base Files:")
+        for kb_name in users[selected_user]['knowledge_base'].keys():
+            st.sidebar.write(f"✓ {kb_name}")
+    
     # Session state
     if 'transcription' not in st.session_state:
         st.session_state.transcription = None
@@ -408,10 +509,10 @@ def main():
                 format_func=lambda x: x
             )
             
-            # Multi-select for prompts
+            # Multi-select for prompts from selected user
             selected_prompts = st.multiselect(
                 "Select analysis prompts to apply:",
-                options=list(prompts.keys())
+                options=list(users[selected_user]['prompts'].keys())
             )
             
             # Analyze button
@@ -420,9 +521,10 @@ def main():
                     with st.spinner(f"Applying {prompt_name} using {selected_provider} {selected_model}..."):
                         analysis = apply_prompt(
                             st.session_state.transcription, 
-                            prompts[prompt_name],
+                            users[selected_user]['prompts'][prompt_name],
                             selected_provider,
-                            LLM_MODELS[selected_provider][selected_model]
+                            LLM_MODELS[selected_provider][selected_model],
+                            user_knowledge=users[selected_user]['knowledge_base']
                         )
                         if analysis:
                             st.session_state.analyses[prompt_name] = analysis
