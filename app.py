@@ -1006,6 +1006,9 @@ def main():
                 else:
                     st.error("Failed to save prompt")
     
+    # Initialize uploaded_file variable
+    uploaded_file = None
+    
     # Main content area with cards design
     if current_step == 1:
         # Step 1: Upload Audio
