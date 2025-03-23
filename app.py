@@ -208,20 +208,49 @@ def transcribe_chunk(chunk_path, i, total_chunks):
         except:
             pass
 
-def generate_summary(text, title):
+def generate_title(transcript):
+    """Generate a descriptive 5-7 word title based on the transcript"""
+    try:
+        prompt = f"""Create a clear, descriptive title (5-7 words) that captures the main topic of this transcript:
+        Transcript: {transcript[:1000]}...
+        
+        Return only the title, no quotes or additional text."""
+        
+        response = openai_client.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates concise, descriptive titles."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        return "Audio Transcription"
+
+def generate_summary(transcript):
     """Generate a one-sentence summary of the audio content"""
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview",
+        prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
+        Transcript: {transcript[:1000]}...
+        
+        Return only the summary sentence, no additional text."""
+        
+        response = openai_client.ChatCompletion.create(
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Create a single, concise sentence that summarizes the main topic or content of this audio transcript. Use an engaging, descriptive style."},
-                {"role": "user", "content": f"Title: {title}\n\nTranscript: {text[:2000]}..."} # Send first 2000 chars for context
-            ]
+                {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.3
         )
-        return response.choices[0].message.content
+        
+        return response.choices[0].message['content'].strip()
     except Exception as e:
-        st.error(f"Summary generation error: {str(e)}")
-        return "Summary generation failed"
+        return "Summary of audio content"
 
 def generate_short_title(text):
     """Generate a 5-7 word descriptive title from the transcript"""
@@ -238,26 +267,40 @@ def generate_short_title(text):
         st.error(f"Title generation error: {str(e)}")
         return "Untitled Audio Transcription"
 
-def create_content_notion_entry(title, audio_file, transcript, wisdom, 
-                               outline="", social_posts="", image_prompts="", article=""):
-    """Create a comprehensive Notion entry with all generated content"""
+def create_notion_entry(title, audio_file, transcript, wisdom=None):
     try:
-        # Generate a 5-7 word descriptive title
-        short_title = generate_short_title(transcript)
+        # Generate AI title and summary
+        ai_title = generate_title(transcript)
+        ai_summary = generate_summary(transcript)
         
         # Create the page title with WHISPER prefix
-        notion_title = f"WHISPER: {short_title}"
+        notion_title = f"WHISPER: {ai_title}"
         
-        # Generate summary
-        summary = generate_summary(transcript, title)
+        # Current date and tags
+        current_date = datetime.now().isoformat()
+        tags = generate_content_tags(transcript, wisdom) if wisdom else ["audio", "transcription"]
         
-        # Get original audio filename if available
-        original_filename = ""
-        if audio_file:
-            original_filename = audio_file.name
-        
-        # Helper function to create paragraph blocks from text (chunked to respect Notion's limits)
-        def create_paragraph_blocks(text):
+        # Set up properties with exact names from your database
+        properties = {
+            "title": {
+                "title": [{"text": {"content": notion_title}}]
+            },
+            "Created Date": {
+                "date": {
+                    "start": current_date
+                }
+            },
+            "Tags": {
+                "multi_select": [{"name": tag} for tag in tags]
+            }
+        }
+
+        def chunk_text(text, chunk_size=2000):
+            """Split text into chunks that respect Notion's character limit"""
+            return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+        def create_text_blocks(text):
+            """Create multiple paragraph blocks for long text"""
             if not text:
                 return [{
                     "object": "block",
@@ -267,104 +310,212 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                     }
                 }]
             
-            # Split text into chunks of 1900 characters (leaving room for safety)
-            blocks = []
-            MAX_LENGTH = 1900  # Notion limit is 2000, but we're being cautious
-            
-            for i in range(0, len(text), MAX_LENGTH):
-                chunk = text[i:i + MAX_LENGTH]
-                blocks.append({
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+            chunks = chunk_text(text)
+            return [{
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                }
+            } for chunk in chunks]
+
+        # Create the page blocks with proper formatting
+        blocks = [
+            # Purple summary callout at the top with AI-generated summary
+            {
+                "object": "block",
+                "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": ai_summary}}],
+                    "color": "purple",
+                    "icon": {
+                        "type": "emoji",
+                        "emoji": "💜"
                     }
-                })
+                }
+            },
             
-            return blocks
-        
-        # Helper function to create a toggle block with potentially large content
-        def create_toggle(title, content_text, color):
-            # Create the toggle block with empty children first
-            toggle_block = {
+            # Original Audio toggle
+            {
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": title}}],
-                    "color": color,
-                    "children": []
-                }
-            }
-            
-            # Add paragraph blocks as children
-            toggle_block["toggle"]["children"] = create_paragraph_blocks(content_text)
-            
-            return toggle_block
-        
-        # Create the new page with all blocks
-        new_page = notion_client.pages.create(
-            parent={"database_id": NOTION_DATABASE_ID},
-            properties={
-                "title": {
-                    "title": [{"text": {"content": notion_title}}]
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Original Audio"}}],
+                    "color": "default",
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": f"Audio file: {audio_file.name if audio_file else 'Not available'}"}}]
+                        }
+                    }]
                 }
             },
-            children=[
-                # Purple callout at the top with summary
-                {
-                    "object": "block",
-                    "type": "callout",
-                    "callout": {
-                        "rich_text": [{"type": "text", "text": {"content": summary}}],
-                        "color": "purple",
-                        "icon": {
-                            "type": "emoji",
-                            "emoji": "💜"
+            
+            # Transcription toggle with chunked content
+            {
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
+                    "color": "brown",
+                    "children": create_text_blocks(transcript)
+                }
+            }
+        ]
+
+        # Add Wisdom toggle if available
+        if wisdom:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
+                    "color": "brown_background",
+                    "children": create_text_blocks(wisdom)
+                }
+            })
+
+        # Add empty toggles for other sections
+        additional_toggles = [
+            ("▶️ Socials", "yellow_background"),
+            ("▶️ Image Prompts", "green_background"),
+            ("▶️ Outline", "blue_background"),
+            ("▶️ Draft Post", "purple_background")
+        ]
+
+        for toggle_title, color in additional_toggles:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": toggle_title}}],
+                    "color": color,
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
                         }
-                    }
-                },
-                # Original Audio filename
-                {
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [
-                            {
-                                "type": "text", 
-                                "text": {"content": f"Original Audio File: {original_filename}"},
-                                "annotations": {"bold": True}
-                            }
-                        ]
-                    }
-                },
-                # Original Audio toggle
-                create_toggle("▶️ Original Audio", "Audio file uploaded to WhisperForge", "default"),
-                
-                # Transcription toggle
-                create_toggle("▶️ Transcription", transcript, "brown"),
-                
-                # Wisdom toggle
-                create_toggle("▶️ Wisdom", wisdom, "brown_background"),
-                
-                # Socials toggle
-                create_toggle("▶️ Socials", social_posts, "yellow_background"),
-                
-                # Image Prompts toggle
-                create_toggle("▶️ Image Prompts", image_prompts, "green_background"),
-                
-                # Outline toggle
-                create_toggle("▶️ Outline", outline, "blue_background"),
-                
-                # Draft Post toggle
-                create_toggle("▶️ Draft Post", article, "purple_background")
-            ]
+                    }]
+                }
+            })
+
+        # Add metadata section at the bottom
+        blocks.extend([
+            {
+                "object": "block",
+                "type": "divider",
+                "divider": {}
+            },
+            {
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
+                }
+            },
+            {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "**Original Audio:** "},
+                            "annotations": {"bold": True}
+                        },
+                        {
+                            "type": "text",
+                            "text": {"content": audio_file.name if audio_file else "Not available"}
+                        }
+                    ]
+                }
+            },
+            {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "**Created:** "},
+                            "annotations": {"bold": True}
+                        },
+                        {
+                            "type": "text",
+                            "text": {"content": datetime.now().strftime("%Y-%m-%d %H:%M")}
+                        }
+                    ]
+                }
+            },
+            {
+                "object": "block",
+                "type": "divider",
+                "divider": {}
+            },
+            {
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Created with "},
+                        },
+                        {
+                            "type": "text",
+                            "text": {"content": "WhisperForge"},
+                            "annotations": {"bold": True}
+                        }
+                    ]
+                }
+            }
+        ])
+
+        # Create the page in Notion
+        new_page = notion_client.pages.create(
+            parent={"database_id": NOTION_DATABASE_ID},
+            properties=properties,
+            children=blocks
         )
-        
+
         return f"https://notion.so/{new_page['id'].replace('-', '')}"
-    
     except Exception as e:
         st.error(f"Notion API Error: {str(e)}")
         return None
+
+def generate_content_tags(transcript, wisdom):
+    """Generate relevant tags based on content"""
+    try:
+        # Use OpenAI to generate relevant tags
+        prompt = f"""Based on this content:
+        Transcript: {transcript[:500]}...
+        Wisdom: {wisdom[:500] if wisdom else ''}
+        
+        Generate 5 relevant one-word tags that describe the main topics and themes.
+        Return only the tags separated by commas, lowercase."""
+        
+        response = openai_client.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that generates relevant content tags."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=50,
+            temperature=0.3
+        )
+        
+        # Split the response into individual tags and clean them
+        tags = [tag.strip().lower() for tag in response.choices[0].message['content'].split(',')]
+        
+        # Ensure we have exactly 5 tags
+        while len(tags) < 5:
+            tags.append("general")
+        return tags[:5]
+    except Exception as e:
+        # Return default tags if there's an error
+        return ["audio", "transcription", "content", "notes", "whisperforge"]
 
 def get_available_openai_models():
     """Get current list of available OpenAI models"""
@@ -740,15 +891,11 @@ def main():
                 article = st.session_state.get("article", "")
                 
                 # Create Notion entry with available content
-                notion_url = create_content_notion_entry(
+                notion_url = create_notion_entry(
                     title, 
                     st.session_state.get("audio_file", None),
                     transcript, 
-                    wisdom,
-                    outline,
-                    social_posts,
-                    image_prompts,
-                    article
+                    wisdom
                 )
                 
                 if notion_url:
