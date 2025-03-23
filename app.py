@@ -260,14 +260,17 @@ notion_client = Client(auth=os.getenv("NOTION_API_KEY"))
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
 GROK_API_KEY = os.getenv("GROK_API_KEY")
 
+# Get dynamic list of available models
+LLM_MODELS = get_current_models()
+
 # UI Helper functions
 def display_header():
     """Display the application header with logo and title"""
     col1, col2 = st.columns([1, 6])
     
     with col1:
-        # Using an emoji as the logo
-        st.markdown("<div style='text-align: center; font-size: 3.5rem;'>🔊</div>", unsafe_allow_html=True)
+        # Using a simple graphic element instead of emoji
+        st.markdown("<div style='text-align: center; font-size: 2.5rem; font-weight: bold;'>WF</div>", unsafe_allow_html=True)
         
     with col2:
         st.markdown("<h1 style='margin-bottom: 0;'>WhisperForge</h1>", unsafe_allow_html=True)
@@ -294,7 +297,7 @@ def display_step_indicator(current_step, total_steps=5):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-def display_card(title, content, icon="📄"):
+def display_card(title, content, icon=""):
     """Display content in a styled card"""
     st.markdown(f"""
     <div class="content-card">
@@ -380,30 +383,13 @@ def display_model_selector(provider, model, providers, models):
     
     return selected_provider, selected_model
 
-def display_action_button(label, key, icon="⚡", button_class=""):
+def display_action_button(label, key, icon="", button_class=""):
     """Display a styled action button"""
     html_before = f"<div class='{button_class}'>"
     st.markdown(html_before, unsafe_allow_html=True)
     clicked = st.button(f"{icon} {label}", key=key)
     st.markdown("</div>", unsafe_allow_html=True)
     return clicked
-
-# Available LLM models grouped by provider
-LLM_MODELS = {
-    "OpenAI": {
-        "GPT-4 (Most Capable)": "gpt-4",
-        "GPT-4 Turbo": "gpt-4-turbo-preview",
-        "GPT-3.5 Turbo (Faster)": "gpt-3.5-turbo",
-    },
-    "Anthropic": {
-        "Claude 3 Opus": "claude-3-opus-20240229",
-        "Claude 3 Sonnet": "claude-3-sonnet-20240229",
-        "Claude 3 Haiku": "claude-3-haiku-20240307",
-    },
-    "Grok": {
-        "Grok-1": "grok-1",
-    }
-}
 
 def load_user_knowledge_base(user):
     """Load knowledge base files for a specific user"""
@@ -686,10 +672,51 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                     "color": "purple",
                     "icon": {
                         "type": "emoji",
-                        "emoji": "💜"
+                        "emoji": " "
                     }
                 }
             },
+            
+            # Content heading
+            {
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "Content"}}],
+                    "color": "default"
+                }
+            },
+        ]
+        
+        # Add content toggles without emojis and with appropriate colors
+        content_blocks = [
+            # Transcription toggle
+            create_toggle("Transcription", transcript, "brown"),
+            
+            # Wisdom toggle
+            create_toggle("Wisdom", wisdom, "brown_background"),
+        ]
+        
+        # Add optional content if available
+        if social_posts:
+            content_blocks.append(create_toggle("Social Media Posts", social_posts, "yellow_background"))
+        
+        if image_prompts:
+            content_blocks.append(create_toggle("Image Prompts", image_prompts, "green_background"))
+        
+        if outline:
+            content_blocks.append(create_toggle("Outline", outline, "blue_background"))
+        
+        if article:
+            content_blocks.append(create_toggle("Full Article", article, "purple_background"))
+        
+        # Add content blocks to page
+        page_children.extend(content_blocks)
+        
+        # Add metadata section below content
+        page_children.extend([
+            # Divider before metadata
+            create_divider(),
             
             # Metadata section
             {
@@ -701,17 +728,12 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                 }
             },
             
-            # Original Audio filename with an icon
+            # Original Audio filename without emoji
             {
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
-                        {
-                            "type": "text", 
-                            "text": {"content": "🎵 "},
-                            "annotations": {"bold": True}
-                        },
                         {
                             "type": "text", 
                             "text": {"content": "Original Audio: "},
@@ -725,17 +747,12 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                 }
             },
             
-            # Date created
+            # Date created without emoji
             {
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
-                        {
-                            "type": "text", 
-                            "text": {"content": "📅 "},
-                            "annotations": {"bold": True}
-                        },
                         {
                             "type": "text", 
                             "text": {"content": "Created: "},
@@ -748,45 +765,7 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
                     ]
                 }
             },
-            
-            # Divider before content
-            create_divider(),
-            
-            # Content heading
-            {
-                "object": "block",
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"type": "text", "text": {"content": "Content"}}],
-                    "color": "default"
-                }
-            },
-        ]
-        
-        # Add content toggles with appropriate emojis and colors
-        content_blocks = [
-            # Transcription toggle
-            create_toggle("▶️ Transcription", transcript, "brown"),
-            
-            # Wisdom toggle
-            create_toggle("💎 Wisdom", wisdom, "brown_background"),
-        ]
-        
-        # Add optional content if available
-        if social_posts:
-            content_blocks.append(create_toggle("📱 Social Media Posts", social_posts, "yellow_background"))
-        
-        if image_prompts:
-            content_blocks.append(create_toggle("🖼️ Image Prompts", image_prompts, "green_background"))
-        
-        if outline:
-            content_blocks.append(create_toggle("📝 Outline", outline, "blue_background"))
-        
-        if article:
-            content_blocks.append(create_toggle("📄 Full Article", article, "purple_background"))
-        
-        # Add content blocks to page
-        page_children.extend(content_blocks)
+        ])
         
         # Add footer divider and attribution
         page_children.extend([
@@ -831,34 +810,77 @@ def get_available_openai_models():
     """Get current list of available OpenAI models"""
     try:
         models = openai_client.models.list()
-        gpt_models = {
-            model.id: model.id for model in models 
-            if any(x in model.id for x in ['gpt-4', 'gpt-3.5'])
-        }
+        gpt_models = {}
+        for model in models.data:
+            if 'gpt' in model.id.lower():
+                # Format with descriptive names
+                if 'gpt-4' in model.id:
+                    if 'turbo' in model.id:
+                        display_name = f"{model.id} (Fast)"
+                    else:
+                        display_name = f"{model.id} (Powerful)"
+                elif 'gpt-3.5' in model.id:
+                    display_name = f"{model.id} (Balanced)"
+                else:
+                    display_name = model.id
+                gpt_models[display_name] = model.id
+        
+        # If no models found, return default models
+        if not gpt_models:
+            return {
+                "GPT-4 (Powerful)": "gpt-4",
+                "GPT-4 Turbo (Fast)": "gpt-4-turbo-preview",
+                "GPT-3.5 Turbo (Balanced)": "gpt-3.5-turbo",
+            }
+        
         return gpt_models
     except Exception as e:
-        st.error(f"Error fetching OpenAI models: {str(e)}")
-        return {}
+        st.warning(f"Error fetching OpenAI models: {str(e)}")
+        # Return default models on error
+        return {
+            "GPT-4 (Powerful)": "gpt-4",
+            "GPT-4 Turbo (Fast)": "gpt-4-turbo-preview",
+            "GPT-3.5 Turbo (Balanced)": "gpt-3.5-turbo",
+        }
 
 def get_available_anthropic_models():
     """Get current list of available Anthropic models"""
-    # Current as of March 2024
-    return {
-        "Claude 3 Opus": "claude-3-opus-20240229",
-        "Claude 3 Sonnet": "claude-3-sonnet-20240229",
-        "Claude 3 Haiku": "claude-3-haiku-20240307",
-        "Claude 2.1": "claude-2.1",
-    }
+    try:
+        # Try to fetch models from Anthropic API (this would need their API to support this)
+        # For now, use the most recent models (as of 2024)
+        return {
+            "Claude 3 Opus": "claude-3-opus-20240229",
+            "Claude 3 Sonnet": "claude-3-sonnet-20240229",
+            "Claude 3 Haiku": "claude-3-haiku-20240307",
+            "Claude 2.1": "claude-2.1",
+        }
+    except Exception as e:
+        st.warning(f"Error fetching Anthropic models: {str(e)}")
+        # Return default models on error
+        return {
+            "Claude 3 Opus": "claude-3-opus-20240229",
+            "Claude 3 Sonnet": "claude-3-sonnet-20240229",
+            "Claude 3 Haiku": "claude-3-haiku-20240307",
+        }
 
 def get_available_grok_models():
     """Get current list of available Grok models"""
-    # Current as of March 2024
-    return {
-        "Grok-1": "grok-1",
-    }
+    try:
+        # Try to fetch models from Grok API (if they support this)
+        # For now, return the known Grok model
+        return {
+            "Grok-1": "grok-1",
+        }
+    except Exception as e:
+        st.warning(f"Error fetching Grok models: {str(e)}")
+        # Return default models on error
+        return {
+            "Grok-1": "grok-1",
+        }
 
 # Update the LLM_MODELS dictionary dynamically
 def get_current_models():
+    """Get current available models from all providers"""
     return {
         "OpenAI": get_available_openai_models(),
         "Anthropic": get_available_anthropic_models(),
@@ -963,34 +985,60 @@ def main():
         available_users = get_available_users()
         selected_user = st.selectbox(
             "Select User Profile", 
-            options=available_users,
-            format_func=lambda x: f"👤 {x}"
+            options=available_users
         )
         
         # Display knowledge base files if available
         knowledge_base_files = list_knowledge_base_files(selected_user)
         if knowledge_base_files:
             st.markdown("<div style='margin-top: 0.8rem;'>", unsafe_allow_html=True)
-            st.markdown("<strong>💡 Knowledge Base</strong>")
+            st.markdown("<strong>Knowledge Base</strong>")
             display_knowledge_tags(knowledge_base_files)
             st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # AI Model Selection in sidebar
+        st.markdown("<div class='model-selector'>", unsafe_allow_html=True)
+        st.markdown("<h4>AI Model Selection</h4>", unsafe_allow_html=True)
+        
+        # Get available models
+        LLM_MODELS = get_current_models()  # Update in real-time
+        providers = list(LLM_MODELS.keys())
+        provider = st.selectbox(
+            "Select AI Provider:",
+            options=providers
+        )
+        
+        # Model selection based on provider
+        if provider in LLM_MODELS and LLM_MODELS[provider]:
+            model_options = list(LLM_MODELS[provider].keys())
+            model = st.selectbox(
+                "Select Model:",
+                options=model_options
+            )
+            # Get the model ID for the selected model
+            model_id = LLM_MODELS[provider][model]
+        else:
+            st.error(f"No models available for {provider}")
+            model_id = ""
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
         # Custom prompt configuration
-        with st.expander("✏️ Configure Custom Prompts"):
+        with st.expander("Configure Custom Prompts"):
             prompt_types = ["wisdom", "outline", "social", "image", "article"]
             prompt_icons = {
-                "wisdom": "💎",
-                "outline": "📝",
-                "social": "📱",
-                "image": "🖼️",
-                "article": "📄"
+                "wisdom": "",
+                "outline": "",
+                "social": "",
+                "image": "",
+                "article": ""
             }
             
             selected_prompt_type = st.selectbox(
                 "Prompt Type", 
                 options=prompt_types,
-                format_func=lambda x: f"{prompt_icons.get(x, '✨')} {x.capitalize()}"
+                format_func=lambda x: f"{x.capitalize()}"
             )
             
             # Get existing custom prompt if available
@@ -1000,48 +1048,40 @@ def main():
             edited_prompt = st.text_area("Edit Prompt", custom_prompt, height=200)
             
             # Save button for prompt
-            if st.button("💾 Save Prompt", key=f"save_{selected_prompt_type}"):
+            if st.button("Save Prompt", key=f"save_{selected_prompt_type}"):
                 if save_custom_prompt(selected_user, selected_prompt_type, edited_prompt):
                     st.success(f"{selected_prompt_type.capitalize()} prompt saved!")
                 else:
                     st.error("Failed to save prompt")
-    
+
     # Initialize uploaded_file variable
     uploaded_file = None
     
     # Main content area with cards design
     if current_step == 1:
         # Step 1: Upload Audio
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("<h3>🎙️ Start with an Audio File</h3>", unsafe_allow_html=True)
+        st.markdown("<h3>Start with an Audio File</h3>", unsafe_allow_html=True)
         st.markdown("<p>Upload your audio recording to begin the transcription process.</p>", unsafe_allow_html=True)
         
         # Enhanced file uploader
-        st.markdown("<div class='uploadedFile'>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader(
             "Drop your audio file here", 
             type=["mp3", "wav", "m4a", "ogg"],
             help="Supported formats: MP3, WAV, M4A, OGG"
         )
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    
+
     if uploaded_file or (current_step > 1 and st.session_state.audio_file):
         # Use uploaded file or one from session state
         audio_file = uploaded_file or st.session_state.audio_file
         
         # Audio player with file info
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        
         filename = os.path.splitext(audio_file.name)[0]
         file_info = f"File: {audio_file.name}"
         
-        st.markdown(f"<h3>🎧 Audio Ready</h3><p>{file_info}</p>", unsafe_allow_html=True)
+        st.markdown(f"<h3>Audio Ready</h3><p>{file_info}</p>", unsafe_allow_html=True)
         
         # Audio player with styling
-        st.markdown("<div class='audio-player'>", unsafe_allow_html=True)
         st.audio(audio_file, format="audio/mp3")
-        st.markdown("</div>", unsafe_allow_html=True)
         
         # Title input with better styling
         title = st.text_input(
@@ -1053,7 +1093,7 @@ def main():
         # Only show transcribe button if not yet transcribed
         if current_step < 3:
             # Transcribe button with enhanced styling
-            if display_action_button("Transcribe Audio", "transcribe_audio", "🔤", "transcribe-btn"):
+            if display_action_button("Transcribe Audio", "transcribe_audio", "", "transcribe-btn"):
                 with st.spinner("Transcribing your audio..."):
                     # Save uploaded file to temp location
                     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.name)[1]) as temp_file:
@@ -1121,68 +1161,30 @@ def main():
                         
                     except Exception as e:
                         st.error(f"An error occurred: {str(e)}")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
+
     # Display transcription and provide content generation options
     if current_step >= 3 and st.session_state.transcription:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("<h3>📝 Transcription</h3>", unsafe_allow_html=True)
+        st.markdown("<h3>Transcription</h3>", unsafe_allow_html=True)
         
         # Transcription display with better formatting
         st.markdown("<div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; max-height: 300px; overflow-y: auto;'>", unsafe_allow_html=True)
         st.markdown(st.session_state.transcription)
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # AI Model Selection with visual enhancement
-        st.markdown("<div class='model-selector'>", unsafe_allow_html=True)
-        st.markdown("<h4>🤖 AI Model Selection</h4>", unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        
-        # Provider selection with icons
-        provider_icons = {
-            "OpenAI": "🧠",
-            "Anthropic": "🔮",
-            "Grok": "🤖"
-        }
-        
-        with col1:
-            provider = st.selectbox(
-                "Select AI Provider:",
-                options=list(LLM_MODELS.keys()),
-                format_func=lambda x: f"{provider_icons.get(x, '✨')} {x}"
-            )
-        
-        # Model selection based on provider
-        with col2:
-            model_options = list(LLM_MODELS[provider].keys())
-            model = st.selectbox(
-                f"Select Model:",
-                options=model_options
-            )
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Get the model ID for the selected model
-        model_id = LLM_MODELS[provider][model]
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-        
         # Content generation section with cards design
-        st.markdown("<h3>🔮 Content Generation</h3>", unsafe_allow_html=True)
+        st.markdown("<h3>Content Generation</h3>", unsafe_allow_html=True)
         
         # Wisdom extraction
         with st.container():
             st.markdown("<div class='content-card' style='border-left-color: #e17055;'>", unsafe_allow_html=True)
-            st.markdown("<h4>💎 Extract Wisdom</h4>", unsafe_allow_html=True)
+            st.markdown("<h4>Extract Wisdom</h4>", unsafe_allow_html=True)
             st.markdown("<p>Extract key insights, quotes, and actionable advice from the transcription.</p>", unsafe_allow_html=True)
             
             # Add wisdom extraction button
             wisdom_exists = "wisdom" in st.session_state and st.session_state.wisdom
             
             if not wisdom_exists:
-                if display_action_button("Extract Wisdom", "extract_wisdom", "💡", "wisdom-btn"):
+                if display_action_button("Extract Wisdom", "extract_wisdom", "", "wisdom-btn"):
                     with st.spinner("Extracting wisdom..."):
                         # Get custom prompt for wisdom extraction
                         wisdom_prompt = get_custom_prompt(selected_user, "wisdom", "Extract key wisdom, insights, quotes, and actionable advice from this transcription.")
@@ -1208,7 +1210,7 @@ def main():
                 st.markdown("</div>", unsafe_allow_html=True)
             
             st.markdown("</div>", unsafe_allow_html=True)
-        
+
         # Only show additional content options if wisdom has been extracted
         if "wisdom" in st.session_state and st.session_state.wisdom:
             col1, col2 = st.columns(2)
@@ -1216,12 +1218,12 @@ def main():
             # Outline generation
             with col1:
                 st.markdown("<div class='content-card' style='border-left-color: #0984e3; height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("<h4>📝 Create Outline</h4>", unsafe_allow_html=True)
+                st.markdown("<h4>Create Outline</h4>", unsafe_allow_html=True)
                 
                 outline_exists = "outline" in st.session_state and st.session_state.outline
                 
                 if not outline_exists:
-                    if display_action_button("Generate Outline", "generate_outline", "📋", "outline-btn"):
+                    if display_action_button("Generate Outline", "generate_outline", "", "outline-btn"):
                         with st.spinner("Generating outline..."):
                             # Get custom prompt for outline generation
                             outline_prompt = get_custom_prompt(selected_user, "outline", "Create a detailed outline for an article based on this transcription.")
@@ -1250,12 +1252,12 @@ def main():
             # Social media content
             with col2:
                 st.markdown("<div class='content-card' style='border-left-color: #00b894; height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("<h4>📱 Social Media Content</h4>", unsafe_allow_html=True)
+                st.markdown("<h4>Social Media Content</h4>", unsafe_allow_html=True)
                 
                 social_exists = "social_content" in st.session_state and st.session_state.social_content
                 
                 if not social_exists:
-                    if display_action_button("Create Social Posts", "create_social", "📣", "social-btn"):
+                    if display_action_button("Create Social Posts", "create_social", "", "social-btn"):
                         with st.spinner("Creating social media content..."):
                             # Get custom prompt for social media content
                             social_prompt = get_custom_prompt(selected_user, "social", "Create engaging social media posts based on this transcription.")
@@ -1287,12 +1289,12 @@ def main():
             # Image prompts
             with col1:
                 st.markdown("<div class='content-card' style='border-left-color: #6c5ce7; margin-top: 1rem; height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("<h4>🖼️ Image Prompts</h4>", unsafe_allow_html=True)
+                st.markdown("<h4>Image Prompts</h4>", unsafe_allow_html=True)
                 
                 image_exists = "image_prompts" in st.session_state and st.session_state.image_prompts
                 
                 if not image_exists:
-                    if display_action_button("Generate Image Prompts", "create_image_prompts", "🎨", "image-btn"):
+                    if display_action_button("Generate Image Prompts", "create_image_prompts", "", "image-btn"):
                         with st.spinner("Creating image prompts..."):
                             # Get custom prompt for image prompts
                             image_prompt = get_custom_prompt(selected_user, "image", "Create detailed image generation prompts based on this transcription.")
@@ -1321,7 +1323,7 @@ def main():
             # Article writing (only show if outline exists)
             with col2:
                 st.markdown("<div class='content-card' style='border-left-color: #a29bfe; margin-top: 1rem; height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("<h4>📄 Write Full Article</h4>", unsafe_allow_html=True)
+                st.markdown("<h4>Write Full Article</h4>", unsafe_allow_html=True)
                 
                 # Only enable if outline exists
                 article_button_disabled = "outline" not in st.session_state or not st.session_state.outline
@@ -1331,7 +1333,7 @@ def main():
                     st.markdown("<p style='color: #888;'>First create an outline to enable article writing.</p>", unsafe_allow_html=True)
                 
                 if not article_exists and not article_button_disabled:
-                    if display_action_button("Write Article", "write_article", "📝", "article-btn"):
+                    if display_action_button("Write Article", "write_article", "", "article-btn"):
                         with st.spinner("Writing article..."):
                             # Get custom prompt for article writing
                             article_prompt = get_custom_prompt(selected_user, "article", "Write a comprehensive article based on this outline and transcription.")
@@ -1359,50 +1361,47 @@ def main():
                         st.markdown(st.session_state.article)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Export to Notion button (displayed regardless of content state)
-        st.markdown("<div class='card' style='margin-top: 1.5rem; border-left-color: #2d3436;'>", unsafe_allow_html=True)
-        st.markdown("<h3>📤 Export Content</h3>", unsafe_allow_html=True)
-        st.markdown("<p>Save your generated content to Notion. You can export at any point in the process.</p>", unsafe_allow_html=True)
-        
-        if display_action_button("Save to Notion", "save_to_notion", "📘", "notion-btn"):
-            with st.spinner("Saving to Notion..."):
-                # Get all generated content
-                title = st.session_state.get("title", "Untitled Transcription")
-                transcript = st.session_state.get("transcription", "")
-                wisdom = st.session_state.get("wisdom", "")
-                outline = st.session_state.get("outline", "")
-                social_posts = st.session_state.get("social_content", "")
-                image_prompts = st.session_state.get("image_prompts", "")
-                article = st.session_state.get("article", "")
-                
-                # Create Notion entry with available content
-                notion_url = create_content_notion_entry(
-                    title, 
-                    st.session_state.get("audio_file", None),
-                    transcript, 
-                    wisdom,
-                    outline,
-                    social_posts,
-                    image_prompts,
-                    article
-                )
-                
-                if notion_url:
-                    st.success("Successfully saved to Notion!")
-                    st.markdown(f"<a href='{notion_url}' target='_blank' style='display: inline-block; margin-top: 0.5rem; padding: 0.5rem 1rem; background-color: #2d3436; color: white; border-radius: 4px; text-decoration: none;'>View in Notion</a>", unsafe_allow_html=True)
-                else:
-                    st.error("Failed to save to Notion. Please check your API keys.")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
-    
+
+    # Export to Notion button (displayed regardless of content state)
+    st.markdown("<h3>Export Content</h3>", unsafe_allow_html=True)
+    st.markdown("<p>Save your generated content to Notion. You can export at any point in the process.</p>", unsafe_allow_html=True)
+
+    if display_action_button("Save to Notion", "save_to_notion", "", "notion-btn"):
+        with st.spinner("Saving to Notion..."):
+            # Get all generated content
+            title = st.session_state.get("title", "Untitled Transcription")
+            transcript = st.session_state.get("transcription", "")
+            wisdom = st.session_state.get("wisdom", "")
+            outline = st.session_state.get("outline", "")
+            social_posts = st.session_state.get("social_content", "")
+            image_prompts = st.session_state.get("image_prompts", "")
+            article = st.session_state.get("article", "")
+            
+            # Create Notion entry with available content
+            notion_url = create_content_notion_entry(
+                title, 
+                st.session_state.get("audio_file", None),
+                transcript, 
+                wisdom,
+                outline,
+                social_posts,
+                image_prompts,
+                article
+            )
+            
+            if notion_url:
+                st.success("Successfully saved to Notion!")
+                st.markdown(f"<a href='{notion_url}' target='_blank' style='display: inline-block; margin-top: 0.5rem; padding: 0.5rem 1rem; background-color: #2d3436; color: white; border-radius: 4px; text-decoration: none;'>View in Notion</a>", unsafe_allow_html=True)
+            else:
+                st.error("Failed to save to Notion. Please check your API keys.")
+
     # Help section at the bottom
-    with st.expander("ℹ️ Need Help?"):
+    with st.expander("Need Help?"):
         st.markdown("""
         ### How to use WhisperForge
         
         1. **Upload** your audio recording (MP3, WAV, M4A, or OGG format)
-        2. **Transcribe** the audio using OpenAI's Whisper model
+        2. **Transcribe** the audio using Whisper
         3. **Extract wisdom** from the transcription
         4. **Generate content** like outlines, social posts, and more
         5. **Export to Notion** at any stage of the process
@@ -1439,7 +1438,7 @@ def add_reset_button():
     """Add a reset button to start over"""
     with st.sidebar:
         st.markdown("<div style='padding-top: 1rem; border-top: 1px solid #eee; margin-top: 1rem;'>", unsafe_allow_html=True)
-        if st.button("🔄 Start Over", help="Reset the application and start fresh"):
+        if st.button("Start Over", help="Reset the application and start fresh"):
             # Reset all session state variables
             for key in list(st.session_state.keys()):
                 if key in ["transcription", "wisdom", "outline", "social_content", "image_prompts", "article", "audio_file"]:
