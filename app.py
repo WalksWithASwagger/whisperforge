@@ -256,49 +256,52 @@ def create_content_notion_entry(title, audio_file, transcript, wisdom,
         if audio_file:
             original_filename = audio_file.name
         
-        # Helper function to chunk text into 2000-character blocks
-        def chunk_text_for_notion(text):
+        # Helper function to create paragraph blocks from text (chunked to respect Notion's limits)
+        def create_paragraph_blocks(text):
             if not text:
-                return [{"type": "text", "text": {"content": "Not yet generated."}}]
-            
-            # Split text into chunks of 2000 characters max
-            chunks = []
-            text_length = len(text)
-            
-            for i in range(0, text_length, 2000):
-                chunk = text[i:min(i + 2000, text_length)]
-                chunks.append({"type": "text", "text": {"content": chunk}})
-            
-            return chunks
-        
-        # Helper function to create a toggle block with potentially large content
-        def create_toggle(title, content_text, color):
-            # Build the children blocks for the toggle
-            children = []
-            
-            # Create paragraph blocks from chunked content
-            chunks = chunk_text_for_notion(content_text)
-            for chunk in chunks:
-                children.append({
+                return [{
                     "object": "block",
                     "type": "paragraph",
                     "paragraph": {
-                        "rich_text": [chunk]
+                        "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
+                    }
+                }]
+            
+            # Split text into chunks of 1900 characters (leaving room for safety)
+            blocks = []
+            MAX_LENGTH = 1900  # Notion limit is 2000, but we're being cautious
+            
+            for i in range(0, len(text), MAX_LENGTH):
+                chunk = text[i:i + MAX_LENGTH]
+                blocks.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
                     }
                 })
             
-            # Create the toggle block
-            return {
+            return blocks
+        
+        # Helper function to create a toggle block with potentially large content
+        def create_toggle(title, content_text, color):
+            # Create the toggle block with empty children first
+            toggle_block = {
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
                     "rich_text": [{"type": "text", "text": {"content": title}}],
                     "color": color,
-                    "children": children
+                    "children": []
                 }
             }
+            
+            # Add paragraph blocks as children
+            toggle_block["toggle"]["children"] = create_paragraph_blocks(content_text)
+            
+            return toggle_block
         
-        # Create the new page
+        # Create the new page with all blocks
         new_page = notion_client.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
