@@ -1081,7 +1081,7 @@ def main():
                                     st.session_state.transcription = full_transcript.strip()
                                     st.session_state.title = title
                                     st.success("Transcription completed!")
-                                    st.experimental_rerun()
+                                    st.rerun()
                                 else:
                                     st.error("Failed to get any valid transcription from the audio")
                             else:
@@ -1109,7 +1109,7 @@ def main():
                                     st.session_state.title = title
                                     st.success("Transcription completed!")
                                     time.sleep(1)  # Brief pause for visual feedback
-                                    st.experimental_rerun()
+                                    st.rerun()
                             except Exception as e:
                                 st.error(f"Transcription error: {str(e)}")
                         
@@ -1193,7 +1193,7 @@ def main():
                         if wisdom:
                             st.session_state.wisdom = wisdom
                             st.success("Wisdom extracted!")
-                            st.experimental_rerun()
+                            st.rerun()
                         else:
                             st.error("Failed to extract wisdom.")
             
@@ -1232,7 +1232,7 @@ def main():
                             if outline:
                                 st.session_state.outline = outline
                                 st.success("Outline generated!")
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("Failed to generate outline.")
                 
@@ -1266,7 +1266,7 @@ def main():
                             if social_content:
                                 st.session_state.social_content = social_content
                                 st.success("Social media content created!")
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("Failed to create social media content.")
                 
@@ -1303,7 +1303,7 @@ def main():
                             if image_prompts:
                                 st.session_state.image_prompts = image_prompts
                                 st.success("Image prompts created!")
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("Failed to create image prompts.")
                 
@@ -1345,7 +1345,7 @@ def main():
                             if article:
                                 st.session_state.article = article
                                 st.success("Article written!")
-                                st.experimental_rerun()
+                                st.rerun()
                             else:
                                 st.error("Failed to write article.")
                 
@@ -1441,7 +1441,7 @@ def add_reset_button():
             for key in list(st.session_state.keys()):
                 if key in ["transcription", "wisdom", "outline", "social_content", "image_prompts", "article", "audio_file"]:
                     del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
