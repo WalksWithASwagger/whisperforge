@@ -11,6 +11,7 @@ import glob
 from anthropic import Anthropic
 import requests  # for Grok API
 import shutil
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -54,41 +55,49 @@ def load_user_knowledge_base(user):
     return knowledge_base
 
 def load_prompts():
-    """Load prompts organized by user"""
-    users = {}
-    prompts_dir = 'prompts'
+    """Load prompt templates from the prompts directory"""
+    users = []
+    users_prompts = {}  # Initialize as dictionary
     
-    if not os.path.exists(prompts_dir):
-        return users
+    # Check if prompts directory exists
+    if not os.path.exists("prompts"):
+        os.makedirs("prompts")
+        st.info("Created prompts directory. Please add prompt templates.")
+        return users, users_prompts
     
-    # Get all user directories
-    for user_dir in os.listdir(prompts_dir):
-        user_path = os.path.join(prompts_dir, user_dir)
-        if os.path.isdir(user_path) and not user_dir.startswith('.'):
-            users[user_dir] = {
-                'prompts': {},
-                'knowledge_base': load_user_knowledge_base(user_dir)
-            }
-            
-            # Load prompts for this user
-            prompts_path = os.path.join(user_path, 'prompts')
-            if os.path.exists(prompts_path):
-                # Recursively find all .md files
-                for root, _, files in os.walk(prompts_path):
-                    for file in files:
-                        if file.endswith('.md') and not file.startswith('.'):
-                            file_path = os.path.join(root, file)
-                            try:
-                                with open(file_path, 'r') as f:
-                                    content = f.read()
-                                    # Use the parent directory name as the prompt name
-                                    prompt_dir = os.path.basename(os.path.dirname(file_path))
-                                    prompt_name = prompt_dir.replace('_', ' ').title()
-                                    users[user_dir]['prompts'][prompt_name] = content
-                            except Exception as e:
-                                st.error(f"Error loading prompt {file_path}")
-            
-    return users
+    # Get list of user directories
+    user_dirs = [d for d in os.listdir("prompts") if os.path.isdir(os.path.join("prompts", d))]
+    
+    # If no user directories, create a default one
+    if not user_dirs:
+        default_dir = os.path.join("prompts", "default_user")
+        os.makedirs(default_dir, exist_ok=True)
+        user_dirs = ["default_user"]
+        
+    # Add users to the list
+    for user in user_dirs:
+        users.append(user)
+        users_prompts[user] = {}  # Initialize each user with an empty dictionary
+        
+        # Get prompt files for each user
+        user_dir = os.path.join("prompts", user)
+        prompt_files = []
+        try:
+            prompt_files = [f for f in os.listdir(user_dir) if f.endswith('.md')]
+        except Exception as e:
+            st.warning(f"Error accessing prompts for {user}: {str(e)}")
+        
+        # Load each prompt file
+        for prompt_file in prompt_files:
+            prompt_name = os.path.splitext(prompt_file)[0]
+            try:
+                with open(os.path.join(user_dir, prompt_file), 'r') as f:
+                    prompt_content = f.read()
+                users_prompts[user][prompt_name] = prompt_content
+            except Exception as e:
+                st.warning(f"Error loading prompt {prompt_file}: {str(e)}")
+    
+    return users, users_prompts
 
 def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
     """Apply a specific prompt using the selected model and provider, incorporating user knowledge"""
@@ -216,7 +225,7 @@ def generate_title(transcript):
         
         Return only the title, no quotes or additional text."""
         
-        response = openai_client.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise, descriptive titles."},
@@ -226,7 +235,7 @@ def generate_title(transcript):
             temperature=0.3
         )
         
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return "Audio Transcription"
 
@@ -238,7 +247,7 @@ def generate_summary(transcript):
         
         Return only the summary sentence, no additional text."""
         
-        response = openai_client.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
@@ -248,7 +257,7 @@ def generate_summary(transcript):
             temperature=0.3
         )
         
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         return "Summary of audio content"
 
@@ -267,7 +276,7 @@ def generate_short_title(text):
         st.error(f"Title generation error: {str(e)}")
         return "Untitled Audio Transcription"
 
-def create_notion_entry(title, audio_file, transcript, wisdom=None):
+def create_notion_entry(title, audio_file, transcript, wisdom=None, outline=None, social_posts=None, image_prompts=None, article=None):
     try:
         # Generate AI title and summary
         ai_title = generate_title(transcript)
@@ -297,6 +306,8 @@ def create_notion_entry(title, audio_file, transcript, wisdom=None):
 
         def chunk_text(text, chunk_size=2000):
             """Split text into chunks that respect Notion's character limit"""
+            if not text:
+                return []
             return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
         def create_text_blocks(text):
@@ -376,21 +387,108 @@ def create_notion_entry(title, audio_file, transcript, wisdom=None):
                 }
             })
 
-        # Add empty toggles for other sections
-        additional_toggles = [
-            ("▶️ Socials", "yellow_background"),
-            ("▶️ Image Prompts", "green_background"),
-            ("▶️ Outline", "blue_background"),
-            ("▶️ Draft Post", "purple_background")
-        ]
-
-        for toggle_title, color in additional_toggles:
+        # Add Social Posts toggle if available
+        if social_posts:
             blocks.append({
                 "object": "block",
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": toggle_title}}],
-                    "color": color,
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
+                    "color": "yellow_background",
+                    "children": create_text_blocks(social_posts)
+                }
+            })
+        else:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
+                    "color": "yellow_background",
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
+                        }
+                    }]
+                }
+            })
+
+        # Add Image Prompts toggle if available
+        if image_prompts:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
+                    "color": "green_background",
+                    "children": create_text_blocks(image_prompts)
+                }
+            })
+        else:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
+                    "color": "green_background",
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
+                        }
+                    }]
+                }
+            })
+
+        # Add Outline toggle if available
+        if outline:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
+                    "color": "blue_background",
+                    "children": create_text_blocks(outline)
+                }
+            })
+        else:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
+                    "color": "blue_background",
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
+                        }
+                    }]
+                }
+            })
+
+        # Add Draft Post/Article toggle if available
+        if article:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
+                    "color": "purple_background",
+                    "children": create_text_blocks(article)
+                }
+            })
+        else:
+            blocks.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
+                    "color": "purple_background",
                     "children": [{
                         "object": "block",
                         "type": "paragraph",
@@ -485,7 +583,7 @@ def create_notion_entry(title, audio_file, transcript, wisdom=None):
         st.error(f"Notion API Error: {str(e)}")
         return None
 
-def generate_content_tags(transcript, wisdom):
+def generate_content_tags(transcript, wisdom=None):
     """Generate relevant tags based on content"""
     try:
         # Use OpenAI to generate relevant tags
@@ -496,7 +594,7 @@ def generate_content_tags(transcript, wisdom):
         Generate 5 relevant one-word tags that describe the main topics and themes.
         Return only the tags separated by commas, lowercase."""
         
-        response = openai_client.ChatCompletion.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that generates relevant content tags."},
@@ -507,7 +605,7 @@ def generate_content_tags(transcript, wisdom):
         )
         
         # Split the response into individual tags and clean them
-        tags = [tag.strip().lower() for tag in response.choices[0].message['content'].split(',')]
+        tags = [tag.strip().lower() for tag in response.choices[0].message.content.split(',')]
         
         # Ensure we have exactly 5 tags
         while len(tags) < 5:
@@ -578,18 +676,19 @@ def get_available_users():
     return users
 
 # Make sure this function exists and works properly
-def get_custom_prompt(user, prompt_type, default_prompt=""):
-    """Get custom prompt if it exists, otherwise return default"""
-    prompt_path = os.path.join("prompts", user, "custom_prompts", f"{prompt_type}.txt")
+def get_custom_prompt(user, prompt_type, users_prompts, default_prompts):
+    """Safely retrieve a custom prompt for the user, or use default if not available"""
+    # Ensure users_prompts is a dictionary
+    if not isinstance(users_prompts, dict):
+        return default_prompts.get(prompt_type, "")
+        
+    # Get user's prompts or empty dict if user not found
+    user_prompts = users_prompts.get(user, {})
+    if not isinstance(user_prompts, dict):
+        return default_prompts.get(prompt_type, "")
     
-    if os.path.exists(prompt_path):
-        try:
-            with open(prompt_path, "r") as f:
-                return f.read()
-        except Exception as e:
-            st.error(f"Error loading custom prompt: {str(e)}")
-    
-    return default_prompt
+    # Return the custom prompt if available, otherwise use the default
+    return user_prompts.get(prompt_type, default_prompts.get(prompt_type, ""))
 
 # Add this function to save custom prompts
 def save_custom_prompt(user, prompt_type, prompt_content):
@@ -618,316 +717,693 @@ def list_knowledge_base_files(user):
     
     return files
 
+def get_available_models(provider):
+    """Fetch available models from the selected AI provider"""
+    try:
+        if provider == "OpenAI":
+            models = openai_client.models.list()
+            # Filter for chat-capable models
+            available_models = [
+                model.id for model in models 
+                if any(name in model.id.lower() for name in ["gpt-4", "gpt-3.5"])
+            ]
+            # Sort to put GPT-4 models first
+            available_models.sort(key=lambda x: "gpt-4" in x.lower(), reverse=True)
+            if not available_models:
+                return ["gpt-4", "gpt-3.5-turbo"]
+            return available_models
+            
+        elif provider == "Anthropic":
+            # Anthropic's API doesn't provide model list, use known models
+            return [
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
+                "claude-3-haiku-20240307"
+            ]
+            
+        elif provider == "Grok":
+            # Add Grok model fetching when API available
+            return ["grok-1"]
+            
+        return []
+    except Exception as e:
+        st.error(f"Error fetching models from {provider}: {str(e)}")
+        # Fallback models if API fails
+        if provider == "OpenAI":
+            return ["gpt-4", "gpt-3.5-turbo"]
+        elif provider == "Anthropic":
+            return ["claude-3-opus-20240229", "claude-3-sonnet-20240229"]
+        elif provider == "Grok":
+            return ["grok-1"]
+        return []
+
+def configure_prompts(selected_user, users_prompts):
+    """Configure custom prompts for the selected user"""
+    st.subheader("Custom Prompts")
+    st.write("Configure custom prompts for different content types:")
+    
+    # List of prompt types
+    prompt_types = ["wisdom_extraction", "summary", "outline_creation", "social_media", "image_prompts"]
+    
+    for prompt_type in prompt_types:
+        # Get current prompt for the user and type
+        current_prompt = get_custom_prompt(selected_user, prompt_type, users_prompts, DEFAULT_PROMPTS)
+        
+        # Display text area for editing
+        new_prompt = st.text_area(
+            f"{prompt_type.replace('_', ' ').title()}",
+            value=current_prompt,
+            height=150,
+            key=f"prompt_{prompt_type}"
+        )
+        
+        # Save button for this prompt
+        if st.button(f"Save {prompt_type.replace('_', ' ').title()} Prompt"):
+            # Create user directory if it doesn't exist
+            user_dir = os.path.join("prompts", selected_user)
+            os.makedirs(user_dir, exist_ok=True)
+            
+            # Save the prompt
+            with open(os.path.join(user_dir, f"{prompt_type}.md"), "w") as f:
+                f.write(new_prompt)
+            
+            st.success(f"Saved custom {prompt_type} prompt for {selected_user}")
+            
+            # Update the in-memory prompts
+            if selected_user not in users_prompts:
+                users_prompts[selected_user] = {}
+            users_prompts[selected_user][prompt_type] = new_prompt
+
+def transcribe_large_file(file_path):
+    """Process a large audio file by chunking it and transcribing each chunk"""
+    st.info("Processing large audio file in chunks...")
+    
+    # Create progress bar
+    progress_text = "Chunking audio file..."
+    progress_bar = st.progress(0)
+    
+    # Split audio into chunks
+    chunks = chunk_audio(file_path)
+    if not chunks:
+        st.error("Failed to chunk audio file.")
+        return ""
+    
+    # Update progress bar
+    progress_text = "Transcribing chunks..."
+    
+    # Process each chunk
+    transcriptions = []
+    for i, chunk_path in enumerate(chunks):
+        # Update progress
+        progress = (i + 1) / len(chunks)
+        progress_bar.progress(progress)
+        
+        # Transcribe this chunk
+        chunk_text = transcribe_chunk(chunk_path, i, len(chunks))
+        transcriptions.append(chunk_text)
+    
+    # Combine all transcriptions
+    full_transcript = " ".join(transcriptions)
+    
+    # Complete progress
+    progress_bar.progress(1.0)
+    
+    return full_transcript
+
+def transcribe_audio(audio_file):
+    """Transcribe an audio file directly"""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(audio_file.name).suffix) as tmp_file:
+            tmp_file.write(audio_file.getvalue())
+            tmp_path = tmp_file.name
+        
+        # Transcribe using OpenAI's Whisper
+        with open(tmp_path, "rb") as audio:
+            transcript = openai_client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio
+            )
+        
+        # Clean up temp file
+        os.unlink(tmp_path)
+        
+        return transcript.text
+    except Exception as e:
+        st.error(f"Transcription error: {str(e)}")
+        return ""
+
+def generate_wisdom(transcript, ai_provider, model, custom_prompt=None):
+    """Extract key insights and wisdom from a transcript"""
+    try:
+        prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
+        
+        # Use the selected AI provider and model
+        if ai_provider == "OpenAI":
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": transcript}
+                ],
+                max_tokens=1500
+            )
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=1500,
+                system=prompt,
+                messages=[{"role": "user", "content": transcript}]
+            )
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            headers = {
+                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": transcript}
+                ]
+            }
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Analysis error with {ai_provider} {model}: {str(e)}")
+        return None
+
+def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None):
+    """Create a structured outline based on transcript and wisdom"""
+    try:
+        prompt = custom_prompt or DEFAULT_PROMPTS["outline_creation"]
+        
+        # Combine transcript and wisdom for better context
+        content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
+        
+        # Use the selected AI provider and model
+        if ai_provider == "OpenAI":
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=1500
+            )
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=1500,
+                system=prompt,
+                messages=[{"role": "user", "content": content}]
+            )
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            headers = {
+                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ]
+            }
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Error creating outline with {ai_provider} {model}: {str(e)}")
+        return None
+
+def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None):
+    """Create social media posts based on the content"""
+    try:
+        prompt = custom_prompt or DEFAULT_PROMPTS["social_media"]
+        
+        # Combine wisdom and outline for context
+        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
+        
+        # Use the selected AI provider and model
+        if ai_provider == "OpenAI":
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=1000,
+                system=prompt,
+                messages=[{"role": "user", "content": content}]
+            )
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            headers = {
+                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ]
+            }
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Error creating social content with {ai_provider} {model}: {str(e)}")
+        return None
+
+def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None):
+    """Create image generation prompts based on the content"""
+    try:
+        prompt = custom_prompt or DEFAULT_PROMPTS["image_prompts"]
+        
+        # Combine wisdom and outline for context
+        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
+        
+        # Use the selected AI provider and model
+        if ai_provider == "OpenAI":
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=1000,
+                system=prompt,
+                messages=[{"role": "user", "content": content}]
+            )
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            headers = {
+                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ]
+            }
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Error creating image prompts with {ai_provider} {model}: {str(e)}")
+        return None
+
+def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None):
+    """Write a full article based on the outline and content"""
+    try:
+        prompt = custom_prompt or """Write a comprehensive, engaging article based on the provided outline and wisdom.
+        Include an introduction, developed sections following the outline, and a conclusion.
+        Maintain a conversational yet authoritative tone."""
+        
+        # Combine all content for context
+        content = f"TRANSCRIPT EXCERPT:\n{transcript[:1000]}...\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
+        
+        # Use the selected AI provider and model
+        if ai_provider == "OpenAI":
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ],
+                max_tokens=2500
+            )
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=2500,
+                system=prompt,
+                messages=[{"role": "user", "content": content}]
+            )
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            headers = {
+                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": content}
+                ]
+            }
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"Error writing article with {ai_provider} {model}: {str(e)}")
+        return None
+
 def main():
     st.title("WhisperForge")
-    st.write("AI-powered audio transcription and content creation tool")
+    st.write("Transform your audio into comprehensive content with AI assistance.")
     
-    # Initialize session state variables if they don't exist
-    if "transcription" not in st.session_state:
-        st.session_state.transcription = None
-    if "wisdom" not in st.session_state:
-        st.session_state.wisdom = None
-    if "outline" not in st.session_state:
-        st.session_state.outline = None
-    if "social_content" not in st.session_state:
-        st.session_state.social_content = None
-    if "image_prompts" not in st.session_state:
-        st.session_state.image_prompts = None
-    if "article" not in st.session_state:
-        st.session_state.article = None
-    if "audio_file" not in st.session_state:
+    # Load available users and their prompts
+    users, users_prompts = load_prompts()
+    
+    # Initialize session state for model selection
+    if 'ai_provider' not in st.session_state:
+        st.session_state.ai_provider = "OpenAI"
+    if 'ai_model' not in st.session_state:
+        st.session_state.ai_model = None
+    
+    # ===== SIDEBAR CONFIGURATION =====
+    with st.sidebar:
+        st.header("Configuration")
+        
+        # User selection
+        selected_user = st.selectbox("Select User", options=users)
+        
+        # AI Provider selection in sidebar
+        ai_provider = st.selectbox(
+            "AI Provider", 
+            options=["OpenAI", "Anthropic", "Grok"],
+            key="ai_provider_select",
+            on_change=lambda: setattr(st.session_state, 'ai_model', None)  # Reset model when provider changes
+        )
+        st.session_state.ai_provider = ai_provider
+        
+        # Fetch and display available models based on provider
+        available_models = get_available_models(ai_provider)
+        
+        # Model descriptions for helpful UI
+        model_descriptions = {
+            "gpt-4": "Most capable OpenAI model",
+            "gpt-3.5-turbo": "Faster, cost-effective OpenAI model",
+            "claude-3-opus-20240229": "Most capable Anthropic model",
+            "claude-3-sonnet-20240229": "Balanced Anthropic model",
+            "claude-3-haiku-20240307": "Fast, efficient Anthropic model",
+            "grok-1": "Grok's base model"
+        }
+        
+        # If no model is selected or previous model isn't in new provider's list, select first
+        if not st.session_state.ai_model or st.session_state.ai_model not in available_models:
+            if available_models:
+                st.session_state.ai_model = available_models[0]
+        
+        # AI Model selection in sidebar
+        selected_model = st.selectbox(
+            "AI Model",
+            options=available_models,
+            format_func=lambda x: f"{x}" + (f" ({model_descriptions[x]})" if x in model_descriptions else ""),
+            key="ai_model_select"
+        )
+        st.session_state.ai_model = selected_model
+        
+        # Configure custom prompts
+        with st.expander("Configure Custom Prompts", expanded=False):
+            configure_prompts(selected_user, users_prompts)
+    
+    # Initialize session state for content
+    if 'transcription' not in st.session_state:
+        st.session_state.transcription = ""
+    if 'wisdom' not in st.session_state:
+        st.session_state.wisdom = ""
+    if 'audio_file' not in st.session_state:
         st.session_state.audio_file = None
     
-    # Load prompts
-    users_data = load_prompts()
+    # Audio file uploader
+    uploaded_file = st.file_uploader("Upload Audio File", type=['mp3', 'wav', 'ogg', 'm4a'])
     
-    # Sidebar with user selection
-    with st.sidebar:
-        available_users = get_available_users()
-        selected_user = st.selectbox("Select User", available_users)
+    # Display uploaded audio file if available
+    if uploaded_file is not None:
+        st.session_state.audio_file = uploaded_file
+        st.audio(uploaded_file)
         
-        # Display knowledge base files if available
-        knowledge_base_files = list_knowledge_base_files(selected_user)
-        if knowledge_base_files:
-            st.subheader("Knowledge Base Available")
-            for kb_file in knowledge_base_files:
-                st.write(f"✓ {os.path.splitext(os.path.basename(kb_file))[0]}")
-        
-        # Custom prompt configuration
-        with st.expander("Configure Custom Prompts"):
-            prompt_types = ["wisdom", "outline", "social", "image", "article"]
-            selected_prompt_type = st.selectbox("Select Prompt Type", prompt_types)
-            
-            # Get existing custom prompt if available
-            custom_prompt = get_custom_prompt(selected_user, selected_prompt_type, "")
-            
-            # Text area for editing the prompt
-            edited_prompt = st.text_area("Edit Prompt", custom_prompt, height=200)
-            
-            # Save button for prompt
-            if st.button("Save Prompt", key=f"save_{selected_prompt_type}"):
-                if save_custom_prompt(selected_user, selected_prompt_type, edited_prompt):
-                    st.success(f"{selected_prompt_type.capitalize()} prompt saved!")
-                else:
-                    st.error("Failed to save prompt")
-
-    # File upload and transcription
-    uploaded_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "m4a", "ogg"])
-    
-    if uploaded_file:
-        # Display audio player
-        st.audio(uploaded_file, format="audio/mp3")
-        
-        # Get the base filename without extension for title suggestion
-        filename = os.path.splitext(uploaded_file.name)[0]
-        
-        # Title input
-        title = st.text_input("Title (optional)", value=f"Transcription - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        # Input field for title
+        title = st.text_input("Title (Optional)", value="Transcription - " + datetime.now().strftime("%Y-%m-%d %H:%M"))
         
         # Transcribe button
         if st.button("Transcribe Audio"):
             with st.spinner("Transcribing audio..."):
-                # Save uploaded file to temp location
-                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as temp_file:
-                    temp_path = temp_file.name
-                    shutil.copyfileobj(uploaded_file, temp_file)
+                # Check file size and use appropriate method
+                file_size = uploaded_file.size
                 
-                st.session_state.audio_file = uploaded_file
-                
-                try:
-                    # Check file size and chunk if necessary
-                    file_size = os.path.getsize(temp_path)
-                    if file_size > 25 * 1024 * 1024:  # 25MB
-                        chunks = chunk_audio(temp_path)
-                        full_transcript = ""
-                        
-                        if chunks:  # Only proceed if we have valid chunks
-                            progress_bar = st.progress(0)
-                            for i, chunk_path in enumerate(chunks):
-                                st.write(f"Transcribing part {i+1} of {len(chunks)}...")
-                                transcript_text = transcribe_chunk(chunk_path, i, len(chunks))
-                                full_transcript += transcript_text + " "
-                                progress_bar.progress((i + 1) / len(chunks))
-                            
-                            if full_transcript.strip():  # If we got any transcription
-                                st.session_state.transcription = full_transcript.strip()
-                                st.session_state.title = title
-                            else:
-                                st.error("Failed to get any valid transcription from the audio")
-                        else:
-                            st.error("Failed to process audio chunks")
-                    else:
-                        # For files under 25MB, try direct transcription
-                        try:
-                            with open(temp_path, "rb") as audio:
-                                transcript = openai_client.audio.transcriptions.create(
-                                    model="whisper-1",
-                                    file=audio
-                                )
-                                st.session_state.transcription = transcript.text
-                                st.session_state.title = title
-                        except Exception as e:
-                            st.error(f"Transcription error: {str(e)}")
+                if file_size > 25 * 1024 * 1024:  # 25 MB
+                    st.warning("Large file detected. Using chunked processing.")
+                    # Save uploaded file temporarily to process it
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+                        tmp_file.write(uploaded_file.getvalue())
+                        tmp_path = tmp_file.name
                     
-                    # Clean up temp file
-                    os.unlink(temp_path)
-                    
-                except Exception as e:
-                    st.error(f"An error occurred: {str(e)}")
-
-    # Display transcription and provide content generation options
+                    # Process large file in chunks
+                    st.session_state.transcription = transcribe_large_file(tmp_path)
+                    os.unlink(tmp_path)  # Remove temp file
+                else:
+                    # Use simpler method for smaller files
+                    transcript = transcribe_audio(uploaded_file)
+                    st.session_state.transcription = transcript
+    
+    # Display transcription if available
     if st.session_state.transcription:
-        st.write("### Transcription:")
+        st.header("Transcription:")
         st.write(st.session_state.transcription)
         
-        st.write("### AI Model Selection")
-        col1, col2 = st.columns(2)
-        
-        # Provider selection
-        provider = col1.selectbox(
-            "Select AI Provider:",
-            options=list(LLM_MODELS.keys())
-        )
-        
-        # Model selection based on provider
-        model_options = list(LLM_MODELS[provider].keys())
-        model = col2.selectbox(
-            f"Select {provider} Model:",
-            options=model_options
-        )
-        
-        # Get the model ID for the selected model
-        model_id = LLM_MODELS[provider][model]
-        
-        # Content generation sections
-        wisdom_expander = st.expander("Extract Wisdom")
-        with wisdom_expander:
-            if st.button("Extract Wisdom", key="extract_wisdom"):
-                with st.spinner("Extracting wisdom..."):
-                    # Get custom prompt for wisdom extraction
-                    wisdom_prompt = get_custom_prompt(selected_user, "wisdom", "Extract key wisdom, insights, quotes, and actionable advice from this transcription.")
-                    
-                    # Get user knowledge base if available
-                    user_knowledge = users_data.get(selected_user, {}).get('knowledge_base', {})
-                    
-                    # Apply the prompt to generate wisdom
-                    wisdom = apply_prompt(st.session_state.transcription, wisdom_prompt, provider, model_id, user_knowledge)
-                    
-                    if wisdom:
-                        st.session_state.wisdom = wisdom
-                        st.success("Wisdom extracted!")
-                    else:
-                        st.error("Failed to extract wisdom.")
-            
-            if "wisdom" in st.session_state and st.session_state.wisdom:
-                st.markdown(st.session_state.wisdom)
-        
-        # Outline generation
-        outline_expander = st.expander("Create Outline")
-        with outline_expander:
-            if st.button("Generate Outline", key="generate_outline"):
-                with st.spinner("Generating outline..."):
-                    # Get custom prompt for outline generation
-                    outline_prompt = get_custom_prompt(selected_user, "outline", "Create a detailed outline for an article based on this transcription.")
-                    
-                    # Get user knowledge base if available
-                    user_knowledge = users_data.get(selected_user, {}).get('knowledge_base', {})
-                    
-                    # Apply the prompt to generate outline
-                    outline = apply_prompt(st.session_state.transcription, outline_prompt, provider, model_id, user_knowledge)
-                    
-                    if outline:
-                        st.session_state.outline = outline
-                        st.success("Outline generated!")
-                    else:
-                        st.error("Failed to generate outline.")
-            
-            if "outline" in st.session_state and st.session_state.outline:
-                st.markdown(st.session_state.outline)
-        
-        # Social media content generation
-        social_expander = st.expander("Generate Social Media Content")
-        with social_expander:
-            if st.button("Create Social Posts", key="create_social"):
-                with st.spinner("Creating social media content..."):
-                    # Get custom prompt for social media content
-                    social_prompt = get_custom_prompt(selected_user, "social", "Create engaging social media posts based on this transcription.")
-                    
-                    # Get user knowledge base if available
-                    user_knowledge = users_data.get(selected_user, {}).get('knowledge_base', {})
-                    
-                    # Apply the prompt to generate social media content
-                    social_content = apply_prompt(st.session_state.transcription, social_prompt, provider, model_id, user_knowledge)
-                    
-                    if social_content:
-                        st.session_state.social_content = social_content
-                        st.success("Social media content created!")
-                    else:
-                        st.error("Failed to create social media content.")
-            
-            if "social_content" in st.session_state and st.session_state.social_content:
-                st.markdown(st.session_state.social_content)
-        
-        # Image prompt generation
-        image_expander = st.expander("Create Image Prompts")
-        with image_expander:
-            if st.button("Create Image Prompts", key="create_image_prompts"):
-                with st.spinner("Creating image prompts..."):
-                    # Get custom prompt for image prompts
-                    image_prompt = get_custom_prompt(selected_user, "image", "Create detailed image generation prompts based on this transcription.")
-                    
-                    # Get user knowledge base if available
-                    user_knowledge = users_data.get(selected_user, {}).get('knowledge_base', {})
-                    
-                    # Apply the prompt to generate image prompts
-                    image_prompts = apply_prompt(st.session_state.transcription, image_prompt, provider, model_id, user_knowledge)
-                    
-                    if image_prompts:
-                        st.session_state.image_prompts = image_prompts
-                        st.success("Image prompts created!")
-                    else:
-                        st.error("Failed to create image prompts.")
-            
-            if "image_prompts" in st.session_state and st.session_state.image_prompts:
-                st.markdown(st.session_state.image_prompts)
-        
-        # Article writing (only show if outline exists)
-        if "outline" in st.session_state and st.session_state.outline:
-            article_expander = st.expander("Write Full Article")
-            with article_expander:
-                if st.button("Write Article", key="write_article"):
-                    with st.spinner("Writing article..."):
-                        # Get custom prompt for article writing
-                        article_prompt = get_custom_prompt(selected_user, "article", "Write a comprehensive article based on this outline and transcription.")
+        # Extract wisdom section
+        with st.expander("Extract Wisdom", expanded=False):
+            if st.button("Generate Wisdom"):
+                try:
+                    if not st.session_state.ai_model:
+                        st.error("Please select an AI model in the sidebar configuration.")
+                        return
                         
-                        # Get user knowledge base if available
-                        user_knowledge = users_data.get(selected_user, {}).get('knowledge_base', {})
+                    # Get the custom prompt if available
+                    wisdom_prompt = get_custom_prompt(selected_user, "wisdom_extraction", users_prompts, DEFAULT_PROMPTS)
+                    
+                    with st.spinner("Extracting wisdom from transcript..."):
+                        st.session_state.wisdom = generate_wisdom(
+                            st.session_state.transcription, 
+                            st.session_state.ai_provider, 
+                            st.session_state.ai_model,
+                            wisdom_prompt
+                        )
+                except Exception as e:
+                    st.error(f"Error generating wisdom: {str(e)}")
+        
+        # Display wisdom if available
+        if st.session_state.wisdom:
+            st.subheader("Extracted Wisdom:")
+            st.write(st.session_state.wisdom)
+            
+            # Initialize session states for other content types if not already done
+            if 'outline' not in st.session_state:
+                st.session_state.outline = ""
+            if 'social_posts' not in st.session_state:
+                st.session_state.social_posts = ""
+            if 'image_prompts' not in st.session_state:
+                st.session_state.image_prompts = ""
+            if 'article' not in st.session_state:
+                st.session_state.article = ""
+            
+            # Create outline
+            with st.expander("Create Outline", expanded=False):
+                if st.button("Generate Outline"):
+                    try:
+                        # Get the custom prompt if available
+                        outline_prompt = get_custom_prompt(selected_user, "outline_creation", users_prompts, DEFAULT_PROMPTS)
                         
-                        # Combine outline and transcription for context
-                        context = f"OUTLINE:\n{st.session_state.outline}\n\nTRANSCRIPTION:\n{st.session_state.transcription}"
-                        
-                        # Apply the prompt to write the article
-                        article = apply_prompt(context, article_prompt, provider, model_id, user_knowledge)
-                        
-                        if article:
-                            st.session_state.article = article
-                            st.success("Article written!")
-                        else:
-                            st.error("Failed to write article.")
+                        with st.spinner("Creating outline..."):
+                            st.session_state.outline = generate_outline(
+                                st.session_state.transcription,
+                                st.session_state.wisdom,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                outline_prompt
+                            )
+                    except Exception as e:
+                        st.error(f"Error generating outline: {str(e)}")
+            
+            # Display outline if available
+            if st.session_state.outline:
+                st.subheader("Content Outline:")
+                st.write(st.session_state.outline)
                 
-                if "article" in st.session_state and st.session_state.article:
-                    st.markdown(st.session_state.article)
+                # Social media content
+                with st.expander("Create Social Media Content", expanded=False):
+                    if st.button("Generate Social Posts"):
+                        try:
+                            # Get the custom prompt if available
+                            social_prompt = get_custom_prompt(selected_user, "social_media", users_prompts, DEFAULT_PROMPTS)
+                            
+                            with st.spinner("Creating social media content..."):
+                                st.session_state.social_posts = generate_social_content(
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    social_prompt
+                                )
+                        except Exception as e:
+                            st.error(f"Error generating social content: {str(e)}")
+                
+                # Display social posts if available
+                if st.session_state.social_posts:
+                    st.subheader("Social Media Content:")
+                    st.write(st.session_state.social_posts)
+                
+                # Image prompts section
+                with st.expander("Create Image Prompts", expanded=False):
+                    if st.button("Generate Image Prompts"):
+                        try:
+                            # Get the custom prompt if available
+                            image_prompt = get_custom_prompt(selected_user, "image_prompts", users_prompts, DEFAULT_PROMPTS)
+                            
+                            with st.spinner("Creating image generation prompts..."):
+                                st.session_state.image_prompts = generate_image_prompts(
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    image_prompt
+                                )
+                        except Exception as e:
+                            st.error(f"Error generating image prompts: {str(e)}")
+                
+                # Display image prompts if available
+                if st.session_state.image_prompts:
+                    st.subheader("Image Prompts:")
+                    st.write(st.session_state.image_prompts)
+                
+                # Full article section
+                with st.expander("Write Full Article", expanded=False):
+                    if st.button("Generate Article"):
+                        try:
+                            # Get the custom prompt if available
+                            article_prompt = get_custom_prompt(selected_user, "article_writing", users_prompts, DEFAULT_PROMPTS)
+                            
+                            with st.spinner("Writing full article..."):
+                                st.session_state.article = generate_article(
+                                    st.session_state.transcription,
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    article_prompt
+                                )
+                        except Exception as e:
+                            st.error(f"Error generating article: {str(e)}")
+                
+                # Display article if available
+                if st.session_state.article:
+                    st.subheader("Full Article:")
+                    st.write(st.session_state.article)
         
-        # Export to Notion button
-        if st.button("Save to Notion", key="save_to_notion"):
-            with st.spinner("Saving to Notion..."):
-                # Get all generated content
-                title = st.session_state.get("title", "Untitled Transcription")
-                transcript = st.session_state.get("transcription", "")
-                wisdom = st.session_state.get("wisdom", "")
-                outline = st.session_state.get("outline", "")
-                social_posts = st.session_state.get("social_content", "")
-                image_prompts = st.session_state.get("image_prompts", "")
-                article = st.session_state.get("article", "")
-                
-                # Create Notion entry with available content
-                notion_url = create_notion_entry(
-                    title, 
-                    st.session_state.get("audio_file", None),
-                    transcript, 
-                    wisdom
-                )
-                
-                if notion_url:
-                    st.success(f"Successfully saved to Notion!")
-                    st.markdown(f"[View in Notion]({notion_url})")
+        # Export to Notion button - available at any stage
+        if st.button("Save to Notion"):
+            with st.spinner("Exporting to Notion..."):
+                # Check if Notion API key is configured
+                if not os.getenv("NOTION_API_KEY") or not os.getenv("NOTION_DATABASE_ID"):
+                    st.error("Notion API key or database ID not configured. Please set them in your .env file.")
                 else:
-                    st.error("Failed to save to Notion. Please check your API keys.")
+                    # Get title from input or use a default
+                    if 'title' not in locals() or not title:
+                        title = "Transcription - " + datetime.now().strftime("%Y-%m-%d %H:%M")
+                    
+                    # Safely get all content types from session state
+                    wisdom = st.session_state.get('wisdom', None)
+                    outline = st.session_state.get('outline', None)  
+                    social_posts = st.session_state.get('social_posts', None)
+                    image_prompts = st.session_state.get('image_prompts', None)
+                    article = st.session_state.get('article', None)
+                    
+                    # Create Notion entry with all available content
+                    notion_url = create_notion_entry(
+                        title,
+                        st.session_state.audio_file,
+                        st.session_state.transcription,
+                        wisdom,
+                        outline,
+                        social_posts,
+                        image_prompts,
+                        article
+                    )
+                    
+                    if notion_url:
+                        st.success(f"Successfully saved to Notion! [Open in Notion]({notion_url})")
+                    else:
+                        st.error("Failed to save to Notion. Please check your API keys.")
 
-# Add these helper functions for model selection
-def save_model_selection(user, prompt_type, provider, model):
-    """Save the selected model for a prompt type."""
-    user_dir = os.path.join("prompts", user, "custom_prompts")
-    os.makedirs(user_dir, exist_ok=True)
+# Default prompts in case user prompts are not available
+DEFAULT_PROMPTS = {
+    "wisdom_extraction": """## Wisdom Extraction
+Extract key insights, wisdom, and valuable takeaways from the transcript.
+Focus on actionable lessons, novel ideas, and profound observations.
+Present the extracted wisdom in clear, concise bullet points.""",
     
-    model_file = os.path.join(user_dir, f"{prompt_type}_model.txt")
-    with open(model_file, "w") as f:
-        f.write(f"{provider}\n{model}")
-
-def get_model_selection(user, prompt_type):
-    """Get the saved model selection for a prompt type."""
-    model_file = os.path.join("prompts", user, "custom_prompts", f"{prompt_type}_model.txt")
+    "summary": """## Summary
+Create a concise summary of the main points and key messages in the transcript.
+Capture the essence of the content in a few paragraphs.""",
     
-    if os.path.exists(model_file):
-        with open(model_file, "r") as f:
-            lines = f.readlines()
-            if len(lines) >= 2:
-                provider = lines[0].strip()
-                model = lines[1].strip()
-                return provider, model
+    "outline_creation": """## Outline Creation
+Create a structured outline for an article or post based on the transcript and extracted wisdom.
+Include an introduction, main sections with supporting points, and a conclusion.""",
     
-    # Default to OpenAI GPT-4 if no selection is saved
-    return "OpenAI", "GPT-4 (Most Capable)"
+    "social_media": """## Social Media Content
+Create 3-5 social media posts based on the key points and wisdom from the transcript.
+Each post should be engaging, thought-provoking, and optimized for social sharing.""",
+    
+    "image_prompts": """## Image Prompts
+Create 3-5 detailed image generation prompts that illustrate key concepts from the content.
+Make them visual, specific, and aligned with the main themes.""",
+    
+    "article_writing": """## Article Writing
+Write a comprehensive, engaging article based on the provided outline and wisdom.
+Include an introduction, developed sections following the outline, and a conclusion.
+Maintain a conversational yet authoritative tone, incorporating key insights from the wisdom section.
+Format with appropriate headings, subheadings, and paragraph breaks for readability."""
+}
 
 if __name__ == "__main__":
     main() 
