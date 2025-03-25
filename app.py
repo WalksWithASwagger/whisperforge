@@ -276,312 +276,290 @@ def generate_short_title(text):
         st.error(f"Title generation error: {str(e)}")
         return "Untitled Audio Transcription"
 
-def create_notion_entry(title, audio_file, transcript, wisdom=None, outline=None, social_posts=None, image_prompts=None, article=None):
+def chunk_text_for_notion(text, chunk_size=1900):
+    """Split text into chunks that respect Notion's character limit"""
+    if not text:
+        return []
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
+    """Create a new entry in the Notion database with all content sections"""
     try:
-        # Generate AI title and summary
-        ai_title = generate_title(transcript)
-        ai_summary = generate_summary(transcript)
+        # Initialize audio_filename at the beginning of the function
+        audio_filename = "None"
+        if hasattr(st.session_state, 'audio_file') and st.session_state.audio_file:
+            audio_filename = st.session_state.audio_file.name
         
-        # Create the page title with WHISPER prefix
-        notion_title = f"WHISPER: {ai_title}"
+        # Generate AI title if none provided
+        if not title or title.startswith("Transcription -") or title.startswith("Content -"):
+            ai_title = generate_short_title(transcript)
+            title = f"WHISPER: {ai_title}"
         
-        # Current date and tags
-        current_date = datetime.now().isoformat()
-        tags = generate_content_tags(transcript, wisdom) if wisdom else ["audio", "transcription"]
+        # Generate tags for the content
+        content_tags = generate_content_tags(transcript, wisdom)
         
-        # Set up properties with exact names from your database
-        properties = {
-            "title": {
-                "title": [{"text": {"content": notion_title}}]
-            },
-            "Created Date": {
-                "date": {
-                    "start": current_date
-                }
-            },
-            "Tags": {
-                "multi_select": [{"name": tag} for tag in tags]
-            }
-        }
-
-        def chunk_text(text, chunk_size=2000):
-            """Split text into chunks that respect Notion's character limit"""
-            if not text:
-                return []
-            return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
-
-        def create_text_blocks(text):
-            """Create multiple paragraph blocks for long text"""
-            if not text:
-                return [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
-                    }
-                }]
+        # Generate summary
+        summary = generate_summary(transcript)
+        
+        # Track model usage for metadata
+        used_models = []
+        if hasattr(st.session_state, 'ai_provider') and hasattr(st.session_state, 'ai_model'):
+            if st.session_state.ai_provider and st.session_state.ai_model:
+                used_models.append(f"{st.session_state.ai_provider} {st.session_state.ai_model}")
+        if transcript:  # If we have a transcript, we likely used Whisper
+            used_models.append("OpenAI Whisper-1")
             
-            chunks = chunk_text(text)
-            return [{
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                }
-            } for chunk in chunks]
-
-        # Create the page blocks with proper formatting
-        blocks = [
-            # Purple summary callout at the top with AI-generated summary
+        # Estimate token usage
+        total_tokens = estimate_token_usage(transcript, wisdom, outline, social_content, image_prompts, article)
+        
+        # Format content with toggles
+        content = []
+        
+        # Add summary section with AI-generated summary
+        content.extend([
             {
-                "object": "block",
                 "type": "callout",
                 "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": ai_summary}}],
-                    "color": "purple",
+                    "rich_text": [{"type": "text", "text": {"content": summary}}],
+                    "color": "purple_background",
                     "icon": {
                         "type": "emoji",
                         "emoji": "💜"
                     }
                 }
             },
-            
-            # Original Audio toggle
             {
-                "object": "block",
+                "type": "divider",
+                "divider": {}
+            }
+        ])
+        
+        # Add Transcript section with chunked content and color
+        content.extend([
+            {
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Original Audio"}}],
-                    "color": "default",
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": f"Audio file: {audio_file.name if audio_file else 'Not available'}"}}]
-                        }
-                    }]
-                }
-            },
-            
-            # Transcription toggle with chunked content
-            {
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
-                    "color": "brown",
-                    "children": create_text_blocks(transcript)
+                    "rich_text": [{"type": "text", "text": {"content": "Transcription"}}],
+                    "color": "default", # dark gray/black
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        } for chunk in chunk_text_for_notion(transcript)
+                    ]
                 }
             }
-        ]
+        ])
 
-        # Add Wisdom toggle if available
+        # Add Wisdom section if available
         if wisdom:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
-                    "color": "brown_background",
-                    "children": create_text_blocks(wisdom)
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Wisdom"}}],
+                        "color": "brown_background",
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                                }
+                            } for chunk in chunk_text_for_notion(wisdom)
+                        ]
+                    }
                 }
-            })
+            ])
 
-        # Add Social Posts toggle if available
-        if social_posts:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
-                    "color": "yellow_background",
-                    "children": create_text_blocks(social_posts)
+        # Add Socials section with golden brown background
+        if social_content:
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Socials"}}],
+                        "color": "orange_background", # closest to golden brown
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                                }
+                            } for chunk in chunk_text_for_notion(social_content)
+                        ]
+                    }
                 }
-            })
-        else:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
-                    "color": "yellow_background",
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
-                        }
-                    }]
-                }
-            })
+            ])
 
-        # Add Image Prompts toggle if available
+        # Add Image Prompts with green background
         if image_prompts:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
-                    "color": "green_background",
-                    "children": create_text_blocks(image_prompts)
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Image Prompts"}}],
+                        "color": "green_background",
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                                }
+                            } for chunk in chunk_text_for_notion(image_prompts)
+                        ]
+                    }
                 }
-            })
-        else:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
-                    "color": "green_background",
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
-                        }
-                    }]
-                }
-            })
+            ])
 
-        # Add Outline toggle if available
+        # Add Outline with blue background
         if outline:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
-                    "color": "blue_background",
-                    "children": create_text_blocks(outline)
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Outline"}}],
+                        "color": "blue_background",
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                                }
+                            } for chunk in chunk_text_for_notion(outline)
+                        ]
+                    }
                 }
-            })
-        else:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
-                    "color": "blue_background",
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
-                        }
-                    }]
-                }
-            })
+            ])
 
-        # Add Draft Post/Article toggle if available
+        # Add Draft Post with purple background
         if article:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
-                    "color": "purple_background",
-                    "children": create_text_blocks(article)
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Draft Post"}}],
+                        "color": "purple_background",
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                                }
+                            } for chunk in chunk_text_for_notion(article)
+                        ]
+                    }
                 }
-            })
-        else:
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
-                    "color": "purple_background",
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": "Not yet generated."}}]
-                        }
-                    }]
+            ])
+            
+        # Add Original Audio section with maroon/red background if audio file exists
+        if audio_filename != "None":
+            content.extend([
+                {
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "Original Audio"}}],
+                        "color": "red_background",
+                        "children": [
+                            {
+                                "type": "paragraph",
+                                "paragraph": {
+                                    "rich_text": [{"type": "text", "text": {"content": audio_filename}}]
+                                }
+                            }
+                        ]
+                    }
                 }
-            })
-
-        # Add metadata section at the bottom
-        blocks.extend([
+            ])
+        
+        # Add metadata section
+        content.extend([
             {
-                "object": "block",
                 "type": "divider",
                 "divider": {}
             },
             {
-                "object": "block",
                 "type": "heading_2",
                 "heading_2": {
                     "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
                 }
             },
             {
-                "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": "**Original Audio:** "},
-                            "annotations": {"bold": True}
-                        },
-                        {
-                            "type": "text",
-                            "text": {"content": audio_file.name if audio_file else "Not available"}
-                        }
-                    ]
+                    "rich_text": [{"type": "text", "text": {"content": f"**Original Audio:** {audio_filename}"}}]
                 }
             },
             {
-                "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": "**Created:** "},
-                            "annotations": {"bold": True}
-                        },
-                        {
-                            "type": "text",
-                            "text": {"content": datetime.now().strftime("%Y-%m-%d %H:%M")}
-                        }
-                    ]
+                    "rich_text": [{"type": "text", "text": {"content": f"**Created:** {datetime.now().strftime('%Y-%m-%d %H:%M')}"}}]
                 }
             },
             {
-                "object": "block",
-                "type": "divider",
-                "divider": {}
-            },
-            {
-                "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": "Created with "},
-                        },
-                        {
-                            "type": "text",
-                            "text": {"content": "WhisperForge"},
-                            "annotations": {"bold": True}
-                        }
-                    ]
+                    "rich_text": [{"type": "text", "text": {"content": f"**Models Used:** {', '.join(used_models) if used_models else 'None'}"}}]
+                }
+            },
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": f"**Estimated Tokens:** {total_tokens:,}"}}]
                 }
             }
         ])
 
         # Create the page in Notion
-        new_page = notion_client.pages.create(
+        response = notion_client.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
-            properties=properties,
-            children=blocks
+            properties={
+                "Name": {"title": [{"text": {"content": title}}]},
+                "Tags": {"multi_select": [{"name": tag} for tag in content_tags]},
+            },
+            children=content
         )
-
-        return f"https://notion.so/{new_page['id'].replace('-', '')}"
+        
+        # Make the Notion link clickable in the UI
+        if response and isinstance(response, dict) and 'id' in response:
+            page_id = response['id']
+            page_url = f"https://notion.so/{page_id.replace('-', '')}"
+            st.success(f"Successfully saved to Notion!")
+            st.markdown(f"[Open in Notion]({page_url})")
+            return page_url
+        else:
+            st.error("Notion API returned an invalid response")
+            st.write("Response:", response)  # Debug info
+            return False
+            
     except Exception as e:
-        st.error(f"Notion API Error: {str(e)}")
-        return None
+        st.error(f"Detailed error creating Notion entry: {str(e)}")
+        return False
+
+def estimate_token_usage(transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
+    """Estimate token usage for all content generated"""
+    # Approximate token count (roughly 4 chars per token for English)
+    token_count = 0
+    
+    # Count tokens in all content
+    if transcript:
+        token_count += len(transcript) / 4
+    if wisdom:
+        token_count += len(wisdom) / 4
+    if outline:
+        token_count += len(outline) / 4
+    if social_content:
+        token_count += len(social_content) / 4
+    if image_prompts:
+        token_count += len(image_prompts) / 4
+    if article:
+        token_count += len(article) / 4
+        
+    # Add approximate prompt tokens and overhead
+    token_count += 1000  # For system prompts, etc.
+    
+    return int(token_count)
 
 def generate_content_tags(transcript, wisdom=None):
     """Generate relevant tags based on content"""
@@ -592,7 +570,7 @@ def generate_content_tags(transcript, wisdom=None):
         Wisdom: {wisdom[:500] if wisdom else ''}
         
         Generate 5 relevant one-word tags that describe the main topics and themes.
-        Return only the tags separated by commas, lowercase."""
+        Return only the tags separated by commas, lowercase. Examples: spiritual, history, technology, motivation, business"""
         
         response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -852,33 +830,53 @@ def transcribe_audio(audio_file):
         st.error(f"Transcription error: {str(e)}")
         return ""
 
-def generate_wisdom(transcript, ai_provider, model, custom_prompt=None):
+def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Extract key insights and wisdom from a transcript"""
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
+        
+        # Include knowledge base context if available
+        if knowledge_base:
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in knowledge_base.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis:
+
+{knowledge_context}
+
+When analyzing the content, please incorporate these perspectives and guidelines.
+
+Original Prompt:
+{prompt}"""
+        else:
+            system_prompt = prompt
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": transcript}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
                 ],
                 max_tokens=1500
             )
             return response.choices[0].message.content
-            
+
         elif ai_provider == "Anthropic":
             response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
-                system=prompt,
-                messages=[{"role": "user", "content": transcript}]
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
+                ]
             )
             return response.content[0].text
-            
+
         elif ai_provider == "Grok":
+            # Grok API endpoint (you'll need to adjust this based on actual Grok API documentation)
             headers = {
                 "Authorization": f"Bearer {GROK_API_KEY}",
                 "Content-Type": "application/json"
@@ -886,12 +884,12 @@ def generate_wisdom(transcript, ai_provider, model, custom_prompt=None):
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": transcript}
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
                 ]
             }
             response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
+                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
                 headers=headers,
                 json=payload
             )
@@ -900,10 +898,27 @@ def generate_wisdom(transcript, ai_provider, model, custom_prompt=None):
         st.error(f"Analysis error with {ai_provider} {model}: {str(e)}")
         return None
 
-def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None):
+def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create a structured outline based on transcript and wisdom"""
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["outline_creation"]
+        
+        # Include knowledge base context if available
+        if knowledge_base:
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in knowledge_base.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis:
+
+{knowledge_context}
+
+When creating the outline, please incorporate these perspectives and guidelines.
+
+Original Prompt:
+{prompt}"""
+        else:
+            system_prompt = prompt
         
         # Combine transcript and wisdom for better context
         content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
@@ -913,7 +928,7 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None)
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": prompt},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": content}
                 ],
                 max_tokens=1500
@@ -924,7 +939,7 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None)
             response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
-                system=prompt,
+                system=system_prompt,
                 messages=[{"role": "user", "content": content}]
             )
             return response.content[0].text
@@ -937,7 +952,7 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None)
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": prompt},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": content}
                 ]
             }
@@ -951,7 +966,7 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None)
         st.error(f"Error creating outline with {ai_provider} {model}: {str(e)}")
         return None
 
-def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None):
+def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create social media posts based on the content"""
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["social_media"]
@@ -1002,7 +1017,7 @@ def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=N
         st.error(f"Error creating social content with {ai_provider} {model}: {str(e)}")
         return None
 
-def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None):
+def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create image generation prompts based on the content"""
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["image_prompts"]
@@ -1053,7 +1068,7 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
         st.error(f"Error creating image prompts with {ai_provider} {model}: {str(e)}")
         return None
 
-def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None):
+def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Write a full article based on the outline and content"""
     try:
         prompt = custom_prompt or """Write a comprehensive, engaging article based on the provided outline and wisdom.
@@ -1106,12 +1121,89 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
         st.error(f"Error writing article with {ai_provider} {model}: {str(e)}")
         return None
 
+def generate_seo_metadata(content, title):
+    """Generate SEO metadata for the content"""
+    try:
+        prompt = f"""As an SEO expert, analyze this content and generate essential SEO metadata:
+
+Content Title: {title}
+Content Preview: {content[:1000]}...
+
+Please provide:
+1. SEO-optimized title (50-60 chars)
+2. Meta description (150-160 chars)
+3. Primary keyword
+4. 3-4 secondary keywords
+5. Recommended URL slug
+6. Schema type recommendation
+
+Format as JSON."""
+
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an SEO expert that provides metadata in JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        st.error(f"Error generating SEO metadata: {str(e)}")
+        return None
+
+def process_all_content(text, ai_provider, model, knowledge_base=None):
+    """Process all content stages at once"""
+    try:
+        results = {
+            'wisdom': None,
+            'outline': None,
+            'social_posts': None,
+            'image_prompts': None,
+            'article': None
+        }
+        
+        # Sequential processing with progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Generate wisdom
+        status_text.text("Extracting wisdom...")
+        results['wisdom'] = generate_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
+        progress_bar.progress(0.2)
+        
+        # Generate outline
+        status_text.text("Creating outline...")
+        results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
+        progress_bar.progress(0.4)
+        
+        # Generate social content
+        status_text.text("Generating social media content...")
+        results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+        progress_bar.progress(0.6)
+        
+        # Generate image prompts
+        status_text.text("Creating image prompts...")
+        results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+        progress_bar.progress(0.8)
+        
+        # Generate article
+        status_text.text("Writing full article...")
+        results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+        progress_bar.progress(1.0)
+        
+        status_text.text("Content generation complete!")
+        return results
+        
+    except Exception as e:
+        st.error(f"Error in batch processing: {str(e)}")
+        return None
+
 def main():
     st.title("WhisperForge")
-    st.write("Transform your audio into comprehensive content with AI assistance.")
-    
-    # Load available users and their prompts
-    users, users_prompts = load_prompts()
+    st.write("Transform your spoken ideas into polished content with AI assistance.")
     
     # Initialize session state for model selection
     if 'ai_provider' not in st.session_state:
@@ -1123,8 +1215,54 @@ def main():
     with st.sidebar:
         st.header("Configuration")
         
-        # User selection
-        selected_user = st.selectbox("Select User", options=users)
+        # Move user selection to a less prominent location
+        with st.expander("Advanced Settings", expanded=False):
+            selected_user = st.selectbox("User Profile", options=["default"], key="user_profile")
+        
+        # Load knowledge base for selected user
+        knowledge_base = load_user_knowledge_base(selected_user)
+        
+        # Knowledge Base Management
+        with st.expander("Knowledge Base", expanded=False):
+            st.write("Current Knowledge Base Files:")
+            if knowledge_base:
+                # Use selectbox instead of nested expanders
+                selected_file = st.selectbox(
+                    "Select file to view",
+                    options=list(knowledge_base.keys()),
+                    key="kb_file_selector"
+                )
+                if selected_file:
+                    st.text_area(
+                        "Content",
+                        value=knowledge_base[selected_file],
+                        height=100,
+                        key=f"kb_{selected_file}"
+                    )
+            else:
+                st.info("No knowledge base files found.")
+            
+            # Upload new knowledge base file
+            uploaded_kb = st.file_uploader(
+                "Add Knowledge Base File", 
+                type=['txt', 'md'],
+                key="kb_uploader"
+            )
+            
+            if uploaded_kb:
+                kb_name = st.text_input("File Name (without extension)", 
+                                      value=os.path.splitext(uploaded_kb.name)[0])
+                if st.button("Save to Knowledge Base"):
+                    try:
+                        kb_path = f'prompts/{selected_user}/knowledge_base'
+                        os.makedirs(kb_path, exist_ok=True)
+                        
+                        with open(os.path.join(kb_path, f"{kb_name}.md"), "wb") as f:
+                            f.write(uploaded_kb.getvalue())
+                        st.success("Knowledge base file added successfully!")
+                        st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"Error saving knowledge base file: {str(e)}")
         
         # AI Provider selection in sidebar
         ai_provider = st.selectbox(
@@ -1164,7 +1302,7 @@ def main():
         
         # Configure custom prompts
         with st.expander("Configure Custom Prompts", expanded=False):
-            configure_prompts(selected_user, users_prompts)
+            configure_prompts(selected_user, {})
     
     # Initialize session state for content
     if 'transcription' not in st.session_state:
@@ -1174,44 +1312,144 @@ def main():
     if 'audio_file' not in st.session_state:
         st.session_state.audio_file = None
     
-    # Audio file uploader
-    uploaded_file = st.file_uploader("Upload Audio File", type=['mp3', 'wav', 'ogg', 'm4a'])
+    # Add tabs for input selection
+    input_type = st.tabs(["Audio Upload", "Text Input"])
     
-    # Display uploaded audio file if available
-    if uploaded_file is not None:
-        st.session_state.audio_file = uploaded_file
-        st.audio(uploaded_file)
+    with input_type[0]:
+        # Existing audio upload functionality
+        uploaded_file = st.file_uploader("Upload Audio File", type=['mp3', 'wav', 'ogg', 'm4a'])
         
-        # Input field for title
-        title = st.text_input("Title (Optional)", value="Transcription - " + datetime.now().strftime("%Y-%m-%d %H:%M"))
+        if uploaded_file is not None:
+            st.audio(uploaded_file)
+            
+            # Input field for title
+            title = st.text_input("Title (Optional)", 
+                                value="Transcription - " + datetime.now().strftime("%Y-%m-%d %H:%M"), 
+                                key="audio_title")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                # Regular transcribe button
+                if st.button("Transcribe Audio"):
+                    with st.spinner("Transcribing audio..."):
+                        # Check file size and use appropriate method
+                        file_size = uploaded_file.size
+                        
+                        if file_size > 25 * 1024 * 1024:  # 25 MB
+                            st.warning("Large file detected. Using chunked processing.")
+                            # Save uploaded file temporarily to process it
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
+                                tmp_file.write(uploaded_file.getvalue())
+                                tmp_path = tmp_file.name
+                            
+                            # Process large file in chunks
+                            st.session_state.transcription = transcribe_large_file(tmp_path)
+                            os.unlink(tmp_path)  # Remove temp file
+                        else:
+                            # Use simpler method for smaller files
+                            transcript = transcribe_audio(uploaded_file)
+                            st.session_state.transcription = transcript
+            
+            with col2:
+                # I'm Feeling Lucky button
+                if st.button("I'm Feeling Lucky 🎲"):
+                    with st.spinner("Processing everything..."):
+                        # First transcribe
+                        transcript = transcribe_audio(uploaded_file)
+                        st.session_state.transcription = transcript
+                        
+                        # Then process all content
+                        results = process_all_content(
+                            transcript,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base
+                        )
+                        
+                        if results:
+                            # Store results in session state
+                            st.session_state.wisdom = results['wisdom']
+                            st.session_state.outline = results['outline']
+                            st.session_state.social_posts = results['social_posts']
+                            st.session_state.image_prompts = results['image_prompts']
+                            st.session_state.article = results['article']
+                            
+                            # Automatically post to Notion
+                            with st.spinner("Saving to Notion..."):
+                                notion_success = create_content_notion_entry(
+                                    title,
+                                    transcript,
+                                    results['wisdom'],
+                                    results['outline'],
+                                    results['social_posts'],
+                                    results['image_prompts'],
+                                    results['article']
+                                )
+                                if notion_success:
+                                    st.success("Everything processed and saved to Notion!")
+                                
+    with input_type[1]:
+        # New text input functionality
+        st.write("Paste your text below to analyze and generate content:")
+        input_text = st.text_area("Input Text", height=200)
+        title = st.text_input("Title (Optional)", 
+                             value="Content - " + datetime.now().strftime("%Y-%m-%d %H:%M"), 
+                             key="text_title")
         
-        # Transcribe button
-        if st.button("Transcribe Audio"):
-            with st.spinner("Transcribing audio..."):
-                # Check file size and use appropriate method
-                file_size = uploaded_file.size
-                
-                if file_size > 25 * 1024 * 1024:  # 25 MB
-                    st.warning("Large file detected. Using chunked processing.")
-                    # Save uploaded file temporarily to process it
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=Path(uploaded_file.name).suffix) as tmp_file:
-                        tmp_file.write(uploaded_file.getvalue())
-                        tmp_path = tmp_file.name
-                    
-                    # Process large file in chunks
-                    st.session_state.transcription = transcribe_large_file(tmp_path)
-                    os.unlink(tmp_path)  # Remove temp file
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Regular process button
+            if st.button("Process Text"):
+                if input_text:
+                    st.session_state.transcription = input_text
                 else:
-                    # Use simpler method for smaller files
-                    transcript = transcribe_audio(uploaded_file)
-                    st.session_state.transcription = transcript
-    
-    # Display transcription if available
+                    st.error("Please enter some text to process")
+        
+        with col2:
+            # I'm Feeling Lucky button for text
+            if st.button("I'm Feeling Lucky 🎲", key="lucky_text"):
+                if input_text:
+                    with st.spinner("Processing everything..."):
+                        st.session_state.transcription = input_text
+                        
+                        results = process_all_content(
+                            input_text,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base
+                        )
+                        
+                        if results:
+                            # Store results and post to Notion
+                            st.session_state.wisdom = results['wisdom']
+                            st.session_state.outline = results['outline']
+                            st.session_state.social_posts = results['social_posts']
+                            st.session_state.image_prompts = results['image_prompts']
+                            st.session_state.article = results['article']
+                            
+                            with st.spinner("Saving to Notion..."):
+                                notion_success = create_content_notion_entry(
+                                    title,
+                                    input_text,
+                                    results['wisdom'],
+                                    results['outline'],
+                                    results['social_posts'],
+                                    results['image_prompts'],
+                                    results['article']
+                                )
+                                if notion_success:
+                                    st.success("Everything processed and saved to Notion!")
+                else:
+                    st.error("Please enter some text to process")
+
+    # Rest of the content generation code remains the same since it all works from st.session_state.transcription
     if st.session_state.transcription:
-        st.header("Transcription:")
+        st.header("Content:")
         st.write(st.session_state.transcription)
         
-        # Extract wisdom section
+        # Extract wisdom section with knowledge base
         with st.expander("Extract Wisdom", expanded=False):
             if st.button("Generate Wisdom"):
                 try:
@@ -1220,14 +1458,15 @@ def main():
                         return
                         
                     # Get the custom prompt if available
-                    wisdom_prompt = get_custom_prompt(selected_user, "wisdom_extraction", users_prompts, DEFAULT_PROMPTS)
+                    wisdom_prompt = get_custom_prompt(selected_user, "wisdom_extraction", {}, DEFAULT_PROMPTS)
                     
                     with st.spinner("Extracting wisdom from transcript..."):
                         st.session_state.wisdom = generate_wisdom(
                             st.session_state.transcription, 
                             st.session_state.ai_provider, 
                             st.session_state.ai_model,
-                            wisdom_prompt
+                            wisdom_prompt,
+                            knowledge_base  # Pass knowledge base to generation function
                         )
                 except Exception as e:
                     st.error(f"Error generating wisdom: {str(e)}")
@@ -1252,7 +1491,7 @@ def main():
                 if st.button("Generate Outline"):
                     try:
                         # Get the custom prompt if available
-                        outline_prompt = get_custom_prompt(selected_user, "outline_creation", users_prompts, DEFAULT_PROMPTS)
+                        outline_prompt = get_custom_prompt(selected_user, "outline_creation", {}, DEFAULT_PROMPTS)
                         
                         with st.spinner("Creating outline..."):
                             st.session_state.outline = generate_outline(
@@ -1260,7 +1499,8 @@ def main():
                                 st.session_state.wisdom,
                                 st.session_state.ai_provider,
                                 st.session_state.ai_model,
-                                outline_prompt
+                                outline_prompt,
+                                knowledge_base
                             )
                     except Exception as e:
                         st.error(f"Error generating outline: {str(e)}")
@@ -1275,7 +1515,7 @@ def main():
                     if st.button("Generate Social Posts"):
                         try:
                             # Get the custom prompt if available
-                            social_prompt = get_custom_prompt(selected_user, "social_media", users_prompts, DEFAULT_PROMPTS)
+                            social_prompt = get_custom_prompt(selected_user, "social_media", {}, DEFAULT_PROMPTS)
                             
                             with st.spinner("Creating social media content..."):
                                 st.session_state.social_posts = generate_social_content(
@@ -1283,7 +1523,8 @@ def main():
                                     st.session_state.outline,
                                     st.session_state.ai_provider,
                                     st.session_state.ai_model,
-                                    social_prompt
+                                    social_prompt,
+                                    knowledge_base
                                 )
                         except Exception as e:
                             st.error(f"Error generating social content: {str(e)}")
@@ -1298,7 +1539,7 @@ def main():
                     if st.button("Generate Image Prompts"):
                         try:
                             # Get the custom prompt if available
-                            image_prompt = get_custom_prompt(selected_user, "image_prompts", users_prompts, DEFAULT_PROMPTS)
+                            image_prompt = get_custom_prompt(selected_user, "image_prompts", {}, DEFAULT_PROMPTS)
                             
                             with st.spinner("Creating image generation prompts..."):
                                 st.session_state.image_prompts = generate_image_prompts(
@@ -1306,7 +1547,8 @@ def main():
                                     st.session_state.outline,
                                     st.session_state.ai_provider,
                                     st.session_state.ai_model,
-                                    image_prompt
+                                    image_prompt,
+                                    knowledge_base
                                 )
                         except Exception as e:
                             st.error(f"Error generating image prompts: {str(e)}")
@@ -1321,7 +1563,7 @@ def main():
                     if st.button("Generate Article"):
                         try:
                             # Get the custom prompt if available
-                            article_prompt = get_custom_prompt(selected_user, "article_writing", users_prompts, DEFAULT_PROMPTS)
+                            article_prompt = get_custom_prompt(selected_user, "article_writing", {}, DEFAULT_PROMPTS)
                             
                             with st.spinner("Writing full article..."):
                                 st.session_state.article = generate_article(
@@ -1330,7 +1572,8 @@ def main():
                                     st.session_state.outline,
                                     st.session_state.ai_provider,
                                     st.session_state.ai_model,
-                                    article_prompt
+                                    article_prompt,
+                                    knowledge_base
                                 )
                         except Exception as e:
                             st.error(f"Error generating article: {str(e)}")
@@ -1359,9 +1602,8 @@ def main():
                     article = st.session_state.get('article', None)
                     
                     # Create Notion entry with all available content
-                    notion_url = create_notion_entry(
+                    notion_url = create_content_notion_entry(
                         title,
-                        st.session_state.audio_file,
                         st.session_state.transcription,
                         wisdom,
                         outline,
@@ -1377,32 +1619,21 @@ def main():
 
 # Default prompts in case user prompts are not available
 DEFAULT_PROMPTS = {
-    "wisdom_extraction": """## Wisdom Extraction
-Extract key insights, wisdom, and valuable takeaways from the transcript.
-Focus on actionable lessons, novel ideas, and profound observations.
-Present the extracted wisdom in clear, concise bullet points.""",
+    "wisdom_extraction": """Extract key insights, lessons, and wisdom from the transcript. Focus on actionable takeaways and profound realizations.""",
     
     "summary": """## Summary
 Create a concise summary of the main points and key messages in the transcript.
 Capture the essence of the content in a few paragraphs.""",
     
-    "outline_creation": """## Outline Creation
-Create a structured outline for an article or post based on the transcript and extracted wisdom.
-Include an introduction, main sections with supporting points, and a conclusion.""",
+    "outline_creation": """Create a detailed outline for an article or blog post based on the transcript and extracted wisdom. Include major sections and subsections.""",
     
-    "social_media": """## Social Media Content
-Create 3-5 social media posts based on the key points and wisdom from the transcript.
-Each post should be engaging, thought-provoking, and optimized for social sharing.""",
+    "social_media": """Generate engaging social media posts for different platforms (Twitter, LinkedIn, Instagram) based on the key insights.""",
     
-    "image_prompts": """## Image Prompts
-Create 3-5 detailed image generation prompts that illustrate key concepts from the content.
-Make them visual, specific, and aligned with the main themes.""",
+    "image_prompts": """Create detailed image generation prompts that visualize the key concepts and metaphors from the content.""",
     
-    "article_writing": """## Article Writing
-Write a comprehensive, engaging article based on the provided outline and wisdom.
-Include an introduction, developed sections following the outline, and a conclusion.
-Maintain a conversational yet authoritative tone, incorporating key insights from the wisdom section.
-Format with appropriate headings, subheadings, and paragraph breaks for readability."""
+    "article_writing": """Write a comprehensive article based on the provided outline and wisdom. Maintain a clear narrative flow and engaging style.""",
+    
+    "seo_analysis": """Analyze the content from an SEO perspective and provide optimization recommendations for better search visibility while maintaining content quality."""
 }
 
 if __name__ == "__main__":
