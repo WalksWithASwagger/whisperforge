@@ -44,3 +44,5 @@ whisperforge.log
 .DS_Store
 backups/
 .env*
+whisperforge.db
+whisperforge.db
