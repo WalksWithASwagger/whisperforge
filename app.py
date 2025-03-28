@@ -16,31 +16,36 @@ from pathlib import Path
 # Load environment variables
 load_dotenv()
 
-# Initialize clients with better error handling
-try:
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-except Exception as e:
-    st.warning(f"OpenAI client initialization error: {str(e)}")
-    openai_client = None  # Set to None so we can check later
+# Initialize clients with proper error handling
+openai_client = None
+anthropic_client = None
+notion_client = None
 
+# Initialize OpenAI client
 try:
-    anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if openai_api_key:
+        openai_client = OpenAI(api_key=openai_api_key)
 except Exception as e:
-    st.warning(f"Anthropic client initialization error: {str(e)}")
-    anthropic_client = None
+    pass  # Silently fail and handle later with user-friendly messages
 
+# Initialize Anthropic client
+try:
+    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_api_key:
+        anthropic_client = Anthropic(api_key=anthropic_api_key)
+except Exception as e:
+    pass
+
+# Initialize Notion client
 try:
     notion_api_key = os.getenv("NOTION_API_KEY")
     if notion_api_key:
         notion_client = Client(auth=notion_api_key)
-    else:
-        notion_client = None
 except Exception as e:
-    st.warning(f"Notion client initialization error: {str(e)}")
-    notion_client = None
+    pass
 
 NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
-GROK_API_KEY = os.getenv("GROK_API_KEY")
 
 # Available LLM models grouped by provider
 LLM_MODELS = {
@@ -53,10 +58,8 @@ LLM_MODELS = {
         "Claude 3 Opus": "claude-3-opus-20240229",
         "Claude 3 Sonnet": "claude-3-sonnet-20240229",
         "Claude 3 Haiku": "claude-3-haiku-20240307",
-    },
-    "Grok": {
-        "Grok-1": "grok-1",
     }
+    # Remove Grok section
 }
 
 def local_css():
@@ -699,26 +702,6 @@ Original Prompt:
             )
             return response.content[0].text
 
-        elif provider == "Grok":
-            # Grok API endpoint (you'll need to adjust this based on actual Grok API documentation)
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
-
     except Exception as e:
         st.error(f"Analysis error with {provider} {model}: {str(e)}")
         return None
@@ -833,6 +816,9 @@ def generate_summary(transcript):
 def generate_short_title(text):
     """Generate a 5-7 word descriptive title from the transcript"""
     try:
+        if openai_client is None:
+            return "Untitled Content (OpenAI API not configured)"
+            
         response = openai_client.chat.completions.create(
             model="gpt-4-turbo-preview",
             messages=[
@@ -842,8 +828,7 @@ def generate_short_title(text):
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        st.error(f"Title generation error: {str(e)}")
-        return "Untitled Audio Transcription"
+        return "Untitled Content"
 
 def chunk_text_for_notion(text, chunk_size=1900):
     """Split text into chunks that respect Notion's character limit"""
@@ -853,6 +838,10 @@ def chunk_text_for_notion(text, chunk_size=1900):
 
 def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
     """Create a new entry in the Notion database with all content sections"""
+    if notion_client is None or not NOTION_DATABASE_ID:
+        st.error("Notion API key or database ID not configured. Please check your .env file.")
+        return False
+        
     try:
         # Initialize audio_filename at the beginning of the function
         audio_filename = "None"
@@ -1021,7 +1010,7 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
                     }
                 }
             ])
-            
+
         # Add Original Audio section with maroon/red background if audio file exists
         if audio_filename != "None":
             content.extend([
@@ -1041,7 +1030,7 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
                     }
                 }
             ])
-        
+
         # Add metadata section
         content.extend([
             {
@@ -1165,6 +1154,14 @@ def generate_content_tags(transcript, wisdom=None):
 def get_available_openai_models():
     """Get current list of available OpenAI models"""
     try:
+        if openai_client is None:
+            # Return a default dictionary of models if client isn't available
+            return {
+                "gpt-4": "gpt-4",
+                "gpt-4-turbo-preview": "gpt-4-turbo-preview",
+                "gpt-3.5-turbo": "gpt-3.5-turbo"
+            }
+        
         models = openai_client.models.list()
         gpt_models = {
             model.id: model.id for model in models 
@@ -1172,8 +1169,13 @@ def get_available_openai_models():
         }
         return gpt_models
     except Exception as e:
-        st.error(f"Error fetching OpenAI models: {str(e)}")
-        return {}
+        st.warning(f"Error fetching OpenAI models: {str(e)}")
+        # Return default models if API fails
+        return {
+            "gpt-4": "gpt-4",
+            "gpt-4-turbo-preview": "gpt-4-turbo-preview",
+            "gpt-3.5-turbo": "gpt-3.5-turbo"
+        }
 
 def get_available_anthropic_models():
     """Get current list of available Anthropic models"""
@@ -1266,8 +1268,15 @@ def list_knowledge_base_files(user):
 
 def get_available_models(provider):
     """Fetch available models from the selected AI provider"""
+    # Default models to return if API is unavailable
+    default_openai_models = ["gpt-4", "gpt-4-turbo-preview", "gpt-3.5-turbo"]
+    default_anthropic_models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+    
     try:
         if provider == "OpenAI":
+            if openai_client is None:
+                return default_openai_models
+                
             models = openai_client.models.list()
             # Filter for chat-capable models
             available_models = [
@@ -1276,32 +1285,20 @@ def get_available_models(provider):
             ]
             # Sort to put GPT-4 models first
             available_models.sort(key=lambda x: "gpt-4" in x.lower(), reverse=True)
-            if not available_models:
-                return ["gpt-4", "gpt-3.5-turbo"]
-            return available_models
+            return available_models if available_models else default_openai_models
             
         elif provider == "Anthropic":
-            # Anthropic's API doesn't provide model list, use known models
-            return [
-                "claude-3-opus-20240229",
-                "claude-3-sonnet-20240229",
-                "claude-3-haiku-20240307"
-            ]
+            return default_anthropic_models
             
-        elif provider == "Grok":
-            # Add Grok model fetching when API available
-            return ["grok-1"]
+        # Remove Grok case
             
         return []
     except Exception as e:
-        st.error(f"Error fetching models from {provider}: {str(e)}")
-        # Fallback models if API fails
+        # Return default models without showing an error
         if provider == "OpenAI":
-            return ["gpt-4", "gpt-3.5-turbo"]
+            return default_openai_models
         elif provider == "Anthropic":
-            return ["claude-3-opus-20240229", "claude-3-sonnet-20240229"]
-        elif provider == "Grok":
-            return ["grok-1"]
+            return default_anthropic_models
         return []
 
 def configure_prompts(selected_user, users_prompts):
@@ -1396,11 +1393,11 @@ def transcribe_large_file(file_path):
 
 def transcribe_audio(audio_file):
     """Transcribe an audio file with size-based handling"""
+    if openai_client is None:
+        st.error("Please configure your OpenAI API key in the .env file to enable transcription.")
+        return ""
+        
     try:
-        # Check if OpenAI client is available
-        if openai_client is None:
-            return "Error: OpenAI API key not configured. Please add your API key to the .env file."
-            
         # Check if audio_file is a string (path) or an UploadedFile object
         if isinstance(audio_file, str):
             audio_path = audio_file
@@ -1443,6 +1440,12 @@ def transcribe_audio(audio_file):
 def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Extract key insights and wisdom from a transcript"""
     try:
+        # Check if the selected provider is available
+        if ai_provider == "OpenAI" and openai_client is None:
+            return "OpenAI API key not configured. Please add your API key to the .env file."
+        if ai_provider == "Anthropic" and anthropic_client is None:
+            return "Anthropic API key not configured. Please add your API key to the .env file."
+        
         prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
         
         # Include knowledge base context if available
@@ -1473,7 +1476,7 @@ Original Prompt:
                 max_tokens=1500
             )
             return response.choices[0].message.content
-
+            
         elif ai_provider == "Anthropic":
             response = anthropic_client.messages.create(
                 model=model,
@@ -1484,29 +1487,11 @@ Original Prompt:
                 ]
             )
             return response.content[0].text
-
-        elif ai_provider == "Grok":
-            # Grok API endpoint (you'll need to adjust this based on actual Grok API documentation)
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
+            
+        # Remove Grok case
+        
     except Exception as e:
-        st.error(f"Analysis error with {ai_provider} {model}: {str(e)}")
-        return None
+        return f"Analysis error with {ai_provider} {model}: {str(e)}"
 
 def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create a structured outline based on transcript and wisdom"""
@@ -1554,24 +1539,6 @@ Original Prompt:
             )
             return response.content[0].text
             
-        elif ai_provider == "Grok":
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         st.error(f"Error creating outline with {ai_provider} {model}: {str(e)}")
         return None
@@ -1605,24 +1572,6 @@ def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=N
             )
             return response.content[0].text
             
-        elif ai_provider == "Grok":
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         st.error(f"Error creating social content with {ai_provider} {model}: {str(e)}")
         return None
@@ -1656,24 +1605,6 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
             )
             return response.content[0].text
             
-        elif ai_provider == "Grok":
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         st.error(f"Error creating image prompts with {ai_provider} {model}: {str(e)}")
         return None
@@ -1709,24 +1640,6 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
             )
             return response.content[0].text
             
-        elif ai_provider == "Grok":
-            headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
     except Exception as e:
         st.error(f"Error writing article with {ai_provider} {model}: {str(e)}")
         return None
@@ -1848,7 +1761,7 @@ def main():
         # AI Provider selection in sidebar with clean UI
         ai_provider = st.selectbox(
             "AI Provider", 
-            options=["OpenAI", "Anthropic", "Grok"],
+            options=["OpenAI", "Anthropic"],
             key="ai_provider_select",
             on_change=lambda: setattr(st.session_state, 'ai_model', None)  # Reset model when provider changes
         )
@@ -1911,7 +1824,7 @@ def main():
         with st.expander("Custom Prompts", expanded=False):
             users_prompts = {}  # Initialize empty prompts dict
             configure_prompts(selected_user, users_prompts)
-            
+    
         # Knowledge Base Management
         with st.expander("Knowledge Base", expanded=False):
             st.markdown("### Knowledge Base Files")
@@ -1964,26 +1877,60 @@ def main():
             
             st.markdown('<div class="section-header">API Status</div>', unsafe_allow_html=True)
             
-            st.markdown("""
+            # Check API keys
+            openai_status = "Ready" if openai_client else "Not Configured"
+            anthropic_status = "Ready" if anthropic_client else "Not Configured"
+            notion_status = "Ready" if notion_client and NOTION_DATABASE_ID else "Not Configured"
+            
+            # Create colored status indicators
+            st.markdown(f"""
             <div class="status-container">
                 <div class="status-card">
                     <h3>OpenAI</h3>
-                    <div class="status-value" id="openai-status">{}</div>
+                    <div class="status-value" style="color: {'var(--success)' if openai_client else 'var(--error)'}">
+                        {openai_status}
+                    </div>
                 </div>
                 <div class="status-card">
                     <h3>Anthropic</h3>
-                    <div class="status-value" id="anthropic-status">{}</div>
+                    <div class="status-value" style="color: {'var(--success)' if anthropic_client else 'var(--error)'}">
+                        {anthropic_status}
+                    </div>
                 </div>
                 <div class="status-card">
                     <h3>Notion</h3>
-                    <div class="status-value" id="notion-status">{}</div>
+                    <div class="status-value" style="color: {'var(--success)' if notion_client and NOTION_DATABASE_ID else 'var(--error)'}">
+                        {notion_status}
+                    </div>
                 </div>
             </div>
-            """.format(
-                "Ready" if openai_client else "Not Configured",
-                "Ready" if anthropic_client else "Not Configured",
-                "Ready" if notion_client else "Not Configured"
-            ), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            
+            # Show configuration help if APIs are missing
+            missing_apis = []
+            if not openai_client:
+                missing_apis.append("OpenAI")
+            if not anthropic_client:
+                missing_apis.append("Anthropic")
+            if not notion_client or not NOTION_DATABASE_ID:
+                missing_apis.append("Notion")
+            
+            if missing_apis:
+                with st.expander("Configuration Help"):
+                    st.markdown(f"""
+                    ### API Configuration
+                    The following APIs need to be configured in your `.env` file:
+                    
+                    {', '.join(missing_apis)}
+                    
+                    Example `.env` file:
+                    ```
+                    OPENAI_API_KEY=sk-your-key-here
+                    ANTHROPIC_API_KEY=sk-ant-your-key-here
+                    NOTION_API_KEY=secret_your-key-here
+                    NOTION_DATABASE_ID=your-database-id
+                    ```
+                    """)
     
     # Add tabs for input selection
     input_tabs = st.tabs(["Audio Upload", "Text Input"])
@@ -2080,8 +2027,8 @@ def main():
                         with st.spinner("Generating content..."):
                             results = process_all_content(
                                 transcription, 
-                                st.session_state.ai_provider, 
-                                st.session_state.ai_model,
+                            st.session_state.ai_provider, 
+                            st.session_state.ai_model,
                                 knowledge_base
                             )
                             
@@ -2141,8 +2088,8 @@ def main():
                 
                 wisdom = generate_wisdom(
                     text_input, 
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
                     knowledge_base=knowledge_base
                 )
                 st.session_state.wisdom = wisdom
@@ -2159,8 +2106,8 @@ def main():
                 outline = generate_outline(
                     text_input, 
                     wisdom,
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
                     knowledge_base=knowledge_base
                 )
                 st.session_state.outline = outline
@@ -2177,8 +2124,8 @@ def main():
                 social_content = generate_social_content(
                     wisdom,
                     outline,
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
                     knowledge_base=knowledge_base
                 )
                 st.session_state.social_posts = social_content
@@ -2195,8 +2142,8 @@ def main():
                 image_prompts = generate_image_prompts(
                     wisdom,
                     outline,
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
                     knowledge_base=knowledge_base
                 )
                 st.session_state.image_prompts = image_prompts
