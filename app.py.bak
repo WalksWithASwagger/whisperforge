@@ -20,136 +20,11 @@ from datetime import datetime, timedelta
 import time
 import re
 import json
-# Remove the problematic import completely
+from streamlit.middleware.app_middleware import AppMiddleware
 import streamlit.components.v1 as components
-
-# Custom OpenAI Wrapper
-class OpenAIWrapper:
-    """A simple wrapper for the OpenAI API that avoids proxy issues"""
-    
-    def __init__(self, api_key=None):
-        """Initialize with API key"""
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("API key is required. Either pass it directly or set OPENAI_API_KEY environment variable.")
-        
-        self.base_url = "https://api.openai.com/v1"
-    
-    class ChatCompletion:
-        """Emulate OpenAI's ChatCompletion functionality"""
-        
-        @staticmethod
-        def create(api_key, model="gpt-3.5-turbo", messages=None, max_tokens=1500):
-            """Create a chat completion using the OpenAI API"""
-            url = "https://api.openai.com/v1/chat/completions"
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            data = {
-                "model": model,
-                "messages": messages,
-                "max_tokens": max_tokens
-            }
-            
-            try:
-                response = requests.post(url, headers=headers, json=data)
-                response.raise_for_status()  # Raise exception for HTTP errors
-                
-                result = response.json()
-                
-                # Create a structure similar to what the OpenAI client returns
-                class Choice:
-                    def __init__(self, choice_data):
-                        self.message = type('Message', (), {'content': choice_data['message']['content']})
-                
-                class Response:
-                    def __init__(self, data):
-                        self.choices = [Choice(choice) for choice in data['choices']]
-                
-                return Response(result)
-            except requests.exceptions.RequestException as e:
-                print(f"Error making request to OpenAI API: {str(e)}")
-                if hasattr(e, 'response') and e.response:
-                    print(f"Response status code: {e.response.status_code}")
-                    print(f"Response body: {e.response.text}")
-                raise
-    
-    class Models:
-        """Emulate OpenAI's Models functionality"""
-        
-        @staticmethod
-        def list(api_key):
-            """List available models using the OpenAI API"""
-            url = "https://api.openai.com/v1/models"
-            
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
-            
-            try:
-                response = requests.get(url, headers=headers)
-                response.raise_for_status()  # Raise exception for HTTP errors
-                
-                result = response.json()
-                
-                # Create a structure similar to what the OpenAI client returns
-                models = []
-                for model_data in result['data']:
-                    model = type('Model', (), {'id': model_data['id']})
-                    models.append(model)
-                
-                return models
-            except requests.exceptions.RequestException as e:
-                print(f"Error listing OpenAI models: {str(e)}")
-                if hasattr(e, 'response') and e.response:
-                    print(f"Response status code: {e.response.status_code}")
-                    print(f"Response body: {e.response.text}")
-                
-                # Return default models as fallback
-                default_models = ["gpt-4", "gpt-4-turbo-preview", "gpt-3.5-turbo"]
-                return [type('Model', (), {'id': model_id}) for model_id in default_models]
 
 # Load environment variables
 load_dotenv()
-
-# Utility function to handle proxy environment variables
-def check_proxy_environment():
-    """Check for proxy environment variables and warn if found"""
-    proxy_vars = {}
-    for env_var in list(os.environ.keys()):
-        if 'PROXY' in env_var.upper() or 'HTTP_PROXY' in env_var.upper() or 'HTTPS_PROXY' in env_var.upper():
-            proxy_vars[env_var] = os.environ[env_var]
-    
-    if proxy_vars:
-        st.warning(f"Found proxy environment variables: {', '.join(proxy_vars.keys())}. These may cause issues with API clients.")
-    
-    return proxy_vars
-
-def clean_proxy_environment(func):
-    """Decorator to temporarily remove proxy environment variables when calling API clients"""
-    def wrapper(*args, **kwargs):
-        # Save the current proxy environment variables
-        proxy_vars = check_proxy_environment()
-        
-        # Remove proxy environment variables
-        for env_var in proxy_vars:
-            if env_var in os.environ:
-                del os.environ[env_var]
-        
-        try:
-            # Call the original function
-            result = func(*args, **kwargs)
-        finally:
-            # Restore proxy environment variables
-            for env_var, value in proxy_vars.items():
-                os.environ[env_var] = value
-        
-        return result
-    return wrapper
 
 # Database setup
 def get_db_connection():
@@ -202,33 +77,19 @@ def validate_jwt_token(token):
         return None
 
 # Initialization of clients - will be called as needed with user-specific API keys
-@clean_proxy_environment
 def get_openai_client():
     api_key = get_api_key_for_service("openai")
     if not api_key:
+        st.error("OpenAI API key is not set. Please add your API key in the settings.")
         return None
-        
-    try:
-        # Use our wrapper instead of the OpenAI client
-        return OpenAIWrapper()
-    except Exception as e:
-        st.error(f"Error initializing OpenAI client: {str(e)}")
-        return None
+    return OpenAI(api_key=api_key)
 
-@clean_proxy_environment
 def get_anthropic_client():
     api_key = get_api_key_for_service("anthropic")
     if not api_key:
         st.error("Anthropic API key is not set. Please add your API key in the settings.")
         return None
-    
-    # Create Anthropic client with only supported parameters for current version
-    try:
-        # Basic initialization with just the API key
-        return Anthropic(api_key=api_key)
-    except Exception as e:
-        st.error(f"Error initializing Anthropic client: {str(e)}")
-        return None
+    return Anthropic(api_key=api_key)
 
 def get_notion_client():
     api_key = get_api_key_for_service("notion")
@@ -792,13 +653,6 @@ def local_css():
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
-    
-    .section-divider {
-        width: 100%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(121, 40, 202, 0.5), transparent);
-        margin: 30px 0;
-    }
     </style>
     
     <!-- Add the scanner line animation -->
@@ -865,22 +719,32 @@ def load_prompts():
     return users, users_prompts
 
 def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
-    """Apply a prompt to analyze text using the specified AI provider and model"""
+    """Apply a specific prompt using the selected model and provider, incorporating user knowledge"""
     try:
-        # Prepare the system prompt with user knowledge base if available
-        if user_knowledge:
-            system_prompt = f"{prompt_content}\n\nUSER KNOWLEDGE BASE:\n{user_knowledge}"
+        prompt_parts = prompt_content.split('## Prompt')
+        if len(prompt_parts) > 1:
+            prompt_text = prompt_parts[1].strip()
         else:
-            system_prompt = prompt_content
+            prompt_text = prompt_content
+
+        # Include knowledge base context if available
+        system_prompt = prompt_text
+        if user_knowledge:
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in user_knowledge.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis and match the user's style and perspective:
+
+{knowledge_context}
+
+When analyzing the content, please incorporate these perspectives and style guidelines.
+
+Original Prompt:
+{prompt_text}"""
 
         if provider == "OpenAI":
-            client = get_openai_client()
-            if client is None:
-                return "Error: OpenAI API key is not configured. Please set up your API key in the API Keys page."
-                
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -891,11 +755,7 @@ def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
             return response.choices[0].message.content
 
         elif provider == "Anthropic":
-            client = get_anthropic_client()
-            if client is None:
-                return "Error: Anthropic API key is not configured. Please set up your API key in the API Keys page."
-                
-            response = client.messages.create(
+            response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
@@ -906,14 +766,9 @@ def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
             return response.content[0].text
 
         elif provider == "Grok":
-            # Get Grok API key
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                return "Error: Grok API key is not configured. Please set up your API key in the API Keys page."
-                
             # Grok API endpoint (you'll need to adjust this based on actual Grok API documentation)
             headers = {
-                "Authorization": f"Bearer {grok_api_key}",
+                "Authorization": f"Bearer {GROK_API_KEY}",
                 "Content-Type": "application/json"
             }
             payload = {
@@ -987,12 +842,12 @@ def chunk_audio(audio_path, target_size_mb=25):
 def transcribe_chunk(chunk_path, i, total_chunks):
     """Transcribe a single chunk with error handling and progress tracking"""
     try:
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return "Error: OpenAI API key is not configured."
             
         with open(chunk_path, "rb") as audio:
-            transcript = client.audio.transcriptions.create(
+            transcript = openai_client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio
             )
@@ -1004,8 +859,8 @@ def transcribe_chunk(chunk_path, i, total_chunks):
 def generate_title(transcript):
     """Generate a descriptive 5-7 word title based on the transcript"""
     try:
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return "Untitled Audio Transcription"
             
         prompt = f"""Create a clear, descriptive title (5-7 words) that captures the main topic of this transcript:
@@ -1013,7 +868,7 @@ def generate_title(transcript):
         
         Return only the title, no quotes or additional text."""
         
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise, descriptive titles."},
@@ -1030,8 +885,8 @@ def generate_title(transcript):
 def generate_summary(transcript):
     """Generate a one-sentence summary of the audio content"""
     try:
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return "Summary of audio content"
             
         prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
@@ -1039,7 +894,7 @@ def generate_summary(transcript):
         
         Return only the summary sentence, no additional text."""
         
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
@@ -1053,17 +908,15 @@ def generate_summary(transcript):
     except Exception as e:
         return "Summary of audio content"
 
-def generate_short_title(text, ai_provider=None, ai_model=None):
+def generate_short_title(text):
     """Generate a 5-7 word descriptive title from the transcript"""
     try:
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return "Untitled Audio Transcription"
             
-        api_key = get_api_key_for_service("openai")
-        response = client.ChatCompletion.create(
-            api_key=api_key,
-            model="gpt-4-turbo-preview",  # Always use the best model for titles regardless of user settings
+        response = openai_client.chat.completions.create(
+            model="gpt-4-turbo-preview",
             messages=[
                 {"role": "system", "content": "Create a concise, descriptive 5-7 word title that captures the main topic or theme of this content. Make it clear and engaging. Return ONLY the title words, nothing else."},
                 {"role": "user", "content": f"Generate a 5-7 word title for this transcript:\n\n{text[:2000]}..."} # First 2000 chars for context
@@ -1164,7 +1017,8 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
 
         # Add Wisdom section if available
         if wisdom:
-        content.extend([
+        if wisdom:
+            content.extend([
             {
                 "type": "toggle",
                 "toggle": {
@@ -1373,8 +1227,8 @@ def estimate_token_usage(transcript, wisdom=None, outline=None, social_content=N
 def generate_content_tags(transcript, wisdom=None):
     """Generate relevant tags based on content"""
     try:
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return ["audio", "transcription", "content", "notes", "whisperforge"]
             
         # Use OpenAI to generate relevant tags
@@ -1385,7 +1239,7 @@ def generate_content_tags(transcript, wisdom=None):
         Generate 5 relevant one-word tags that describe the main topics and themes.
         Return only the tags separated by commas, lowercase. Examples: spiritual, history, technology, motivation, business"""
         
-        response = client.chat.completions.create(
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that generates relevant content tags."},
@@ -1409,29 +1263,15 @@ def generate_content_tags(transcript, wisdom=None):
 def get_available_openai_models():
     """Get current list of available OpenAI models"""
     try:
-        client = get_openai_client()
-        if client is None:
-            return {
-                "GPT-4 (Most Capable)": "gpt-4",
-                "GPT-4 Turbo": "gpt-4-turbo-preview",
-                "GPT-3.5 Turbo (Faster)": "gpt-3.5-turbo",
-            }
-        
-        api_key = get_api_key_for_service("openai")
-        models = client.Models.list(api_key)
+        models = openai_client.models.list()
         gpt_models = {
             model.id: model.id for model in models 
             if any(x in model.id for x in ['gpt-4', 'gpt-3.5'])
         }
         return gpt_models
     except Exception as e:
-        st.error(f"Error fetching models from OpenAI: {str(e)}")
-        # Return default models as fallback
-        return {
-            "GPT-4 (Most Capable)": "gpt-4",
-            "GPT-4 Turbo": "gpt-4-turbo-preview",
-            "GPT-3.5 Turbo (Faster)": "gpt-3.5-turbo",
-        }
+        st.error(f"Error fetching OpenAI models: {str(e)}")
+        return {}
 
 def get_available_anthropic_models():
     """Get current list of available Anthropic models"""
@@ -1523,11 +1363,41 @@ def list_knowledge_base_files(user):
     return files
 
 def get_available_models(provider):
-    """Return a simple list of models for the selected provider"""
+    """Fetch available models from the selected AI provider"""
+    try:
         if provider == "OpenAI":
+            models = openai_client.models.list()
+            # Filter for chat-capable models
+            available_models = [
+                model.id for model in models 
+                if any(name in model.id.lower() for name in ["gpt-4", "gpt-3.5"])
+            ]
+            # Sort to put GPT-4 models first
+            available_models.sort(key=lambda x: "gpt-4" in x.lower(), reverse=True)
+            if not available_models:
                 return ["gpt-4", "gpt-3.5-turbo"]
+            return available_models
+            
         elif provider == "Anthropic":
-        return ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+            # Anthropic's API doesn't provide model list, use known models
+            return [
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
+                "claude-3-haiku-20240307"
+            ]
+            
+        elif provider == "Grok":
+            # Add Grok model fetching when API available
+            return ["grok-1"]
+            
+        return []
+    except Exception as e:
+        st.error(f"Error fetching models from {provider}: {str(e)}")
+        # Fallback models if API fails
+        if provider == "OpenAI":
+            return ["gpt-4", "gpt-3.5-turbo"]
+        elif provider == "Anthropic":
+            return ["claude-3-opus-20240229", "claude-3-sonnet-20240229"]
         elif provider == "Grok":
             return ["grok-1"]
         return []
@@ -1582,10 +1452,16 @@ def transcribe_large_file(file_path):
     
         # Create progress indicators
         progress_text = st.empty()
+        overall_status = st.empty()
         progress_bar = st.progress(0)
+        
+        overall_status.info(f"Beginning transcription of {len(chunks)} audio segments...")
     
     # Process each chunk
     transcriptions = []
+        chunks_processed = 0
+        chunks_failed = 0
+        
     for i, chunk_path in enumerate(chunks):
         # Update progress
         progress = (i + 1) / len(chunks)
@@ -1594,8 +1470,20 @@ def transcribe_large_file(file_path):
         
             # Transcribe chunk
         chunk_text = transcribe_chunk(chunk_path, i, len(chunks))
+            
+            # Check if the chunk transcription contains error markers
+            if chunk_text and any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
+                chunks_failed += 1
+            else:
+                chunks_processed += 1
+                
+            # Add to transcriptions - even failed chunks should add their error messages
+            # so we can see where the failures occurred in the transcript
         transcriptions.append(chunk_text)
     
+            # Update overall status after each chunk
+            overall_status.info(f"Progress: {i+1}/{len(chunks)} chunks processed ({chunks_processed} successful, {chunks_failed} failed)")
+            
             # Clean up chunk file
             try:
                 os.remove(chunk_path)
@@ -1610,16 +1498,26 @@ def transcribe_large_file(file_path):
                 pass
         
         # Combine all transcriptions with proper spacing
-    full_transcript = " ".join(transcriptions)
-    
+        full_transcript = " ".join([t for t in transcriptions if t])
+        
         # Clear progress indicators
         progress_text.empty()
         progress_bar.empty()
+        
+        # Final status message
+        if chunks_failed > 0:
+            overall_status.warning(f"⚠️ Transcription partially complete. Processed {chunks_processed} of {len(chunks)} chunks successfully. {chunks_failed} chunks had errors.")
+        else:
+            overall_status.success(f"✅ Transcription complete! Successfully processed all {len(chunks)} audio segments.")
     
     return full_transcript
         
     except Exception as e:
         st.error(f"Error processing large file: {str(e)}")
+        if "ffmpeg" in str(e).lower():
+            st.error("FFmpeg error. Please ensure FFmpeg is properly installed on your system.")
+        elif "memory" in str(e).lower():
+            st.error("Memory error. The file may be too large to process. Try using a smaller file or upgrading your system resources.")
         return ""
 
 def transcribe_audio(audio_file):
@@ -1632,32 +1530,65 @@ def transcribe_audio(audio_file):
         if isinstance(audio_file, str):
             audio_path = audio_file
             file_size = os.path.getsize(audio_path)
+            file_name = os.path.basename(audio_path)
         else:
             # Save uploaded file temporarily
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{audio_file.name.split('.')[-1]}") as tmp_file:
+            file_name = audio_file.name
+            file_extension = file_name.split('.')[-1].lower()
+            
+            # Validate file extension
+            valid_extensions = ['mp3', 'wav', 'ogg', 'm4a', 'mp4', 'mpeg', 'mpga', 'webm']
+            if file_extension not in valid_extensions:
+                return f"Error: Unsupported file format '{file_extension}'. Please upload an audio file in one of these formats: {', '.join(valid_extensions)}"
+            
+            # Create temp file with proper extension
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
             tmp_file.write(audio_file.getvalue())
                 audio_path = tmp_file.name
                 file_size = os.path.getsize(audio_path)
         
-        # Size threshold for chunking (20MB)
-        CHUNK_THRESHOLD = 20 * 1024 * 1024
+        # Display file information to user
+        file_size_mb = file_size / (1024 * 1024)
+        st.info(f"Processing '{file_name}' ({file_size_mb:.1f} MB)")
+        
+        # Size threshold for chunking (25MB)
+        CHUNK_THRESHOLD = 25 * 1024 * 1024
         
         # Get OpenAI client with user's API key
-        client = get_openai_client()
-        if not client:
+        openai_client = get_openai_client()
+        if not openai_client:
             return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
         
+        # Process based on file size
         if file_size > CHUNK_THRESHOLD:
+            st.info(f"Large file detected ({file_size_mb:.1f} MB). Processing in chunks for better reliability.")
             # Process large file in chunks
             transcript = transcribe_large_file(audio_path)
         else:
             # Process small file directly
-            with open(audio_path, "rb") as audio:
-                response = client.audio.transcriptions.create(
+            with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
+                try:
+                    with open(audio_path, "rb") as audio:
+                        response = openai_client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio
             )
-                transcript = response.text
+                        transcript = response.text
+                except Exception as api_error:
+                    error_msg = str(api_error)
+                    st.error(f"API Error: {error_msg}")
+                    
+                    # Try to provide more helpful error messages for common issues
+                    if "rate limit" in error_msg.lower():
+                        return "Error: OpenAI API rate limit reached. Please try again in a few minutes."
+                    elif "api key" in error_msg.lower():
+                        return "Error: Invalid OpenAI API key. Please check your API key configuration."
+                    elif "file size" in error_msg.lower() or "too large" in error_msg.lower():
+                        # If direct upload fails due to size, try chunking as fallback
+                        st.warning("File size error from API. Attempting to process in chunks as a fallback...")
+                        transcript = transcribe_large_file(audio_path)
+                    else:
+                        return f"Error transcribing audio: {error_msg}"
         
         # Clean up temporary file if we created it
         if not isinstance(audio_file, str):
@@ -1671,32 +1602,52 @@ def transcribe_audio(audio_file):
         duration = end_time - start_time
         update_usage_tracking(duration)
         
+        if transcript:
+            st.success(f"✅ Transcription complete! ({len(transcript)} characters)")
+            
         return transcript
         
     except Exception as e:
         st.error(f"Transcription error: {str(e)}")
+        # Provide more specific error messages for common issues
+        if "ffmpeg" in str(e).lower():
+            st.error("Audio processing error. Please ensure the file is a valid audio format.")
+        elif "permission" in str(e).lower():
+            st.error("File permission error. Please try uploading the file again.")
         return ""
 
 def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Extract key insights and wisdom from a transcript"""
+    # Start timing for usage tracking
+    start_time = time.time()
+    
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["wisdom"]
+        prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
         
-        # Combine with knowledge base if available
+        # Include knowledge base context if available
         if knowledge_base:
-            system_prompt = f"{prompt}\n\nUSER KNOWLEDGE BASE:\n{knowledge_base}"
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in knowledge_base.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis:
+
+{knowledge_context}
+
+When analyzing the content, please incorporate these perspectives and guidelines.
+
+Original Prompt:
+{prompt}"""
         else:
             system_prompt = prompt
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if not client:
+            openai_client = get_openai_client()
+            if not openai_client:
                 return "Error: OpenAI API key is not configured."
                 
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -1707,11 +1658,11 @@ def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledg
             result = response.choices[0].message.content
             
         elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if not client:
+            anthropic_client = get_anthropic_client()
+            if not anthropic_client:
                 return "Error: Anthropic API key is not configured."
                 
-            response = client.messages.create(
+            response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
@@ -1738,43 +1689,55 @@ def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledg
                 ]
             }
             response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
+                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
                 headers=headers,
                 json=payload
             )
             result = response.json()["choices"][0]["message"]["content"]
-            
-        else:
-            return "Error: Invalid AI provider selected."
+        
+        # Update usage tracking
+        end_time = time.time()
+        duration = end_time - start_time
+        update_usage_tracking(duration)
         
         return result
+        
     except Exception as e:
-        st.error(f"Error extracting wisdom with {ai_provider} {model}: {str(e)}")
+        st.error(f"Analysis error with {ai_provider} {model}: {str(e)}")
         return None
 
 def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create a structured outline based on transcript and wisdom"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["outline"]
+        prompt = custom_prompt or DEFAULT_PROMPTS["outline_creation"]
         
-        # Combine with knowledge base if available
+        # Include knowledge base context if available
         if knowledge_base:
-            system_prompt = f"{prompt}\n\nUSER KNOWLEDGE BASE:\n{knowledge_base}"
+            knowledge_context = "\n\n".join([
+                f"## {name}\n{content}" 
+                for name, content in knowledge_base.items()
+            ])
+            system_prompt = f"""Use the following knowledge base to inform your analysis:
+
+{knowledge_context}
+
+When creating the outline, please incorporate these perspectives and guidelines.
+
+Original Prompt:
+{prompt}"""
         else:
             system_prompt = prompt
         
-        # Combine transcript and wisdom for context
-        content = f"TRANSCRIPT EXCERPT:\n{transcript[:1000]}...\n\nWISDOM EXTRACTED:\n{wisdom}"
+        # Combine transcript and wisdom for better context
+        content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if not client:
+            openai_client = get_openai_client()
+            if not openai_client:
                 return "Error: OpenAI API key is not configured."
                 
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -1785,11 +1748,11 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None,
             return response.choices[0].message.content
             
         elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if not client:
+            anthropic_client = get_anthropic_client()
+            if not anthropic_client:
                 return "Error: Anthropic API key is not configured."
                 
-            response = client.messages.create(
+            response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
@@ -1804,6 +1767,7 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None,
                 
             headers = {
                 "Authorization": f"Bearer {grok_api_key}",
+                "Authorization": f"Bearer {GROK_API_KEY}",
                 "Content-Type": "application/json"
             }
             payload = {
@@ -1819,11 +1783,8 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None,
                 json=payload
             )
             return response.json()["choices"][0]["message"]["content"]
-            
-        else:
-            return "Error: Invalid AI provider selected."
     except Exception as e:
-        st.error(f"Error creating outline with {ai_provider} {model}: {str(e)}")
+        st.error(f"Error creating social content with {ai_provider} {model}: {str(e)}")
         return None
 
 def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
@@ -1831,27 +1792,15 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["image_prompts"]
         
-        # Combine with knowledge base if available
-        if knowledge_base:
-            system_prompt = f"{prompt}\n\nUSER KNOWLEDGE BASE:\n{knowledge_base}"
-        else:
-            system_prompt = prompt
-        
         # Combine wisdom and outline for context
         content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if client is None:
-                return "Error: OpenAI API key is not configured. Please set up your API key in the API Keys page."
-                
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": content}
                 ],
                 max_tokens=1000
@@ -1859,31 +1808,23 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
             return response.choices[0].message.content
             
         elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if client is None:
-                return "Error: Anthropic API key is not configured. Please set up your API key in the API Keys page."
-                
-            response = client.messages.create(
+            response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=1000,
-                system=system_prompt,
+                system=prompt,
                 messages=[{"role": "user", "content": content}]
             )
             return response.content[0].text
             
         elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                return "Error: Grok API key is not configured."
-                
             headers = {
-                "Authorization": f"Bearer {grok_api_key}",
+                "Authorization": f"Bearer {GROK_API_KEY}",
                 "Content-Type": "application/json"
             }
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": content}
                 ]
             }
@@ -1893,9 +1834,6 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
                 json=payload
             )
             return response.json()["choices"][0]["message"]["content"]
-        
-        else:
-            return "Error: Invalid AI provider selected."
     except Exception as e:
         st.error(f"Error creating image prompts with {ai_provider} {model}: {str(e)}")
         return None
@@ -1903,29 +1841,19 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
 def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Write a full article based on the outline and content"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["article"]
-        
-        # Combine with knowledge base if available
-        if knowledge_base:
-            system_prompt = f"{prompt}\n\nUSER KNOWLEDGE BASE:\n{knowledge_base}"
-        else:
-            system_prompt = prompt
+        prompt = custom_prompt or """Write a comprehensive, engaging article based on the provided outline and wisdom.
+        Include an introduction, developed sections following the outline, and a conclusion.
+        Maintain a conversational yet authoritative tone."""
         
         # Combine all content for context
         content = f"TRANSCRIPT EXCERPT:\n{transcript[:1000]}...\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if client is None:
-                return "Error: OpenAI API key is not configured. Please set up your API key in the API Keys page."
-                
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": content}
                 ],
                 max_tokens=2500
@@ -1933,31 +1861,23 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
             return response.choices[0].message.content
             
         elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if client is None:
-                return "Error: Anthropic API key is not configured. Please set up your API key in the API Keys page."
-                
-            response = client.messages.create(
+            response = anthropic_client.messages.create(
                 model=model,
                 max_tokens=2500,
-                system=system_prompt,
+                system=prompt,
                 messages=[{"role": "user", "content": content}]
             )
             return response.content[0].text
             
         elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                return "Error: Grok API key is not configured."
-                
             headers = {
-                "Authorization": f"Bearer {grok_api_key}",
+                "Authorization": f"Bearer {GROK_API_KEY}",
                 "Content-Type": "application/json"
             }
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": content}
                 ]
             }
@@ -1967,9 +1887,6 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
                 json=payload
             )
             return response.json()["choices"][0]["message"]["content"]
-        
-        else:
-            return "Error: Invalid AI provider selected."
     except Exception as e:
         st.error(f"Error writing article with {ai_provider} {model}: {str(e)}")
         return None
@@ -1977,54 +1894,35 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
 def generate_seo_metadata(content, title):
     """Generate SEO metadata for the content"""
     try:
-        client = get_openai_client()
-        if client is None:
-            return {}
-            
-        api_key = get_api_key_for_service("openai")
-        prompt = """Create SEO metadata for the given content. Return the metadata in a structured format including:
-        - A list of 5-8 keywords or phrases
-        - A meta description (155 characters max)
-        - A suggested URL slug
-        - Three possible alternate titles for A/B testing
-        """
-        
-        content_sample = content[:1500] if content else ""
-        
-        response = client.ChatCompletion.create(
-            api_key=api_key,
+        prompt = f"""As an SEO expert, analyze this content and generate essential SEO metadata:
+
+Content Title: {title}
+Content Preview: {content[:1000]}...
+
+Please provide:
+1. SEO-optimized title (50-60 chars)
+2. Meta description (150-160 chars)
+3. Primary keyword
+4. 3-4 secondary keywords
+5. Recommended URL slug
+6. Schema type recommendation
+
+Format as JSON."""
+
+        response = openai_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Title: {title}\n\nContent sample: {content_sample}..."}
+                {"role": "system", "content": "You are an SEO expert that provides metadata in JSON format."},
+                {"role": "user", "content": prompt}
             ],
-            max_tokens=500
+            max_tokens=500,
+            temperature=0.3
         )
         
-        metadata_text = response.choices[0].message.content
-        
-        # Parse the response to extract metadata
-        metadata = {}
-        sections = metadata_text.split("\n\n")
-        for section in sections:
-            if "keywords" in section.lower():
-                metadata["keywords"] = [k.strip() for k in section.split("\n")[1:] if k.strip()]
-            elif "meta description" in section.lower():
-                desc_line = [line for line in section.split("\n") if line.strip() and "meta description" not in line.lower()]
-                if desc_line:
-                    metadata["description"] = desc_line[0].strip()
-            elif "slug" in section.lower():
-                slug_line = [line for line in section.split("\n") if line.strip() and "slug" not in line.lower()]
-                if slug_line:
-                    metadata["slug"] = slug_line[0].strip()
-            elif "alternate titles" in section.lower():
-                metadata["alt_titles"] = [t.strip() for t in section.split("\n")[1:] if t.strip()]
-        
-        return metadata
-        
+        return response.choices[0].message.content
     except Exception as e:
         st.error(f"Error generating SEO metadata: {str(e)}")
-        return {}
+        return None
 
 def process_all_content(text, ai_provider, model, knowledge_base=None):
     """Process all content stages at once"""
@@ -2053,13 +1951,7 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
         
         # Generate social content
         status_text.text("Generating social media content...")
-        try:
-            results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-            if results['social_posts'] is None:
-                results['social_posts'] = "Error generating social content. Please check your API configuration."
-        except Exception as e:
-            st.error(f"Error generating social content: {str(e)}")
-            results['social_posts'] = "Error generating social content. Please check your API configuration."
+        results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
         progress_bar.progress(0.6)
         
         # Generate image prompts
@@ -2081,30 +1973,16 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
 
 def main():
     # Initialize session state variables
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
     if 'user_id' not in st.session_state:
         st.session_state.user_id = None
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
     if 'page' not in st.session_state:
-        st.session_state.page = 'main'
-    if 'show_cookie_banner' not in st.session_state:
-        st.session_state.show_cookie_banner = True
+        st.session_state.page = "main"
     if 'transcription' not in st.session_state:
         st.session_state.transcription = ""
-    if 'input_text' not in st.session_state:
-        st.session_state.input_text = ""
     if 'wisdom' not in st.session_state:
         st.session_state.wisdom = ""
-    if 'outline' not in st.session_state:
-        st.session_state.outline = ""
-    if 'social_posts' not in st.session_state:
-        st.session_state.social_posts = ""
-    if 'article' not in st.session_state:
-        st.session_state.article = ""
-    if 'image_prompts' not in st.session_state:
-        st.session_state.image_prompts = ""
-    if 'title' not in st.session_state:
-        st.session_state.title = ""
     if 'audio_file' not in st.session_state:
         st.session_state.audio_file = None
     if 'ai_provider' not in st.session_state:
@@ -2112,27 +1990,7 @@ def main():
     if 'ai_model' not in st.session_state:
         st.session_state.ai_model = None
     
-    # Add debugging for proxy environment
-    if os.getenv("DEBUG", "false").lower() == "true":
-        st.sidebar.expander("Debug Info", expanded=False).write(
-            f"""
-            ## Environment Variables
-            - OPENAI_API_KEY: {'Set' if os.getenv('OPENAI_API_KEY') else 'Not Set'}
-            - ANTHROPIC_API_KEY: {'Set' if os.getenv('ANTHROPIC_API_KEY') else 'Not Set'}
-            - NOTION_API_KEY: {'Set' if os.getenv('NOTION_API_KEY') else 'Not Set'}
-            - GROK_API_KEY: {'Set' if os.getenv('GROK_API_KEY') else 'Not Set'}
-            
-            ## Proxy Settings
-            {', '.join([f"{k}: {v}" for k, v in check_proxy_environment().items()]) or "No proxy settings found"}
-            
-            ## Package Versions
-            - OpenAI: {OpenAI.__version__ if hasattr(OpenAI, '__version__') else 'Unknown'}
-            - Anthropic: {Anthropic.__version__ if hasattr(Anthropic, '__version__') else 'Unknown'}
-            - Requests: {requests.__version__ if hasattr(requests, '__version__') else 'Unknown'}
-            """
-        )
-    
-    # Apply CSS styles
+    # Apply the improved cyberpunk theme
     local_css()
     
     # Authentication handling
@@ -2174,32 +2032,6 @@ def main():
         show_api_keys_page()
     elif st.session_state.page == "usage":
         show_usage_page()
-    elif st.session_state.page == "admin":
-        show_admin_page()
-    elif st.session_state.page == "legal":
-        show_legal_page()
-    
-    # Show cookie consent banner if necessary
-    if st.session_state.show_cookie_banner:
-        cookie_banner_html = """
-        <div class="cookie-banner">
-            <div>
-                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
-                <a href="/?page=legal">Learn more</a>
-            </div>
-            <div class="cookie-banner-buttons">
-                <button onclick="document.querySelector('.cookie-banner').style.display='none'; localStorage.setItem('cookies_accepted', 'true');">
-                    Accept
-                </button>
-            </div>
-        </div>
-        <script>
-            if (localStorage.getItem('cookies_accepted') === 'true') {
-                document.querySelector('.cookie-banner').style.display = 'none';
-            }
-        </script>
-        """
-        st.markdown(cookie_banner_html, unsafe_allow_html=True)
 
 def show_main_page():
     # This function contains the original main app functionality
@@ -2231,25 +2063,15 @@ def show_main_page():
         ai_provider = st.selectbox(
             "AI Provider", 
         options=providers,
-        key="ai_provider_select"
+            key="ai_provider_select",
+            on_change=lambda: setattr(st.session_state, 'ai_model', None)  # Reset model when provider changes
         )
         st.session_state.ai_provider = ai_provider
         
-    # Simple model selection based on provider
-    if ai_provider == "OpenAI":
-        model_options = ["gpt-3.5-turbo", "gpt-4"]
-        default_model = "gpt-4"
-    elif ai_provider == "Anthropic":
-        model_options = ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"]
-        default_model = "claude-3-opus-20240229"
-    elif ai_provider == "Grok":
-        model_options = ["grok-1"]
-        default_model = "grok-1"
-    else:
-        model_options = ["gpt-4"]
-        default_model = "gpt-4"
-    
-    # AI Model selection in sidebar
+        # Fetch and display available models based on provider
+        available_models = get_available_models(ai_provider)
+        
+        # Model descriptions for helpful UI
         model_descriptions = {
             "gpt-4": "Most capable OpenAI model",
             "gpt-3.5-turbo": "Faster, cost-effective OpenAI model",
@@ -2259,11 +2081,16 @@ def show_main_page():
             "grok-1": "Grok's base model"
         }
         
+        # If no model is selected or previous model isn't in new provider's list, select first
+        if not st.session_state.ai_model or st.session_state.ai_model not in available_models:
+            if available_models:
+                st.session_state.ai_model = available_models[0]
+        
+        # AI Model selection in sidebar
         selected_model = st.selectbox(
             "AI Model",
-        options=model_options,
+            options=available_models,
             format_func=lambda x: f"{x}" + (f" ({model_descriptions[x]})" if x in model_descriptions else ""),
-        index=model_options.index(default_model) if default_model in model_options else 0,
             key="ai_model_select"
         )
         st.session_state.ai_model = selected_model
@@ -2283,339 +2110,8 @@ def show_main_page():
             help="Files up to 500MB are supported. Large files will be automatically chunked for processing."
         )
         
-        # Display custom message about automatic chunking for large files
-        st.info("Large files are automatically chunked for optimal processing.")
-        
-        # Show buttons and audio player if file is uploaded
-    if uploaded_file is not None:
-            # Display audio player
-        st.audio(uploaded_file)
-        
-            # Create columns for buttons
-            col1, col2 = st.columns(2)
-        
-            # Add the Transcribe Audio button
-            if col1.button("Transcribe Audio", key="transcribe_button"):
-            with st.spinner("Transcribing audio..."):
-                    st.session_state.transcription = transcribe_audio(uploaded_file)
-                    st.session_state.audio_file = uploaded_file
-                    st.success("Transcription complete!")
-            
-            # Add the "I'm Feeling Lucky" button
-            if col2.button("I'm Feeling Lucky", key="lucky_button"):
-                with st.spinner("Processing audio with default settings..."):
-                    # Transcribe the audio
-                    st.session_state.transcription = transcribe_audio(uploaded_file)
-                    st.session_state.audio_file = uploaded_file
-                    
-                    # Process with AI to extract wisdom, etc.
-    if st.session_state.transcription:
-                        # Generate additional content
-                        with st.spinner("Generating content..."):
-                            result = process_all_content(
-                                st.session_state.transcription,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                            if result:
-                                # Update session state with results
-                                st.session_state.wisdom = result['wisdom']
-                                st.session_state.outline = result['outline']
-                                st.session_state.social_posts = result['social_posts']
-                                st.session_state.image_prompts = result['image_prompts']
-                                st.session_state.article = result['article']
-                        
-                        st.success("Processing complete!")
-    
-    # Tab 2: Text Input
-    with input_tabs[1]:
-        st.markdown('<div class="section-header">Text Input</div>', unsafe_allow_html=True)
-        
-        # Text area for direct input
-        text_input = st.text_area(
-            "Enter your text", 
-            value=st.session_state.input_text,
-            height=250,
-            placeholder="Paste your transcript or text to analyze here...",
-            help="Enter the text you want to process with AI.",
-            key="text_input_area"
-        )
-        # Store the input text in session state
-        st.session_state.input_text = text_input
-        
-        # Create columns for buttons
-        col1, col2 = st.columns(2)
-        
-        # Add the Process Text button
-        if col1.button("Process Text", key="process_text_button"):
-            if text_input.strip():
-                with st.spinner("Processing text..."):
-                    st.session_state.transcription = text_input
-                    # Store in input_text for consistency
-                    st.session_state.input_text = text_input
-                        st.session_state.wisdom = generate_wisdom(
-                        text_input,
-                            st.session_state.ai_provider, 
-                        st.session_state.ai_model
-                    )
-                    st.success("Processing complete!")
-            else:
-                st.warning("Please enter some text to process.")
-        
-        # Add the Full Content Generation button
-        if col2.button("Generate Full Content", key="generate_content_button"):
-            if text_input.strip():
-                with st.spinner("Generating comprehensive content..."):
-                    st.session_state.transcription = text_input
-                    # Store in input_text for consistency
-                    st.session_state.input_text = text_input
-                    # Process with AI to extract wisdom, outline, etc.
-                    result = process_all_content(
-                        text_input,
-                        st.session_state.ai_provider,
-                        st.session_state.ai_model
-                    )
-                    if result:
-                        # Update session state with results
-                        st.session_state.wisdom = result['wisdom']
-                        st.session_state.outline = result['outline']
-                        st.session_state.social_posts = result['social_posts']
-                        st.session_state.image_prompts = result['image_prompts']
-                        st.session_state.article = result['article']
-                    st.success("Content generation complete!")
-            else:
-                st.warning("Please enter some text to process.")
-
-    # Add a section divider
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    
-    # Display Results Section (shown after either audio transcription or text input is processed)
-    if st.session_state.transcription or st.session_state.input_text:
-        st.markdown('<div class="section-header">Results</div>', unsafe_allow_html=True)
-        
-        # Create tabs for different result sections
-        result_tabs = st.tabs(["Transcription", "Wisdom", "Outline", "Social Content", "Article", "Image Prompts"])
-        
-        # Tab 1: Transcription
-        with result_tabs[0]:
-            st.markdown("### Transcription")
-            if st.session_state.transcription:
-                st.markdown(st.session_state.transcription)
-            elif st.session_state.input_text:
-                st.markdown(st.session_state.input_text)
-        
-        # Tab 2: Wisdom
-        with result_tabs[1]:
-            st.markdown("### Extracted Wisdom & Insights")
-            if 'wisdom' in st.session_state and st.session_state.wisdom:
-                st.markdown(st.session_state.wisdom)
-            else:
-                st.info("Process the content to extract wisdom and insights.")
-                if st.button("Extract Wisdom"):
-                    with st.spinner("Extracting wisdom..."):
-                        input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                        st.session_state.wisdom = generate_wisdom(
-                            input_content,
-                            st.session_state.ai_provider,
-                            st.session_state.ai_model
-                        )
-                    st.success("Wisdom extracted!")
-                    st.rerun()
-        
-        # Tab 3: Outline
-        with result_tabs[2]:
-            st.markdown("### Content Outline")
-            if 'outline' in st.session_state and st.session_state.outline:
-                st.markdown(st.session_state.outline)
-            else:
-                st.info("Generate an outline based on the transcription.")
-                if st.button("Generate Outline"):
-                    if 'wisdom' not in st.session_state or not st.session_state.wisdom:
-                        with st.spinner("Extracting wisdom first..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.wisdom = generate_wisdom(
-                                input_content,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                        
-                        with st.spinner("Creating outline..."):
-                        input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.outline = generate_outline(
-                            input_content,
-                                st.session_state.wisdom,
-                                st.session_state.ai_provider,
-                            st.session_state.ai_model
-                        )
-                    st.success("Outline created!")
-                    st.rerun()
-        
-        # Tab 4: Social Content
-        with result_tabs[3]:
-            st.markdown("### Social Media Content")
-            if 'social_posts' in st.session_state and st.session_state.social_posts:
-                st.markdown(st.session_state.social_posts)
-            else:
-                st.info("Generate social media posts based on the content.")
-                    if st.button("Generate Social Posts"):
-                    # Ensure we have wisdom and outline first
-                    if 'wisdom' not in st.session_state or not st.session_state.wisdom:
-                        with st.spinner("Extracting wisdom first..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.wisdom = generate_wisdom(
-                                input_content,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    if 'outline' not in st.session_state or not st.session_state.outline:
-                        with st.spinner("Creating outline..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.outline = generate_outline(
-                                input_content,
-                                st.session_state.wisdom,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    with st.spinner("Generating social media content..."):
-                                st.session_state.social_posts = generate_social_content(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                            st.session_state.ai_model
-                        )
-                    st.success("Social posts created!")
-                    st.rerun()
-        
-        # Tab 5: Article
-        with result_tabs[4]:
-            st.markdown("### Full Article")
-            if 'article' in st.session_state and st.session_state.article:
-                st.markdown(st.session_state.article)
-            else:
-                st.info("Generate a complete article based on the transcription and outline.")
-                if st.button("Generate Article"):
-                    # Ensure we have wisdom and outline first
-                    if 'wisdom' not in st.session_state or not st.session_state.wisdom:
-                        with st.spinner("Extracting wisdom first..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.wisdom = generate_wisdom(
-                                input_content,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    if 'outline' not in st.session_state or not st.session_state.outline:
-                        with st.spinner("Creating outline..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.outline = generate_outline(
-                                input_content,
-                                st.session_state.wisdom,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    with st.spinner("Writing article..."):
-                        input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                        st.session_state.article = generate_article(
-                            input_content,
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                            st.session_state.ai_model
-                        )
-                    st.success("Article created!")
-                    st.rerun()
-        
-        # Tab 6: Image Prompts
-        with result_tabs[5]:
-            st.markdown("### Image Generation Prompts")
-            if 'image_prompts' in st.session_state and st.session_state.image_prompts:
-                st.markdown(st.session_state.image_prompts)
-            else:
-                st.info("Generate prompts for image creation based on the content.")
-                if st.button("Generate Image Prompts"):
-                    # Ensure we have wisdom and outline first
-                    if 'wisdom' not in st.session_state or not st.session_state.wisdom:
-                        with st.spinner("Extracting wisdom first..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.wisdom = generate_wisdom(
-                                input_content,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    if 'outline' not in st.session_state or not st.session_state.outline:
-                        with st.spinner("Creating outline..."):
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.outline = generate_outline(
-                                input_content,
-                                st.session_state.wisdom,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                    
-                    with st.spinner("Creating image prompts..."):
-                        st.session_state.image_prompts = generate_image_prompts(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                            st.session_state.ai_model
-                        )
-                    st.success("Image prompts created!")
-                    st.rerun()
-        
-        # Notion Export Option
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        notion_col1, notion_col2 = st.columns([3, 1])
-        
-        with notion_col1:
-            st.markdown("### Export to Notion")
-            st.markdown("Save all your processed content directly to your Notion database.")
-        
-        with notion_col2:
-            if st.button("Export to Notion"):
-                # Check if Notion API key is configured
-                api_keys = get_user_api_keys()
-                notion_key = api_keys.get("notion")
-                notion_db_id = api_keys.get("notion_database_id")
-                
-                if not notion_key or not notion_db_id:
-                    st.error("Notion API key or database ID not configured. Please set it up in the API Keys page.")
-                else:
-                    with st.spinner("Exporting to Notion..."):
-                        # Generate a title if not already done
-                        if 'title' not in st.session_state or not st.session_state.title:
-                            input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                            st.session_state.title = generate_short_title(
-                                input_content,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model
-                            )
-                        
-                        # Export to Notion
-                        input_content = st.session_state.transcription if st.session_state.transcription else st.session_state.input_text
-                        
-                        # Get title from session state
-                        title = st.session_state.title if 'title' in st.session_state else ""
-                        
-                        # Call the Notion export function with all parameters
-                        page_url = create_content_notion_entry(
-                        title,
-                            input_content,
-                            wisdom=st.session_state.wisdom if 'wisdom' in st.session_state else "",
-                            outline=st.session_state.outline if 'outline' in st.session_state else "",
-                            social_content=st.session_state.social_posts if 'social_posts' in st.session_state else "",
-                            image_prompts=st.session_state.image_prompts if 'image_prompts' in st.session_state else "",
-                            article=st.session_state.article if 'article' in st.session_state else ""
-                        )
-                        
-                        if page_url:
-                            st.success(f"Content exported to Notion successfully!")
-                            st.markdown(f"[View in Notion]({page_url})")
-                    else:
-                            st.error("Failed to export to Notion. Please check your API key and database ID.")
+        # Rest of the audio upload tab functionality
+        # ...
 
 def show_api_keys_page():
     st.markdown("## API Keys Management")
@@ -2716,8 +2212,8 @@ def show_usage_page():
     
     if not user:
         st.error("Error retrieving user data")
-        return
-    
+                        return
+                        
     # User info section
     st.markdown("### Account Information")
     st.write(f"**Email:** {user['email']}")
@@ -2976,15 +2472,11 @@ def update_usage_tracking(duration_seconds):
 DEFAULT_PROMPTS = {
     "wisdom_extraction": """Extract key insights, lessons, and wisdom from the transcript. Focus on actionable takeaways and profound realizations.""",
     
-    "wisdom": """Extract key insights, lessons, and wisdom from the transcript. Focus on actionable takeaways and profound realizations.""",
-    
     "summary": """## Summary
 Create a concise summary of the main points and key messages in the transcript.
 Capture the essence of the content in a few paragraphs.""",
     
     "outline_creation": """Create a detailed outline for an article or blog post based on the transcript and extracted wisdom. Include major sections and subsections.""",
-    
-    "outline": """Create a detailed outline for an article or blog post based on the transcript and extracted wisdom. Include major sections and subsections.""",
     
     "social_media": """Generate engaging social media posts for different platforms (Twitter, LinkedIn, Instagram) based on the key insights.""",
     
@@ -2992,15 +2484,31 @@ Capture the essence of the content in a few paragraphs.""",
     
     "article_writing": """Write a comprehensive article based on the provided outline and wisdom. Maintain a clear narrative flow and engaging style.""",
     
-    "article": """Write a comprehensive article based on the provided outline and wisdom. Maintain a clear narrative flow and engaging style.""",
-    
     "seo_analysis": """Analyze the content from an SEO perspective and provide optimization recommendations for better search visibility while maintaining content quality."""
 }
 
-# Set up security headers (disabled for local testing)
+# Set up security headers
 def add_security_headers(app):
-    """Skip security headers for local development"""
-    # This is a stub function that will be implemented for production
+    async def security_headers_middleware(next_handler, request):
+        response = await next_handler(request)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://*.openai.com https://*.anthropic.com https://*.notion.so; "
+            "frame-src 'self'; "
+            "font-src 'self' https://cdn.jsdelivr.net; "
+        )
+        return response
+    
+    app.add_middleware(security_headers_middleware)
+    
     return app
 
 # Add extended CSS for production look and feel
@@ -3376,79 +2884,138 @@ def show_legal_page():
         If you have questions about our privacy practices, please contact us at privacy@whisperforge.ai.
         """)
 
-def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Generate social media content based on wisdom and outline"""
-    try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["social_media"]
+# Initialize the app with additional security
+def main():
+    # Set page config for production
+    st.set_page_config(
+        page_title="WhisperForge",
+        page_icon="🎙️",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
+    
+    # Apply production CSS enhancements
+    add_production_css()
+    
+    # Initialize database and create admin user if needed
+    init_db()
+    init_admin_user()
+    
+    # Initialize session state variables
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = None
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'page' not in st.session_state:
+        st.session_state.page = "main"
+    if 'show_cookie_banner' not in st.session_state:
+        st.session_state.show_cookie_banner = True
+    if 'transcription' not in st.session_state:
+        st.session_state.transcription = ""
+    if 'wisdom' not in st.session_state:
+        st.session_state.wisdom = ""
+    if 'audio_file' not in st.session_state:
+        st.session_state.audio_file = None
+    if 'ai_provider' not in st.session_state:
+        st.session_state.ai_provider = "OpenAI"
+    if 'ai_model' not in st.session_state:
+        st.session_state.ai_model = None
+    
+    # Apply the improved cyberpunk theme
+    local_css()
+    
+    # Authentication handling
+    if not st.session_state.authenticated:
+        show_login_page()
+        return
+    
+    # Create a custom header with the refined styling
+    st.markdown(f"""
+    <div class="header-container">
+        <div class="header-title">WhisperForge // Control_Center</div>
+        <div class="header-date">{datetime.now().strftime('%a %d %b %Y · %H:%M')}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar configuration
+    with st.sidebar:
+        st.markdown('<div class="section-header">Configuration</div>', unsafe_allow_html=True)
         
-        # Combine with knowledge base if available
-        if knowledge_base:
-            system_prompt = f"{prompt}\n\nUSER KNOWLEDGE BASE:\n{knowledge_base}"
-        else:
-            system_prompt = prompt
+        # Account section with logout
+        show_account_sidebar()
         
-        # Combine wisdom and outline for context
-        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
+        # Navigation
+        st.markdown("### Navigation")
+        if st.button("🏠 Home"):
+            st.session_state.page = "main"
+            st.rerun()
+        if st.button("🔑 API Keys"):
+            st.session_state.page = "api_keys"
+            st.rerun()
+        if st.button("📊 Usage"):
+            st.session_state.page = "usage"
+            st.rerun()
         
-        # Use the selected AI provider and model
-        if ai_provider == "OpenAI":
-            client = get_openai_client()
-            if client is None:
-                return "Error: OpenAI API key is not configured. Please set up your API key in the API Keys page."
-                
-            api_key = get_api_key_for_service("openai")
-            response = client.ChatCompletion.create(
-                api_key=api_key,
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": content}
-                ],
-                max_tokens=1200
-            )
-            return response.choices[0].message.content
-            
-        elif ai_provider == "Anthropic":
-            client = get_anthropic_client()
-            if client is None:
-                return "Error: Anthropic API key is not configured. Please set up your API key in the API Keys page."
-                
-            response = client.messages.create(
-                model=model,
-                max_tokens=1200,
-                system=system_prompt,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
-            
-        elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                return "Error: Grok API key is not configured."
-                
-            headers = {
-                "Authorization": f"Bearer {grok_api_key}",
-                "Content-Type": "application/json"
+        # Check if user is admin
+        conn = get_db_connection()
+        is_admin = conn.execute(
+            "SELECT is_admin FROM users WHERE id = ?",
+            (st.session_state.user_id,)
+        ).fetchone()
+        conn.close()
+        
+        # Show admin button if user is admin
+        if is_admin and is_admin[0]:
+            if st.button("⚙️ Admin"):
+                st.session_state.page = "admin"
+                st.rerun()
+        
+        # Footer links
+        st.markdown("---")
+        st.markdown("### About")
+        if st.button("📜 Terms & Privacy"):
+            st.session_state.page = "legal"
+            st.rerun()
+        st.markdown("[🌐 Website](https://whisperforge.ai)")
+        st.markdown("[📧 Support](mailto:support@whisperforge.ai)")
+        
+        # Version info
+        st.markdown("---")
+        st.markdown("WhisperForge v1.0.0")
+    
+    # Show different pages based on selection
+    if st.session_state.page == "main":
+        show_main_page()
+    elif st.session_state.page == "api_keys":
+        show_api_keys_page()
+    elif st.session_state.page == "usage":
+        show_usage_page()
+    elif st.session_state.page == "admin":
+        show_admin_page()
+    elif st.session_state.page == "legal":
+        show_legal_page()
+    
+    # Show cookie consent banner if necessary
+    if st.session_state.show_cookie_banner:
+        cookie_banner_html = """
+        <div class="cookie-banner">
+            <div>
+                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
+                <a href="/?page=legal">Learn more</a>
+            </div>
+            <div class="cookie-banner-buttons">
+                <button onclick="document.querySelector('.cookie-banner').style.display='none'; localStorage.setItem('cookies_accepted', 'true');">
+                    Accept
+                </button>
+            </div>
+        </div>
+        <script>
+            if (localStorage.getItem('cookies_accepted') === 'true') {
+                document.querySelector('.cookie-banner').style.display = 'none';
             }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
-        
-        else:
-            return "Error: Invalid AI provider selected."
-    except Exception as e:
-        st.error(f"Error generating social content with {ai_provider} {model}: {str(e)}")
-        return None
+        </script>
+        """
+        st.markdown(cookie_banner_html, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main() 
