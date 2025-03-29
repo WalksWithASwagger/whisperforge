@@ -32,3 +32,4 @@ ODDSNENDS/
 # User uploads and generated content
 uploads/
 audio_chunks/
+whisperforge.log
