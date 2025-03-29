@@ -1,0 +1,1 @@
+Generate engaging social media posts for different platforms (Twitter, LinkedIn, Instagram) b ased on the key insights in the badass thought leadership style and deep sassy swagger of me Kris Krüg.

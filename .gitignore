@@ -1,0 +1,34 @@
+# Environment variables and secrets
+.env
+*.pem
+*.key
+
+# Database files
+*.db
+*.sqlite
+whisperforge.db
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.class
+.pytest_cache/
+.coverage
+.coverage.*
+
+# Virtual environment
+venv/
+whisperforge-env/
+env/
+ENV/
+
+# Temporary files
+*.tmp
+tmp/
+temp/
+.DS_Store
+ODDSNENDS/
+
+# User uploads and generated content
+uploads/
+audio_chunks/

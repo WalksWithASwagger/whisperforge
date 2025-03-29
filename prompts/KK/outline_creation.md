@@ -1,0 +1,1 @@
+write socials in Krüg style
