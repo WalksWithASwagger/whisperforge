@@ -1914,9 +1914,13 @@ def transcribe_audio(audio_file):
         return ""
 
 def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Extract key insights and wisdom from a transcript"""
+    """Extract key insights and wisdom from a transcript with streaming output"""
     # Start timing for usage tracking
     start_time = time.time()
+    
+    # Create a placeholder for streaming output
+    stream_container = st.empty()
+    stream_content = ""
     
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
@@ -1938,59 +1942,88 @@ Original Prompt:
         else:
             system_prompt = prompt
         
+        # Display initial message
+        stream_container.markdown("Generating wisdom...")
+        
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
             openai_client = get_openai_client()
             if not openai_client:
                 return "Error: OpenAI API key is not configured."
                 
+            # Stream response from OpenAI
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
                 ],
-                max_tokens=1500
+                max_tokens=1500,
+                stream=True
             )
-            result = response.choices[0].message.content
+            
+            result = ""
+            # Process the streaming response
+            for chunk in response:
+                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content is not None:
+                    content_chunk = chunk.choices[0].delta.content
+                    result += content_chunk
+                    stream_content += content_chunk
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Anthropic":
             anthropic_client = get_anthropic_client()
             if not anthropic_client:
                 return "Error: Anthropic API key is not configured."
                 
-            response = anthropic_client.messages.create(
+            # Stream response from Anthropic
+            with anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
                 ]
-            )
-            result = response.content[0].text
+            ) as stream:
+                result = ""
+                for text in stream.text_stream:
+                    result += text
+                    stream_content += text
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Grok":
             grok_api_key = get_grok_api_key()
             if not grok_api_key:
                 return "Error: Grok API key is not configured."
-                
+
+            # Grok doesn't support streaming yet, so we use a progress display
             headers = {
                 "Authorization": f"Bearer {grok_api_key}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": model,
+                "model": "grok-1",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
                 ]
             }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
-                headers=headers,
-                json=payload
-            )
-            result = response.json()["choices"][0]["message"]["content"]
+            
+            # Show a progress indicator
+            with st.spinner("Generating wisdom with Grok (this may take a moment)..."):
+                response = requests.post(
+                    "https://api.grok.x.ai/v1/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                result = response.json()["choices"][0]["message"]["content"]
+                # Display the complete result
+                stream_container.markdown(result)
+        
+        # Clear the streaming container when done
+        stream_container.empty()
         
         # Update usage tracking
         end_time = time.time()
@@ -2000,11 +2033,19 @@ Original Prompt:
         return result
         
     except Exception as e:
-        st.error(f"Analysis error with {ai_provider} {model}: {str(e)}")
-        return None
+        logger.exception("Error in wisdom generation:")
+        stream_container.error(f"Error: {str(e)}")
+        return f"Error generating wisdom: {str(e)}"
 
 def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Create a structured outline based on transcript and wisdom"""
+    """Create a structured outline based on transcript and wisdom with streaming output"""
+    # Start timing for usage tracking
+    start_time = time.time()
+    
+    # Create a placeholder for streaming output
+    stream_container = st.empty()
+    stream_content = ""
+    
     try:
         prompt = custom_prompt or DEFAULT_PROMPTS["outline_creation"]
         
@@ -2028,34 +2069,56 @@ Original Prompt:
         # Combine transcript and wisdom for better context
         content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
         
+        # Display initial message
+        stream_container.markdown("Creating outline...")
+        
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
             openai_client = get_openai_client()
             if not openai_client:
                 return "Error: OpenAI API key is not configured."
                 
+            # Stream response from OpenAI
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": content}
                 ],
-                max_tokens=1500
+                max_tokens=1500,
+                stream=True
             )
-            return response.choices[0].message.content
+            
+            result = ""
+            # Process the streaming response
+            for chunk in response:
+                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content is not None:
+                    content_chunk = chunk.choices[0].delta.content
+                    result += content_chunk
+                    stream_content += content_chunk
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Anthropic":
             anthropic_client = get_anthropic_client()
             if not anthropic_client:
                 return "Error: Anthropic API key is not configured."
                 
-            response = anthropic_client.messages.create(
+            # Stream response from Anthropic
+            with anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
+                messages=[
+                    {"role": "user", "content": content}
+                ]
+            ) as stream:
+                result = ""
+                for text in stream.text_stream:
+                    result += text
+                    stream_content += text
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Grok":
             grok_api_key = get_grok_api_key()
@@ -2073,15 +2136,32 @@ Original Prompt:
                     {"role": "user", "content": content}
                 ]
             }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
+            
+            # Show a progress indicator
+            with st.spinner("Creating outline with Grok (this may take a moment)..."):
+                response = requests.post(
+                    "https://api.grok.x.ai/v1/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                result = response.json()["choices"][0]["message"]["content"]
+                # Display the complete result
+                stream_container.markdown(result)
+        
+        # Clear the streaming container when done
+        stream_container.empty()
+        
+        # Update usage tracking
+        end_time = time.time()
+        duration = end_time - start_time
+        update_usage_tracking(duration)
+        
+        return result
+        
     except Exception as e:
-        st.error(f"Error creating outline with {ai_provider} {model}: {str(e)}")
-        return None
+        logger.exception("Error in outline creation:")
+        stream_container.error(f"Error: {str(e)}")
+        return f"Error creating outline: {str(e)}"
 
 def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create descriptive image prompts based on wisdom and outline"""
@@ -2319,7 +2399,7 @@ def generate_seo_metadata(content, title):
         return None
 
 def process_all_content(text, ai_provider, model, knowledge_base=None):
-    """Process all content stages at once"""
+    """Process all content stages at once with detailed streaming progress"""
     try:
         results = {
             'wisdom': None,
@@ -2329,39 +2409,78 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
             'article': None
         }
         
+        # Main progress container
+        progress_container = st.empty()
+        progress_container.markdown("### Content Generation Progress")
+        
         # Sequential processing with progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
+        content_preview = st.empty()
         
         # Generate wisdom
-        status_text.text("Extracting wisdom...")
-        results['wisdom'] = generate_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
-        progress_bar.progress(0.2)
+        status_text.text("Step 1/5: Extracting wisdom...")
+        with st.status("Extracting key insights from your content...") as status:
+            results['wisdom'] = generate_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
+            if results['wisdom']:
+                progress_bar.progress(0.2)
+                status.update(label="✅ Wisdom extracted successfully!", state="complete")
+                content_preview.markdown(f"**Wisdom Preview:**\n{results['wisdom'][:300]}...")
+            else:
+                status.update(label="❌ Wisdom extraction failed.", state="error")
         
         # Generate outline
-        status_text.text("Creating outline...")
-        results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
-        progress_bar.progress(0.4)
+        status_text.text("Step 2/5: Creating outline...")
+        with st.status("Organizing content into a structured outline...") as status:
+            results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['outline']:
+                progress_bar.progress(0.4)
+                status.update(label="✅ Outline created successfully!", state="complete")
+                content_preview.markdown(f"**Outline Preview:**\n{results['outline'][:300]}...")
+            else:
+                status.update(label="❌ Outline creation failed.", state="error")
         
         # Generate social content
-        status_text.text("Generating social media content...")
-        results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-        progress_bar.progress(0.6)
+        status_text.text("Step 3/5: Generating social media content...")
+        with st.status("Creating social media posts from your content...") as status:
+            results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['social_posts']:
+                progress_bar.progress(0.6)
+                status.update(label="✅ Social media content generated!", state="complete")
+                content_preview.markdown(f"**Social Posts Preview:**\n{results['social_posts'][:300]}...")
+            else:
+                status.update(label="❌ Social content generation failed.", state="error")
         
         # Generate image prompts
-        status_text.text("Creating image prompts...")
-        results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-        progress_bar.progress(0.8)
+        status_text.text("Step 4/5: Creating image prompts...")
+        with st.status("Generating image description prompts...") as status:
+            results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['image_prompts']:
+                progress_bar.progress(0.8)
+                status.update(label="✅ Image prompts created successfully!", state="complete")
+                content_preview.markdown(f"**Image Prompts Preview:**\n{results['image_prompts'][:300]}...")
+            else:
+                status.update(label="❌ Image prompt creation failed.", state="error")
         
         # Generate article
-        status_text.text("Writing full article...")
-        results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-        progress_bar.progress(1.0)
+        status_text.text("Step 5/5: Writing full article...")
+        with st.status("Writing a complete article from your content...") as status:
+            results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['article']:
+                progress_bar.progress(1.0)
+                status.update(label="✅ Article written successfully!", state="complete")
+                content_preview.markdown(f"**Article Preview:**\n{results['article'][:300]}...")
+            else:
+                status.update(label="❌ Article generation failed.", state="error")
         
-        status_text.text("Content generation complete!")
+        status_text.text("🎉 Content generation complete!")
+        progress_container.markdown("### ✅ All content generated successfully!")
+        content_preview.empty()
+        
         return results
         
     except Exception as e:
+        logger.exception("Error in batch processing:")
         st.error(f"Error in batch processing: {str(e)}")
         return None
 
@@ -2423,6 +2542,10 @@ def main():
         
         # Account section with logout
         show_account_sidebar()
+        
+        # User Profile selection
+        st.markdown("### User Profile")
+        selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
         
         # Navigation
         st.markdown("### Navigation")
@@ -2500,7 +2623,7 @@ def main():
     # Display tool area if transcript is available
     if st.session_state.get("transcript"):
         with st.expander("🛠️ Tools", expanded=True):
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3 = st.columns(3)
             
             # First column - transcript actions
             with col1:
@@ -2518,28 +2641,6 @@ def main():
             with col2:
                 st.subheader("Wisdom")
                 
-                direct_wisdom_button = st.button("🧠 Direct Wisdom")
-                if direct_wisdom_button:
-                    with st.spinner("Generating wisdom directly..."):
-                        try:
-                            transcript = st.session_state.get("transcript", "")
-                            if transcript:
-                                wisdom = direct_anthropic_completion(
-                                    transcript, 
-                                    "Extract the key insights, lessons, and wisdom from this transcript. Format as bullet points."
-                                )
-                                if not wisdom.startswith("Error:"):
-                                    st.session_state.wisdom = wisdom
-                                    st.toast("Wisdom extracted successfully!")
-                                    st.experimental_rerun()
-                                else:
-                                    st.error(wisdom)
-                            else:
-                                st.error("No transcript available")
-                        except Exception as e:
-                            logger.exception("Error in direct wisdom generation:")
-                            st.error(f"Error generating wisdom: {str(e)}")
-                
                 if st.session_state.get("wisdom"):
                     if st.button("📝 Copy Wisdom"):
                         st.session_state.clipboard = st.session_state.wisdom
@@ -2554,28 +2655,6 @@ def main():
             with col3:
                 st.subheader("Outline")
                 
-                direct_outline_button = st.button("📋 Direct Outline")
-                if direct_outline_button:
-                    with st.spinner("Generating outline directly..."):
-                        try:
-                            transcript = st.session_state.get("transcript", "")
-                            if transcript:
-                                outline = direct_anthropic_completion(
-                                    transcript, 
-                                    "Create a detailed outline of this content, with hierarchical sections and subsections."
-                                )
-                                if not outline.startswith("Error:"):
-                                    st.session_state.outline = outline
-                                    st.toast("Outline created successfully!")
-                                    st.experimental_rerun()
-                                else:
-                                    st.error(outline)
-                            else:
-                                st.error("No transcript available")
-                        except Exception as e:
-                            logger.exception("Error in direct outline generation:")
-                            st.error(f"Error generating outline: {str(e)}")
-                
                 if st.session_state.get("outline"):
                     if st.button("📝 Copy Outline"):
                         st.session_state.clipboard = st.session_state.outline
@@ -2585,49 +2664,6 @@ def main():
                         st.session_state.file_to_save = "outline.txt"
                         st.session_state.content_to_save = st.session_state.outline
                         st.toast("Preparing outline for download...")
-            
-            # Fourth column - export actions
-            with col4:
-                st.subheader("Export")
-                
-                # Add Direct Save to Notion button
-                direct_notion_button = st.button("📕 Direct Notion Save")
-                if direct_notion_button:
-                    with st.spinner("Saving to Notion directly..."):
-                        try:
-                            title = st.session_state.get("file_name", "Untitled Audio")
-                            transcript = st.session_state.get("transcript", "")
-                            wisdom = st.session_state.get("wisdom", None)
-                            outline = st.session_state.get("outline", None)
-                            
-                            if transcript:
-                                result = direct_notion_save(
-                                    title=title,
-                                    transcript=transcript,
-                                    wisdom=wisdom,
-                                    outline=outline
-                                )
-                                
-                                if "error" not in result:
-                                    st.toast("Successfully saved to Notion!")
-                                    st.markdown(f"[Open in Notion]({result['url']})")
-                                else:
-                                    st.error(result["error"])
-                            else:
-                                st.error("No transcript available to save")
-                        except Exception as e:
-                            logger.exception("Error in direct Notion save:")
-                            st.error(f"Error saving to Notion: {str(e)}")
-                
-                # Normal Notion export button
-                if os.environ.get("NOTION_API_KEY") or st.session_state.get("NOTION_API_KEY"):
-                    if st.button("📘 Export to Notion"):
-                        with st.spinner("Exporting to Notion..."):
-                            try:
-                                export_to_notion()
-                            except Exception as e:
-                                logger.exception("Error exporting to Notion:")
-                                st.error(f"Error exporting to Notion: {str(e)}")
     
     # ... existing code ...
 
@@ -2648,8 +2684,8 @@ def show_main_page():
     if not anthropic_key:
         st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](/?page=api_keys)")
     
-    # Get available users for the current authenticated user
-    selected_user = st.selectbox("User Profile", options=get_available_users(), key="user_profile")
+    # Get selected user from the sidebar
+    selected_user = st.session_state.get("user_profile_sidebar", "Default")
     
     # Load knowledge base for selected user
     knowledge_base = load_user_knowledge_base(selected_user)
@@ -2672,80 +2708,14 @@ def show_main_page():
             help="Files up to 500MB are supported. Large files will be automatically chunked for parallel processing."
         )
         
-        # Add a title input for better organization
-        if 'content_title_value' not in st.session_state:
-            st.session_state.content_title_value = ""
-            
-        content_title = st.text_input("Content Title (Optional)", 
-                                     value=st.session_state.content_title_value,
-                                     placeholder="Enter a title, or leave blank to auto-generate",
-                                     key="content_title")
-        
-        # Store the value in session state
-        st.session_state.content_title_value = content_title
-        
         # Transcribe Button
         if uploaded_file is not None:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
-                    with st.spinner("Transcribing your audio..."):
-                        transcription = transcribe_audio(uploaded_file)
-                        if transcription:
-                            st.session_state.transcription = transcription
-                            st.session_state.audio_file = uploaded_file
-                            
-                            # Generate a title if none provided
-                            if not content_title and transcription:
-                                with st.spinner("Generating title..."):
-                                    generated_title = generate_title(transcription)
-                                    if generated_title:
-                                        # Update the value, not the widget state directly
-                                        st.session_state.content_title_value = generated_title
-                                        st.rerun()  # Rerun to update the UI with the new title
-            
-            with col2:
-                if st.button("🎙️ Direct Transcribe (Fallback)", key="direct_transcribe_button", use_container_width=True):
-                    with st.spinner("Directly transcribing audio (bypassing client)..."):
-                        # Save the file to a temporary location
-                        file_name = uploaded_file.name
-                        file_extension = file_name.split('.')[-1].lower()
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
-                            tmp_file.write(uploaded_file.getvalue())
-                            audio_path = tmp_file.name
-                        
-                        # Use direct transcription
-                        api_key = get_api_key_for_service("openai") 
-                        if not api_key:
-                            st.error("OpenAI API key is required for transcription")
-                        else:
-                            transcription = direct_transcribe_audio(audio_path, api_key)
-                            
-                            # Clean up temp file
-                            try:
-                                os.remove(audio_path)
-                            except:
-                                pass
-                                
-                            if transcription and not transcription.startswith("Error:"):
-                                st.session_state.transcription = transcription
-                                st.session_state.audio_file = uploaded_file
-                                st.success("Direct transcription successful!")
-                                
-                                # Generate a title if none provided
-                                if not content_title and transcription:
-                                    with st.spinner("Generating title..."):
-                                        try:
-                                            # Simple direct title generation
-                                            prompt = f"Create a concise title (5-7 words) for this transcript: {transcription[:1000]}..."
-                                            generated_title = direct_anthropic_completion(prompt, api_key=get_api_key_for_service("anthropic"))
-                                            if generated_title and not generated_title.startswith("Error:"):
-                                                st.session_state.content_title_value = generated_title
-                                                st.rerun()
-                                        except:
-                                            pass
+            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
+                with st.spinner("Transcribing your audio..."):
+                    transcription = transcribe_audio(uploaded_file)
+                    if transcription:
+                        st.session_state.transcription = transcription
+                        st.session_state.audio_file = uploaded_file
         
         # Display transcription result if available
         if st.session_state.transcription:
@@ -2762,45 +2732,16 @@ def show_main_page():
                 # Wisdom extraction
                 wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
                 with wisdom_expander:
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
-                            with st.spinner("Extracting key insights..."):
-                                wisdom = generate_wisdom(
-                                    st.session_state.transcription, 
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if wisdom:
-                                    st.session_state.wisdom = wisdom
-                    
-                    with col2:
-                        if st.button("Direct API Wisdom (Fallback)", key="direct_wisdom_button", use_container_width=True):
-                            with st.spinner("Extracting wisdom directly via API..."):
-                                # Create a prompt for wisdom extraction
-                                prompt = f"""Extract key insights, lessons, and wisdom from the transcript. Focus on actionable takeaways and profound realizations.
-
-Transcript: {st.session_state.transcription[:2000]}...
-
-Please provide a well-formatted, structured response with the main insights clearly outlined."""
-                                
-                                # Get API key
-                                api_key = get_api_key_for_service("anthropic")
-                                if api_key:
-                                    try:
-                                        # Use direct API call
-                                        wisdom = direct_anthropic_completion(prompt, api_key)
-                                        if wisdom and not wisdom.startswith("Error"):
-                                            st.session_state.wisdom = wisdom
-                                            st.success("Direct wisdom extraction successful!")
-                                        else:
-                                            st.error(f"Failed to extract wisdom: {wisdom}")
-                                    except Exception as e:
-                                        st.error(f"Error: {str(e)}")
-                                else:
-                                    st.error("Anthropic API key is required")
+                    if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
+                        with st.spinner("Extracting key insights..."):
+                            wisdom = generate_wisdom(
+                                st.session_state.transcription, 
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                knowledge_base=knowledge_base
+                            )
+                            if wisdom:
+                                st.session_state.wisdom = wisdom
                     
                     if st.session_state.get("wisdom"):
                         st.markdown("### Extracted Wisdom")
@@ -2951,34 +2892,32 @@ Please provide a well-formatted, structured response with the main insights clea
                 if st.button("💾 Save to Notion", key="notion_save", use_container_width=True):
                     with st.spinner("Saving to Notion..."):
                         try:
-                            # Get title, with fallbacks
-                            title_to_use = title
-                            if not title_to_use or title_to_use == "Untitled Content":
-                                # Try to generate a title if we have transcription
-                                if st.session_state.transcription:
-                                    try:
-                                        title_to_use = generate_short_title(st.session_state.transcription)
-                                    except:
-                                        title_to_use = "WhisperForge Content"
-                                else:
-                                    title_to_use = "WhisperForge Content"
-                            
-                            result = create_content_notion_entry(
-                                title_to_use,
-                                st.session_state.transcription,
-                                wisdom=st.session_state.get("wisdom"),
-                                outline=st.session_state.get("outline"),
-                                social_content=st.session_state.get("social"),
-                                image_prompts=st.session_state.get("image_prompts"),
-                                article=st.session_state.get("article")
-                            )
-                            
-                            if result and result.get("url"):
-                                st.success(f"✅ Content saved to Notion! [View Page]({result['url']})")
+                            # Always generate an AI title for better results
+                            if st.session_state.transcription:
+                                with st.status("Generating a descriptive title...") as status:
+                                    title_to_use = generate_short_title(st.session_state.transcription)
+                                    status.update(label=f"Title generated: \"{title_to_use}\"", state="complete")
                             else:
-                                st.error("Failed to save to Notion. Please check your API keys and database ID.")
+                                title_to_use = "WhisperForge Content"
+                            
+                            with st.status("Saving to Notion...") as status:
+                                result = create_content_notion_entry(
+                                    title_to_use,
+                                    st.session_state.transcription,
+                                    wisdom=st.session_state.get("wisdom"),
+                                    outline=st.session_state.get("outline"),
+                                    social_content=st.session_state.get("social"),
+                                    image_prompts=st.session_state.get("image_prompts"),
+                                    article=st.session_state.get("article")
+                                )
+                                
+                                if result:
+                                    status.update(label="Successfully saved to Notion!", state="complete")
+                                else:
+                                    status.update(label="Failed to save to Notion", state="error")
                         except Exception as e:
-                            st.error(f"Notion export error: {str(e)}")
+                            logger.exception("Error saving to Notion:")
+                            st.error(f"Error saving to Notion: {str(e)}")
     
     # Tab 2: Text Input
     with input_tabs[1]:
