@@ -23,6 +23,7 @@ import json
 import streamlit.components.v1 as components
 import concurrent.futures
 import threading
+import openai
 
 # This must be the very first st.* command
 st.set_page_config(
@@ -94,6 +95,8 @@ def get_openai_client():
     
     # Create client with just the API key, no extra parameters
     try:
+        # Use only the api_key parameter, avoiding any extra env vars or proxies
+        openai.api_key = api_key
         client = OpenAI(api_key=api_key)
         return client
     except Exception as e:
@@ -912,27 +915,35 @@ def chunk_audio(audio_path, target_size_mb=25):
 def transcribe_chunk(chunk_path, i, total_chunks):
     """Transcribe a single chunk with error handling and progress tracking"""
     try:
-        # Get a fresh OpenAI client instance for each chunk
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured."
+        # Get the API key directly
+        api_key = get_api_key_for_service("openai")
+        if not api_key:
+            return f"[Error in chunk {i+1}: OpenAI API key is not configured]"
+        
+        # Create a fresh client instance with just the API key
+        try:
+            client = OpenAI(api_key=api_key)
             
-        with open(chunk_path, "rb") as audio:
-            try:
-                transcript = openai_client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio
-                )
-                return transcript.text
-            except Exception as api_error:
-                error_msg = str(api_error)
-                # Handle specific API errors
-                if "rate limit" in error_msg.lower():
-                    return f"[Error in chunk {i+1}: API rate limit exceeded]"
-                elif "api key" in error_msg.lower():
-                    return f"[Error in chunk {i+1}: Invalid API key]"
-                else:
-                    return f"[Error in chunk {i+1}: {error_msg}]"
+            with open(chunk_path, "rb") as audio:
+                try:
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio
+                    )
+                    return transcript.text
+                except Exception as api_error:
+                    error_msg = str(api_error)
+                    # Handle specific API errors
+                    if "rate limit" in error_msg.lower():
+                        return f"[Error in chunk {i+1}: API rate limit exceeded]"
+                    elif "api key" in error_msg.lower():
+                        return f"[Error in chunk {i+1}: Invalid API key]"
+                    elif "proxies" in error_msg.lower() or "client.init" in error_msg.lower():
+                        return f"[Error in chunk {i+1}: OpenAI client configuration issue]"
+                    else:
+                        return f"[Error in chunk {i+1}: {error_msg}]"
+        except Exception as client_error:
+            return f"[Error initializing OpenAI client for chunk {i+1}: {str(client_error)}]"
     except Exception as e:
         return f"[Error processing chunk {i+1} of {total_chunks}: {str(e)}]"
 
@@ -1364,7 +1375,6 @@ def get_available_anthropic_models():
         "Claude 3 Opus": "claude-3-opus-20240229",
         "Claude 3 Sonnet": "claude-3-sonnet-20240229",
         "Claude 3 Haiku": "claude-3-haiku-20240307",
-        "Claude 2.1": "claude-2.1",
     }
 
 def get_available_grok_models():
@@ -1447,43 +1457,65 @@ def list_knowledge_base_files(user):
     return files
 
 def get_available_models(provider):
-    """Fetch available models from the selected AI provider"""
+    """Get available models for a given provider"""
     try:
+        openai_client = get_openai_client()
+        
+        # Default models in case API calls fail
+        default_models = {
+            "OpenAI": ["gpt-3.5-turbo", "gpt-4-turbo-preview"],
+            "Anthropic": ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"],
+            "Grok": ["grok-1"]
+        }
+        
         if provider == "OpenAI":
-            models = openai_client.models.list()
-            # Filter for chat-capable models
-            available_models = [
-                model.id for model in models 
-                if any(name in model.id.lower() for name in ["gpt-4", "gpt-3.5"])
-            ]
-            # Sort to put GPT-4 models first
-            available_models.sort(key=lambda x: "gpt-4" in x.lower(), reverse=True)
-            if not available_models:
-                return ["gpt-4", "gpt-3.5-turbo"]
-            return available_models
-            
+            try:
+                if openai_client:
+                    models = openai_client.models.list()
+                    available_models = []
+                    
+                    # Filter for chat and text generation models
+                    for model in models.data:
+                        model_id = model.id
+                        if ("gpt" in model_id.lower() and 
+                            "instruct" not in model_id.lower() and 
+                            any(ver in model_id.lower() for ver in ["3.5", "4"])):
+                            available_models.append(model_id)
+                    
+                    # Add standard model options
+                    standard_models = [
+                        "gpt-4", 
+                        "gpt-4-turbo-preview", 
+                        "gpt-3.5-turbo"
+                    ]
+                    
+                    # Add standard models not in the list
+                    for model in standard_models:
+                        if model not in available_models:
+                            available_models.append(model)
+                    
+                    return sorted(available_models)
+                else:
+                    return default_models["OpenAI"]
+            except:
+                # Return default OpenAI models if API call fails
+                return default_models["OpenAI"]
+        
         elif provider == "Anthropic":
-            # Anthropic's API doesn't provide model list, use known models
-            return [
-                "claude-3-opus-20240229",
-                "claude-3-sonnet-20240229",
-                "claude-3-haiku-20240307"
-            ]
-            
+            # Anthropic doesn't have a list models endpoint in the Python SDK
+            return default_models["Anthropic"]
+        
         elif provider == "Grok":
-            # Add Grok model fetching when API available
-            return ["grok-1"]
-            
+            # Grok currently only has one model
+            return default_models["Grok"]
+        
+        # Return empty list for unknown providers
         return []
     except Exception as e:
-        st.error(f"Error fetching models from {provider}: {str(e)}")
-        # Fallback models if API fails
-        if provider == "OpenAI":
-            return ["gpt-4", "gpt-3.5-turbo"]
-        elif provider == "Anthropic":
-            return ["claude-3-opus-20240229", "claude-3-sonnet-20240229"]
-        elif provider == "Grok":
-            return ["grok-1"]
+        st.error(f"Error fetching models: {str(e)}")
+        # Return default models if available
+        if provider in default_models:
+            return default_models[provider]
         return []
 
 def configure_prompts(selected_user, users_prompts):
@@ -1713,13 +1745,16 @@ def transcribe_audio(audio_file):
             # Process small file directly
             with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
                 try:
-                    # Get a fresh instance of the OpenAI client
-                    openai_client = get_openai_client()
-                    if not openai_client:
+                    # Get a fresh instance of the OpenAI client with only the API key
+                    api_key = get_api_key_for_service("openai")
+                    if not api_key:
                         return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
-                        
+                    
+                    # Initialize client directly to avoid any proxy settings
+                    client = OpenAI(api_key=api_key)
+                    
                     with open(audio_path, "rb") as audio:
-                        response = openai_client.audio.transcriptions.create(
+                        response = client.audio.transcriptions.create(
                             model="whisper-1",
                             file=audio
                         )
@@ -1737,8 +1772,8 @@ def transcribe_audio(audio_file):
                         # If direct upload fails due to size, try chunking as fallback
                         st.warning("File size error from API. Attempting to process in chunks as a fallback...")
                         transcript = transcribe_large_file(audio_path)
-                    elif "proxies" in error_msg.lower():
-                        return "Error: OpenAI client configuration issue. Please restart the application."
+                    elif "proxies" in error_msg.lower() or "client.init" in error_msg.lower():
+                        return "Error: OpenAI client configuration issue. Restarting the application should fix this."
                     else:
                         return f"Error transcribing audio: {error_msg}"
         
@@ -2241,7 +2276,10 @@ def main():
     if 'ai_provider' not in st.session_state:
         st.session_state.ai_provider = "OpenAI"
     if 'ai_model' not in st.session_state:
-        st.session_state.ai_model = None
+        # Set default model
+        st.session_state.ai_model = "gpt-3.5-turbo"
+    if 'content_title_value' not in st.session_state:
+        st.session_state.content_title_value = ""
     
     # Apply production CSS enhancements
     add_production_css()
@@ -2369,46 +2407,57 @@ def show_main_page():
     
     # AI Provider selection in sidebar with clean UI
     providers = ["OpenAI"]
-    if anthropic_key:
+    
+    # Only add providers if API keys are available
+    if os.getenv("ANTHROPIC_API_KEY") or api_keys.get("anthropic"):
         providers.append("Anthropic")
-    if api_keys.get("grok"):
+    if os.getenv("GROK_API_KEY") or api_keys.get("grok"):
         providers.append("Grok")
     
-        ai_provider = st.selectbox(
-            "AI Provider", 
+    ai_provider = st.selectbox(
+        "AI Provider", 
         options=providers,
-            key="ai_provider_select",
-            on_change=lambda: setattr(st.session_state, 'ai_model', None)  # Reset model when provider changes
-        )
-        st.session_state.ai_provider = ai_provider
-        
-        # Fetch and display available models based on provider
-        available_models = get_available_models(ai_provider)
-        
-        # Model descriptions for helpful UI
-        model_descriptions = {
-            "gpt-4": "Most capable OpenAI model",
-            "gpt-3.5-turbo": "Faster, cost-effective OpenAI model",
-            "claude-3-opus-20240229": "Most capable Anthropic model",
-            "claude-3-sonnet-20240229": "Balanced Anthropic model",
-            "claude-3-haiku-20240307": "Fast, efficient Anthropic model",
-            "grok-1": "Grok's base model"
-        }
-        
-        # If no model is selected or previous model isn't in new provider's list, select first
-        if not st.session_state.ai_model or st.session_state.ai_model not in available_models:
-            if available_models:
-                st.session_state.ai_model = available_models[0]
-        
-        # AI Model selection in sidebar
-        selected_model = st.selectbox(
-            "AI Model",
-            options=available_models,
-            format_func=lambda x: f"{x}" + (f" ({model_descriptions[x]})" if x in model_descriptions else ""),
-            key="ai_model_select"
-        )
-        st.session_state.ai_model = selected_model
-        
+        index=providers.index(st.session_state.ai_provider) if st.session_state.ai_provider in providers else 0,
+        key="ai_provider_select"
+    )
+    st.session_state.ai_provider = ai_provider
+    
+    # Fetch and display available models based on provider
+    available_models = get_available_models(ai_provider)
+    
+    # Safety check - ensure we have models
+    if not available_models:
+        if ai_provider == "OpenAI":
+            available_models = ["gpt-3.5-turbo", "gpt-4"]
+        elif ai_provider == "Anthropic":
+            available_models = ["claude-3-haiku-20240307", "claude-3-sonnet-20240229"]
+        else:
+            available_models = ["gpt-3.5-turbo"]  # Fallback to OpenAI
+    
+    # Model descriptions for helpful UI
+    model_descriptions = {
+        "gpt-4": "Most capable OpenAI model",
+        "gpt-3.5-turbo": "Faster, cost-effective OpenAI model",
+        "claude-3-opus-20240229": "Most capable Anthropic model",
+        "claude-3-sonnet-20240229": "Balanced Anthropic model",
+        "claude-3-haiku-20240307": "Fast, efficient Anthropic model",
+        "grok-1": "Grok's base model"
+    }
+    
+    # If no model is selected or previous model isn't in new provider's list, select first
+    if not st.session_state.ai_model or st.session_state.ai_model not in available_models:
+        if available_models:
+            st.session_state.ai_model = available_models[0]
+    
+    # AI Model selection in sidebar
+    selected_model = st.selectbox(
+        "AI Model",
+        options=available_models,
+        format_func=lambda x: f"{x}" + (f" ({model_descriptions[x]})" if x in model_descriptions else ""),
+        key="ai_model_select"
+    )
+    st.session_state.ai_model = selected_model
+    
     # Add tabs for input selection
     input_tabs = st.tabs(["Audio Upload", "Text Input"])
     
@@ -2425,9 +2474,16 @@ def show_main_page():
         )
         
         # Add a title input for better organization
+        if 'content_title_value' not in st.session_state:
+            st.session_state.content_title_value = ""
+            
         content_title = st.text_input("Content Title (Optional)", 
+                                     value=st.session_state.content_title_value,
                                      placeholder="Enter a title, or leave blank to auto-generate",
                                      key="content_title")
+        
+        # Store the value in session state
+        st.session_state.content_title_value = content_title
         
         # Transcribe Button
         if uploaded_file is not None:
@@ -2443,7 +2499,9 @@ def show_main_page():
                             with st.spinner("Generating title..."):
                                 generated_title = generate_title(transcription)
                                 if generated_title:
-                                    st.session_state.content_title = generated_title
+                                    # Update the value, not the widget state directly
+                                    st.session_state.content_title_value = generated_title
+                                    st.rerun()  # Rerun to update the UI with the new title
         
         # Display transcription result if available
         if st.session_state.transcription:
@@ -2615,13 +2673,25 @@ def show_main_page():
             if not notion_key or not notion_db:
                 st.warning("⚠️ Notion integration is not configured. Please set up your Notion API key and database ID in Settings.")
             else:
-                title = st.session_state.get("content_title", "") or "Untitled Content"
+                title = st.session_state.content_title_value or "Untitled Content"
                 
                 if st.button("💾 Save to Notion", key="notion_save", use_container_width=True):
                     with st.spinner("Saving to Notion..."):
                         try:
+                            # Get title, with fallbacks
+                            title_to_use = title
+                            if not title_to_use or title_to_use == "Untitled Content":
+                                # Try to generate a title if we have transcription
+                                if st.session_state.transcription:
+                                    try:
+                                        title_to_use = generate_short_title(st.session_state.transcription)
+                                    except:
+                                        title_to_use = "WhisperForge Content"
+                                else:
+                                    title_to_use = "WhisperForge Content"
+                            
                             result = create_content_notion_entry(
-                                title,
+                                title_to_use,
                                 st.session_state.transcription,
                                 wisdom=st.session_state.get("wisdom"),
                                 outline=st.session_state.get("outline"),
