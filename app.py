@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI  # Make sure this is using the OpenAI v1 API
 from dotenv import load_dotenv
 import os
 from notion_client import Client
@@ -21,6 +21,8 @@ import time
 import re
 import json
 import streamlit.components.v1 as components
+import concurrent.futures
+import threading
 
 # This must be the very first st.* command
 st.set_page_config(
@@ -89,7 +91,14 @@ def get_openai_client():
     if not api_key:
         st.error("OpenAI API key is not set. Please add your API key in the settings.")
         return None
-    return OpenAI(api_key=api_key)
+    
+    # Create client with just the API key, no extra parameters
+    try:
+        client = OpenAI(api_key=api_key)
+        return client
+    except Exception as e:
+        st.error(f"Error initializing OpenAI client: {str(e)}")
+        return None
 
 def get_anthropic_client():
     api_key = get_api_key_for_service("anthropic")
@@ -803,16 +812,28 @@ def chunk_audio(audio_path, target_size_mb=25):
         
         # Calculate optimal chunk size based on file size
         file_size = os.path.getsize(audio_path)
+        file_size_mb = file_size / (1024 * 1024)
+        
+        # Adjust target chunk size based on file size for better handling of very large files
+        if file_size_mb > 300:  # For files larger than 300MB
+            target_size_mb = 30  # Larger chunks for very large files
+        elif file_size_mb > 100:  # For files between 100-300MB
+            target_size_mb = 25  # Medium chunks
+        else:
+            target_size_mb = 20  # Smaller chunks for better accuracy on smaller files
+        
         total_chunks = math.ceil(file_size / (target_size_mb * 1024 * 1024))
         
-        # Ensure minimum chunk length (5 seconds) and maximum chunks (20)
-        MIN_CHUNK_LENGTH_MS = 5000
-        MAX_CHUNKS = 20
+        # Ensure we have reasonable chunking
+        MIN_CHUNK_LENGTH_MS = 5000  # 5 seconds minimum
+        MAX_CHUNKS = 30  # Increased from 20 to handle larger files
         
         if total_chunks > MAX_CHUNKS:
             target_size_mb = math.ceil(file_size / (MAX_CHUNKS * 1024 * 1024))
             total_chunks = MAX_CHUNKS
         
+        # Adjust chunk size based on audio length rather than just file size
+        # This ensures more even chunks with complete sentences
         chunk_length_ms = max(len(audio) // total_chunks, MIN_CHUNK_LENGTH_MS)
         
         # Create temporary directory for chunks
@@ -823,23 +844,65 @@ def chunk_audio(audio_path, target_size_mb=25):
         progress_text = st.empty()
         progress_bar = st.progress(0)
         
-        for i in range(0, len(audio), chunk_length_ms):
-            chunk = audio[i:i + chunk_length_ms]
-            if len(chunk) < MIN_CHUNK_LENGTH_MS:
-                continue
-                
-            # Save chunk with index in filename
-            chunk_path = os.path.join(temp_dir, f'chunk_{i//chunk_length_ms}.mp3')
-            chunk.export(chunk_path, format='mp3')
-            chunks.append(chunk_path)
+        # Try to detect silences to make better chunk boundaries when possible
+        try:
+            from pydub.silence import detect_silence
+            silences = detect_silence(audio, min_silence_len=500, silence_thresh=-40)
+            has_silence_data = len(silences) > 0
+        except:
+            has_silence_data = False
+        
+        # Process and save chunks
+        if has_silence_data and len(silences) > total_chunks:
+            # Use silences as natural chunk boundaries
+            chunk_points = []
+            silence_step = max(1, len(silences) // (total_chunks + 1))
+            for i in range(0, len(silences), silence_step):
+                if len(chunk_points) < total_chunks - 1:  # Leave room for the last chunk
+                    chunk_points.append(silences[i][1])  # End of silence
             
-            # Update progress
-            progress = (i + chunk_length_ms) / len(audio)
-            progress_bar.progress(min(progress, 1.0))
-            progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
+            # Add start and end points
+            chunk_points = [0] + chunk_points + [len(audio)]
+            
+            # Create chunks based on silence points
+            for i in range(len(chunk_points) - 1):
+                start = chunk_points[i]
+                end = chunk_points[i + 1]
+                
+                if end - start < MIN_CHUNK_LENGTH_MS:
+                    continue
+                
+                chunk = audio[start:end]
+                chunk_path = os.path.join(temp_dir, f'chunk_{i}.mp3')
+                chunk.export(chunk_path, format='mp3')
+                chunks.append(chunk_path)
+                
+                # Update progress
+                progress = (i + 1) / (len(chunk_points) - 1)
+                progress_bar.progress(min(progress, 1.0))
+                progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
+        else:
+            # Standard time-based chunking if silence detection failed
+            for i in range(0, len(audio), chunk_length_ms):
+                chunk = audio[i:i + chunk_length_ms]
+                if len(chunk) < MIN_CHUNK_LENGTH_MS:
+                    continue
+                    
+                # Save chunk with index in filename
+                chunk_path = os.path.join(temp_dir, f'chunk_{i//chunk_length_ms}.mp3')
+                chunk.export(chunk_path, format='mp3')
+                chunks.append(chunk_path)
+                
+                # Update progress
+                progress = (i + chunk_length_ms) / len(audio)
+                progress_bar.progress(min(progress, 1.0))
+                progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
         
         progress_text.empty()
         progress_bar.empty()
+        
+        # Display chunking summary
+        st.info(f"Audio split into {len(chunks)} chunks for processing. Total file size: {file_size_mb:.1f} MB")
         
         return chunks, temp_dir
     except Exception as e:
@@ -849,19 +912,29 @@ def chunk_audio(audio_path, target_size_mb=25):
 def transcribe_chunk(chunk_path, i, total_chunks):
     """Transcribe a single chunk with error handling and progress tracking"""
     try:
+        # Get a fresh OpenAI client instance for each chunk
         openai_client = get_openai_client()
         if not openai_client:
             return "Error: OpenAI API key is not configured."
             
         with open(chunk_path, "rb") as audio:
-            transcript = openai_client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio
-            )
-            return transcript.text
+            try:
+                transcript = openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio
+                )
+                return transcript.text
+            except Exception as api_error:
+                error_msg = str(api_error)
+                # Handle specific API errors
+                if "rate limit" in error_msg.lower():
+                    return f"[Error in chunk {i+1}: API rate limit exceeded]"
+                elif "api key" in error_msg.lower():
+                    return f"[Error in chunk {i+1}: Invalid API key]"
+                else:
+                    return f"[Error in chunk {i+1}: {error_msg}]"
     except Exception as e:
-        st.warning(f"Warning: Failed to transcribe part {i+1} of {total_chunks}: {str(e)}")
-        return ""
+        return f"[Error processing chunk {i+1} of {total_chunks}: {str(e)}]"
 
 def generate_title(transcript):
     """Generate a descriptive 5-7 word title based on the transcript"""
@@ -1451,7 +1524,7 @@ def configure_prompts(selected_user, users_prompts):
             users_prompts[selected_user][prompt_type] = new_prompt
 
 def transcribe_large_file(file_path):
-    """Process a large audio file by chunking it and transcribing each chunk"""
+    """Process a large audio file by chunking it and transcribing each chunk with concurrent processing"""
     try:
         st.info("Processing large audio file in chunks...")
         
@@ -1467,38 +1540,88 @@ def transcribe_large_file(file_path):
         progress_bar = st.progress(0)
         
         overall_status.info(f"Beginning transcription of {len(chunks)} audio segments...")
-    
-        # Process each chunk
-        transcriptions = []
-        chunks_processed = 0
-        chunks_failed = 0
         
-        for i, chunk_path in enumerate(chunks):
-            # Update progress
-            progress = (i + 1) / len(chunks)
-            progress_bar.progress(progress)
-            progress_text.text(f"Transcribing part {i+1} of {len(chunks)}...")
+        # Determine optimal number of concurrent processes
+        # For very large files (many chunks), we'll use more concurrency
+        import os
+        import concurrent.futures
         
-            # Transcribe chunk
-            chunk_text = transcribe_chunk(chunk_path, i, len(chunks))
-            
-            # Check if the chunk transcription contains error markers
-            if chunk_text and any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
-                chunks_failed += 1
-            else:
-                chunks_processed += 1
-                
-            # Add to transcriptions - even failed chunks should add their error messages
-            transcriptions.append(chunk_text)
-    
-            # Update overall status after each chunk
-            overall_status.info(f"Progress: {i+1}/{len(chunks)} chunks processed ({chunks_processed} successful, {chunks_failed} failed)")
-            
-            # Clean up chunk file
+        # Adjust concurrency based on number of chunks
+        if len(chunks) > 20:
+            max_workers = min(8, len(chunks))  # Up to 8 workers for very large files
+        elif len(chunks) > 10:
+            max_workers = min(5, len(chunks))  # Up to 5 workers for medium files
+        else:
+            max_workers = min(3, len(chunks))  # Up to 3 workers for smaller files
+        
+        # Set up shared variables for progress tracking
+        import threading
+        lock = threading.Lock()
+        progress_tracker = {
+            'completed': 0,
+            'success': 0,
+            'failed': 0,
+            'results': [None] * len(chunks)
+        }
+        
+        # Function for processing a single chunk with progress tracking
+        def process_chunk(args):
+            chunk_path, idx, total = args
             try:
-                os.remove(chunk_path)
-            except:
-                pass
+                # Process the chunk
+                chunk_text = transcribe_chunk(chunk_path, idx, total)
+                
+                # Update progress tracker
+                with lock:
+                    progress_tracker['completed'] += 1
+                    if chunk_text and not any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
+                        progress_tracker['success'] += 1
+                    else:
+                        progress_tracker['failed'] += 1
+                    
+                    progress_tracker['results'][idx] = chunk_text
+                    
+                    # Update progress display
+                    completed = progress_tracker['completed']
+                    success = progress_tracker['success']
+                    failed = progress_tracker['failed']
+                    progress = completed / total
+                    
+                    # Update UI from the main thread
+                    progress_bar.progress(progress)
+                    progress_text.text(f"Transcribing: {completed}/{total} chunks processed...")
+                    overall_status.info(f"Progress: {completed}/{total} chunks ({success} successful, {failed} failed)")
+                
+                # Clean up chunk file
+                try:
+                    os.remove(chunk_path)
+                except:
+                    pass
+                
+                return chunk_text
+            except Exception as e:
+                with lock:
+                    progress_tracker['completed'] += 1
+                    progress_tracker['failed'] += 1
+                    progress_tracker['results'][idx] = f"[Error processing chunk {idx+1}: {str(e)}]"
+                    
+                    # Update progress
+                    progress = progress_tracker['completed'] / total
+                    progress_bar.progress(progress)
+                return f"[Error processing chunk {idx+1}: {str(e)}]"
+        
+        # Process chunks with concurrent execution
+        chunk_args = [(chunk_path, i, len(chunks)) for i, chunk_path in enumerate(chunks)]
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Start all tasks
+            future_to_chunk = {executor.submit(process_chunk, arg): arg for arg in chunk_args}
+            
+            # Wait for all tasks to complete
+            concurrent.futures.wait(future_to_chunk)
+        
+        # Collect results in correct order
+        transcriptions = progress_tracker['results']
         
         # Clean up temporary directory
         if temp_dir:
@@ -1515,11 +1638,11 @@ def transcribe_large_file(file_path):
         progress_bar.empty()
         
         # Final status message
-        if chunks_failed > 0:
-            overall_status.warning(f"⚠️ Transcription partially complete. Processed {chunks_processed} of {len(chunks)} chunks successfully. {chunks_failed} chunks had errors.")
+        if progress_tracker['failed'] > 0:
+            overall_status.warning(f"⚠️ Transcription partially complete. Processed {progress_tracker['success']} of {len(chunks)} chunks successfully. {progress_tracker['failed']} chunks had errors.")
         else:
             overall_status.success(f"✅ Transcription complete! Successfully processed all {len(chunks)} audio segments.")
-    
+        
         return full_transcript
         
     except Exception as e:
@@ -1531,7 +1654,7 @@ def transcribe_large_file(file_path):
         return ""
 
 def transcribe_audio(audio_file):
-    """Transcribe an audio file with size-based handling"""
+    """Transcribe an audio file with size-based handling for files up to 500MB"""
     # Start timing for usage tracking
     start_time = time.time()
     
@@ -1557,12 +1680,24 @@ def transcribe_audio(audio_file):
                 audio_path = tmp_file.name
                 file_size = os.path.getsize(audio_path)
         
+        # Check for maximum file size (500MB)
+        MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+        if file_size > MAX_FILE_SIZE:
+            error_msg = f"File size ({file_size/(1024*1024):.1f} MB) exceeds the maximum allowed size of 500MB."
+            st.error(error_msg)
+            return f"Error: {error_msg}"
+        
         # Display file information to user
         file_size_mb = file_size / (1024 * 1024)
         st.info(f"Processing '{file_name}' ({file_size_mb:.1f} MB)")
         
-        # Size threshold for chunking (25MB)
-        CHUNK_THRESHOLD = 25 * 1024 * 1024
+        # Size threshold for chunking - adjusted for different file sizes
+        if file_size_mb > 100:
+            # For larger files, use a higher threshold to reduce the number of chunks
+            CHUNK_THRESHOLD = 40 * 1024 * 1024  # 40MB threshold for larger files
+        else:
+            # For smaller files, use a lower threshold for better accuracy
+            CHUNK_THRESHOLD = 25 * 1024 * 1024  # 25MB threshold for smaller files
         
         # Get OpenAI client with user's API key
         openai_client = get_openai_client()
@@ -1578,11 +1713,16 @@ def transcribe_audio(audio_file):
             # Process small file directly
             with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
                 try:
+                    # Get a fresh instance of the OpenAI client
+                    openai_client = get_openai_client()
+                    if not openai_client:
+                        return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
+                        
                     with open(audio_path, "rb") as audio:
                         response = openai_client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio
-            )
+                            model="whisper-1",
+                            file=audio
+                        )
                         transcript = response.text
                 except Exception as api_error:
                     error_msg = str(api_error)
@@ -1597,6 +1737,8 @@ def transcribe_audio(audio_file):
                         # If direct upload fails due to size, try chunking as fallback
                         st.warning("File size error from API. Attempting to process in chunks as a fallback...")
                         transcript = transcribe_large_file(audio_path)
+                    elif "proxies" in error_msg.lower():
+                        return "Error: OpenAI client configuration issue. Please restart the application."
                     else:
                         return f"Error transcribing audio: {error_msg}"
         
@@ -1624,6 +1766,8 @@ def transcribe_audio(audio_file):
             st.error("Audio processing error. Please ensure the file is a valid audio format.")
         elif "permission" in str(e).lower():
             st.error("File permission error. Please try uploading the file again.")
+        elif "memory" in str(e).lower():
+            st.error("Memory error. The file may be too large to process with available system resources.")
         return ""
 
 def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
@@ -2277,7 +2421,7 @@ def show_main_page():
             "Upload your audio file", 
             type=['mp3', 'wav', 'ogg', 'm4a'],
             key="audio_uploader",
-            help="Files up to 500MB are supported. Large files will be automatically chunked for processing."
+            help="Files up to 500MB are supported. Large files will be automatically chunked for parallel processing."
         )
         
         # Add a title input for better organization
