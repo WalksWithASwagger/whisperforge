@@ -2420,13 +2420,13 @@ def main():
         
         # Navigation
         st.markdown("### Navigation")
-        if st.button("🏠 Home"):
+        if st.button("Home"):
             st.session_state.page = "main"
             st.rerun()
-        if st.button("🔑 API Keys"):
+        if st.button("API Keys"):
             st.session_state.page = "api_keys"
             st.rerun()
-        if st.button("📊 Usage"):
+        if st.button("Usage"):
             st.session_state.page = "usage"
             st.rerun()
         
@@ -2440,18 +2440,18 @@ def main():
         
         # Show admin button if user is admin
         if is_admin and is_admin[0]:
-            if st.button("⚙️ Admin"):
+            if st.button("Admin"):
                 st.session_state.page = "admin"
                 st.rerun()
         
         # Footer links
         st.markdown("---")
         st.markdown("### About")
-        if st.button("📜 Terms & Privacy"):
+        if st.button("Terms & Privacy"):
             st.session_state.page = "legal"
             st.rerun()
-        st.markdown("[🌐 Website](https://whisperforge.ai)")
-        st.markdown("[📧 Support](mailto:support@whisperforge.ai)")
+        st.markdown("[Website](https://whisperforge.ai)")
+        st.markdown("[Support](mailto:support@whisperforge.ai)")
         
         # Version info
         st.markdown("---")
