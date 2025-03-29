@@ -1439,10 +1439,11 @@ def get_available_openai_models():
 
 def get_available_anthropic_models():
     """Get current list of available Anthropic models"""
-    # Current as of March 2024
+    # Current as of May 2024
     return {
+        "Claude 3.7 Sonnet": "claude-3-7-sonnet-20250219",
         "Claude 3 Opus": "claude-3-opus-20240229",
-        "Claude 3 Sonnet": "claude-3-sonnet-20240229",
+        "Claude 3 Sonnet": "claude-3-sonnet-20240229", 
         "Claude 3 Haiku": "claude-3-haiku-20240307",
     }
 
@@ -1532,8 +1533,8 @@ def get_available_models(provider):
         
         # Default models in case API calls fail
         default_models = {
-            "OpenAI": ["gpt-3.5-turbo", "gpt-4-turbo-preview"],
-            "Anthropic": ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"],
+            "OpenAI": ["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo"],
+            "Anthropic": ["claude-3-7-sonnet-20250219", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"],
             "Grok": ["grok-1"]
         }
         
@@ -1762,6 +1763,12 @@ def transcribe_audio(audio_file):
     try:
         logger.debug(f"Starting transcription of audio file: {getattr(audio_file, 'name', str(audio_file))}")
         
+        # Get the provider and model from session state or use defaults
+        provider = st.session_state.get('transcription_provider', 'OpenAI')
+        model = st.session_state.get('transcription_model', 'whisper-1')
+        
+        logger.debug(f"Using transcription provider: {provider}, model: {model}")
+        
         # Check if audio_file is a string (path) or an UploadedFile object
         if isinstance(audio_file, str):
             audio_path = audio_file
@@ -1817,45 +1824,23 @@ def transcribe_audio(audio_file):
             # Process large file in chunks
             transcript = transcribe_large_file(audio_path)
         else:
-            # Process small file directly - try multiple methods if needed
-            logger.debug("Processing small file directly.")
+            # Process small file directly with the direct API method
+            logger.debug("Processing small file directly with direct transcription.")
             with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
                 try:
-                    # METHOD 1: Try using standard OpenAI client first
-                    logger.debug("Attempt 1: Using standard OpenAI client")
+                    # Use the direct transcription method for reliability
                     api_key = get_api_key_for_service("openai")
                     if not api_key:
                         logger.error("Missing OpenAI API key")
                         return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
                     
-                    # Try to initialize with only API key
-                    try:
-                        logger.debug("Initializing OpenAI client")
-                        client = OpenAI(api_key=api_key)
-                        
-                        logger.debug("Sending transcription request")
-                        with open(audio_path, "rb") as audio:
-                            response = client.audio.transcriptions.create(
-                                model="whisper-1",
-                                file=audio
-                            )
-                            transcript = response.text
-                            logger.debug(f"Transcription successful. Length: {len(transcript)} characters")
-                    except Exception as client_error:
-                        error_msg = str(client_error)
-                        logger.error(f"OpenAI client error: {error_msg}")
-                        
-                        # METHOD 2: Try direct API call if client fails
-                        if "proxies" in error_msg or "Client.init" in error_msg:
-                            logger.debug("Attempt 2: Using direct API call due to client error")
-                            transcript = direct_transcribe_audio(audio_path, api_key)
-                            if transcript and not transcript.startswith("Error:"):
-                                logger.debug("Direct transcription successful")
-                            else:
-                                logger.error(f"Direct transcription failed: {transcript}")
-                                raise Exception(transcript)
-                        else:
-                            raise client_error
+                    # Always use direct API call for more reliability
+                    logger.debug("Using direct API call for transcription")
+                    transcript = direct_transcribe_audio(audio_path, api_key)
+                    
+                    if not transcript or transcript.startswith("Error:"):
+                        logger.error(f"Direct transcription failed: {transcript}")
+                        raise Exception(transcript or "Unknown transcription error")
                     
                 except Exception as api_error:
                     error_msg = str(api_error)
@@ -1874,9 +1859,6 @@ def transcribe_audio(audio_file):
                         logger.warning("File size error. Attempting chunking as fallback.")
                         st.warning("File size error from API. Attempting to process in chunks as a fallback...")
                         transcript = transcribe_large_file(audio_path)
-                    elif "proxies" in error_msg.lower() or "client.init" in error_msg.lower():
-                        logger.error("OpenAI client configuration issue")
-                        return "Error: OpenAI client configuration issue. Restarting the application should fix this."
                     else:
                         return f"Error transcribing audio: {error_msg}"
         
@@ -2380,10 +2362,14 @@ def main():
     if 'audio_file' not in st.session_state:
         st.session_state.audio_file = None
     if 'ai_provider' not in st.session_state:
-        st.session_state.ai_provider = "OpenAI"
+        st.session_state.ai_provider = "Anthropic"
     if 'ai_model' not in st.session_state:
-        # Set default model
-        st.session_state.ai_model = "gpt-3.5-turbo"
+        # Set default model to Claude 3.7 Sonnet
+        st.session_state.ai_model = "claude-3-7-sonnet-20250219"
+    if 'transcription_provider' not in st.session_state:
+        st.session_state.transcription_provider = "OpenAI"
+    if 'transcription_model' not in st.session_state:
+        st.session_state.transcription_model = "whisper-1"
     if 'content_title_value' not in st.session_state:
         st.session_state.content_title_value = ""
     
@@ -2639,64 +2625,17 @@ def show_main_page():
     if not openai_key:
         st.warning("⚠️ Your OpenAI API key is not set up. Some features may not work properly. [Set up your API keys](/?page=api_keys)")
     
+    if not anthropic_key:
+        st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](/?page=api_keys)")
+    
     # Get available users for the current authenticated user
     selected_user = st.selectbox("User Profile", options=get_available_users(), key="user_profile")
     
     # Load knowledge base for selected user
     knowledge_base = load_user_knowledge_base(selected_user)
     
-    # AI Provider selection in sidebar with clean UI
-    providers = ["OpenAI"]
-    
-    # Only add providers if API keys are available
-    if os.getenv("ANTHROPIC_API_KEY") or api_keys.get("anthropic"):
-        providers.append("Anthropic")
-    if os.getenv("GROK_API_KEY") or api_keys.get("grok"):
-        providers.append("Grok")
-    
-    ai_provider = st.selectbox(
-        "AI Provider", 
-        options=providers,
-        index=providers.index(st.session_state.ai_provider) if st.session_state.ai_provider in providers else 0,
-        key="ai_provider_select"
-    )
-    st.session_state.ai_provider = ai_provider
-    
-    # Fetch and display available models based on provider
-    available_models = get_available_models(ai_provider)
-    
-    # Safety check - ensure we have models
-    if not available_models:
-        if ai_provider == "OpenAI":
-            available_models = ["gpt-3.5-turbo", "gpt-4"]
-        elif ai_provider == "Anthropic":
-            available_models = ["claude-3-haiku-20240307", "claude-3-sonnet-20240229"]
-        else:
-            available_models = ["gpt-3.5-turbo"]  # Fallback to OpenAI
-    
-    # Model descriptions for helpful UI
-    model_descriptions = {
-        "gpt-4": "Most capable OpenAI model",
-        "gpt-3.5-turbo": "Faster, cost-effective OpenAI model",
-        "claude-3-opus-20240229": "Most capable Anthropic model",
-        "claude-3-sonnet-20240229": "Balanced Anthropic model",
-        "claude-3-haiku-20240307": "Fast, efficient Anthropic model",
-        "grok-1": "Grok's base model"
-    }
-    
-    # If no model is selected or previous model isn't in new provider's list, select first
-    if not st.session_state.ai_model or st.session_state.ai_model not in available_models:
-        if available_models:
-            st.session_state.ai_model = available_models[0]
-    
-    # AI Model selection in sidebar
-    selected_model = st.selectbox(
-        "AI Model",
-        options=available_models,
-        format_func=lambda x: f"{x}" + (f" ({model_descriptions[x]})" if x in model_descriptions else ""),
-        key="ai_model_select"
-    )
-    st.session_state.ai_model = selected_model
+    # Display the current models being used
+    st.info(f"Using {st.session_state.transcription_provider} {st.session_state.transcription_model} for transcription and {st.session_state.ai_provider} {st.session_state.ai_model} for content processing. Model settings can be changed in the Admin panel.")
     
     # Add tabs for input selection
     input_tabs = st.tabs(["Audio Upload", "Text Input"])
@@ -3589,98 +3528,183 @@ def show_admin_page():
         conn.close()
         return
     
-    # System stats
-    st.markdown("### System Overview")
+    # Create tabs for different admin functions
+    admin_tabs = st.tabs(["System Overview", "User Management", "Model Configuration"])
     
-    # Get statistics
-    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    active_users = conn.execute(
-        "SELECT COUNT(*) FROM users WHERE usage_current > 0"
-    ).fetchone()[0]
-    paying_users = conn.execute(
-        "SELECT COUNT(*) FROM users WHERE subscription_tier != 'free'"
-    ).fetchone()[0]
-    
-    # Display stats in a grid
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Users", user_count)
-    with col2:
-        st.metric("Active Users", active_users)
-    with col3:
-        st.metric("Paying Users", paying_users)
-    
-    # User management
-    st.markdown("### User Management")
-    
-    # List all users
-    users = conn.execute(
-        "SELECT id, email, created_at, subscription_tier, usage_quota, usage_current, is_admin FROM users ORDER BY id"
-    ).fetchall()
-    
-    if not users:
-        st.info("No users found.")
-    else:
-        # Create table
-        data = []
-        for user in users:
-            data.append({
-                "ID": user["id"],
-                "Email": user["email"],
-                "Created": user["created_at"].split(" ")[0] if " " in user["created_at"] else user["created_at"],
-                "Plan": user["subscription_tier"],
-                "Usage": f"{user['usage_current']}/{user['usage_quota']} min",
-                "Admin": "Yes" if user["is_admin"] else "No"
-            })
+    # System Overview Tab
+    with admin_tabs[0]:
+        st.markdown("### System Overview")
         
-        st.dataframe(data)
-    
-    # Edit user form
-    st.markdown("### Edit User")
-    user_id = st.number_input("User ID", min_value=1, step=1)
-    
-    if st.button("Load User"):
-        user = conn.execute(
-            "SELECT * FROM users WHERE id = ?", 
-            (user_id,)
-        ).fetchone()
+        # Get statistics
+        user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        active_users = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE usage_current > 0"
+        ).fetchone()[0]
+        paying_users = conn.execute(
+            "SELECT COUNT(*) FROM users WHERE subscription_tier != 'free'"
+        ).fetchone()[0]
         
-        if user:
-            st.session_state.edit_user = dict(user)
-            st.success(f"Loaded user: {user['email']}")
+        # Display stats in a grid
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Users", user_count)
+        with col2:
+            st.metric("Active Users", active_users)
+        with col3:
+            st.metric("Paying Users", paying_users)
+    
+    # User Management Tab
+    with admin_tabs[1]:
+        st.markdown("### User Management")
+        
+        # List all users
+        users = conn.execute(
+            "SELECT id, email, created_at, subscription_tier, usage_quota, usage_current, is_admin FROM users ORDER BY id"
+        ).fetchall()
+        
+        if not users:
+            st.info("No users found.")
         else:
-            st.error("User not found")
-    
-    if hasattr(st.session_state, "edit_user"):
-        user = st.session_state.edit_user
+            # Create table
+            data = []
+            for user in users:
+                data.append({
+                    "ID": user["id"],
+                    "Email": user["email"],
+                    "Created": user["created_at"].split(" ")[0] if " " in user["created_at"] else user["created_at"],
+                    "Plan": user["subscription_tier"],
+                    "Usage": f"{user['usage_current']}/{user['usage_quota']} min",
+                    "Admin": "Yes" if user["is_admin"] else "No"
+                })
+            
+            st.dataframe(data)
         
-        email = st.text_input("Email", value=user["email"])
-        subscription = st.selectbox(
-            "Subscription Tier", 
-            options=["free", "basic", "pro", "enterprise"],
-            index=["free", "basic", "pro", "enterprise"].index(user["subscription_tier"])
-        )
-        quota = st.number_input("Usage Quota (minutes)", value=user["usage_quota"], min_value=0)
-        reset_usage = st.checkbox("Reset current usage to 0")
-        is_admin = st.checkbox("Admin", value=bool(user["is_admin"]))
+        # Edit user form
+        st.markdown("### Edit User")
+        user_id = st.number_input("User ID", min_value=1, step=1)
         
-        if st.button("Save Changes"):
-            if reset_usage:
-                usage_current = 0
+        if st.button("Load User"):
+            user = conn.execute(
+                "SELECT * FROM users WHERE id = ?", 
+                (user_id,)
+            ).fetchone()
+            
+            if user:
+                st.session_state.edit_user = dict(user)
+                st.success(f"Loaded user: {user['email']}")
             else:
-                usage_current = user["usage_current"]
-                
-            conn.execute(
-                """
-                UPDATE users 
-                SET email = ?, subscription_tier = ?, usage_quota = ?, 
-                    usage_current = ?, is_admin = ?
-                WHERE id = ?
-                """,
-                (email, subscription, quota, usage_current, int(is_admin), user_id)
+                st.error("User not found")
+        
+        if hasattr(st.session_state, "edit_user"):
+            user = st.session_state.edit_user
+            
+            email = st.text_input("Email", value=user["email"])
+            subscription = st.selectbox(
+                "Subscription Tier", 
+                options=["free", "basic", "pro", "enterprise"],
+                index=["free", "basic", "pro", "enterprise"].index(user["subscription_tier"])
             )
-            conn.commit()
-            st.success("User updated successfully")
+            quota = st.number_input("Usage Quota (minutes)", value=user["usage_quota"], min_value=0)
+            reset_usage = st.checkbox("Reset current usage to 0")
+            is_admin = st.checkbox("Admin", value=bool(user["is_admin"]))
+            
+            if st.button("Save Changes"):
+                if reset_usage:
+                    usage_current = 0
+                else:
+                    usage_current = user["usage_current"]
+                    
+                conn.execute(
+                    """
+                    UPDATE users 
+                    SET email = ?, subscription_tier = ?, usage_quota = ?, 
+                        usage_current = ?, is_admin = ?
+                    WHERE id = ?
+                    """,
+                    (email, subscription, quota, usage_current, int(is_admin), user_id)
+                )
+                conn.commit()
+                st.success("User updated successfully")
+    
+    # Model Configuration Tab
+    with admin_tabs[2]:
+        st.markdown("### Model Configuration")
+        
+        config_tab1, config_tab2 = st.tabs(["Transcription Model", "Content Processing Model"])
+        
+        with config_tab1:
+            st.subheader("Transcription Model Settings")
+            
+            # Display current default
+            st.markdown(f"**Current default:** {st.session_state.transcription_provider}/{st.session_state.transcription_model}")
+            
+            transcription_provider = st.selectbox(
+                "Transcription Provider",
+                options=["OpenAI"],  # Currently only OpenAI supports transcription
+                index=0
+            )
+            
+            transcription_models = ["whisper-1"]
+            if transcription_provider == "OpenAI":
+                transcription_models = ["whisper-1"]
+            
+            transcription_model = st.selectbox(
+                "Transcription Model",
+                options=transcription_models,
+                index=0
+            )
+            
+            if st.button("Set as Default Transcription Model"):
+                st.session_state.transcription_provider = transcription_provider
+                st.session_state.transcription_model = transcription_model
+                
+                # Save to database for persistence (if you want to implement this)
+                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_transcription_provider'", (transcription_provider,))
+                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_transcription_model'", (transcription_model,))
+                # conn.commit()
+                
+                st.success(f"Default transcription model set to {transcription_provider}/{transcription_model}")
+        
+        with config_tab2:
+            st.subheader("Content Processing Model Settings")
+            
+            # Display current default
+            st.markdown(f"**Current default:** {st.session_state.ai_provider}/{st.session_state.ai_model}")
+            
+            ai_provider = st.selectbox(
+                "AI Provider",
+                options=["Anthropic", "OpenAI"],
+                index=0 if st.session_state.ai_provider == "Anthropic" else 1
+            )
+            
+            # Show different model options based on provider
+            if ai_provider == "Anthropic":
+                anthropic_models = get_available_models("Anthropic")
+                default_index = anthropic_models.index("claude-3-7-sonnet-20250219") if "claude-3-7-sonnet-20250219" in anthropic_models else 0
+                ai_model = st.selectbox(
+                    "AI Model",
+                    options=anthropic_models,
+                    index=default_index
+                )
+            else:  # OpenAI
+                openai_models = get_available_models("OpenAI")
+                default_index = 0
+                ai_model = st.selectbox(
+                    "AI Model",
+                    options=openai_models,
+                    index=default_index
+                )
+            
+            if st.button("Set as Default Content Processing Model"):
+                st.session_state.ai_provider = ai_provider
+                st.session_state.ai_model = ai_model
+                
+                # Save to database for persistence (if you want to implement this)
+                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_ai_provider'", (ai_provider,))
+                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_ai_model'", (ai_model,))
+                # conn.commit()
+                
+                st.success(f"Default content processing model set to {ai_provider}/{ai_model}")
     
     conn.close()
     
@@ -3870,7 +3894,7 @@ def direct_transcribe_audio(audio_file_path, api_key=None):
         logger.exception("Exception in direct_transcribe_audio:")
         return f"Error transcribing audio directly: {str(e)}"
 
-def direct_anthropic_completion(prompt, api_key=None, model="claude-3-haiku-20240307"):
+def direct_anthropic_completion(prompt, api_key=None, model="claude-3-7-sonnet-20250219"):
     """
     Generate content directly using the Anthropic API without relying on the Anthropic client.
     This is a fallback method to use when the Anthropic client has initialization issues.
