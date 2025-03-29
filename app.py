@@ -24,6 +24,19 @@ import streamlit.components.v1 as components
 import concurrent.futures
 import threading
 import openai
+import logging
+import sys
+
+# Set up logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("whisperforge.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("whisperforge")
 
 # This must be the very first st.* command
 st.set_page_config(
@@ -88,19 +101,75 @@ def validate_jwt_token(token):
 
 # Initialization of clients - will be called as needed with user-specific API keys
 def get_openai_client():
+    logger.debug("Entering get_openai_client function")
     api_key = get_api_key_for_service("openai")
     if not api_key:
+        logger.error("OpenAI API key is not set")
         st.error("OpenAI API key is not set. Please add your API key in the settings.")
         return None
     
+    logger.debug(f"Got API key (length: {len(api_key)})")
+    
+    # Log environment variables that might affect client initialization
+    logger.debug("Checking environment variables that might affect client initialization:")
+    for env_var in os.environ:
+        if 'proxy' in env_var.lower() or 'http_' in env_var.lower() or 'openai' in env_var.lower():
+            logger.debug(f"  Found environment variable: {env_var}")
+    
     # Create client with just the API key, no extra parameters
     try:
-        # Use only the api_key parameter, avoiding any extra env vars or proxies
-        openai.api_key = api_key
-        client = OpenAI(api_key=api_key)
+        logger.debug("Attempting to initialize OpenAI client with ONLY api_key parameter")
+        
+        # Create a completely clean approach - don't use any environment variables
+        client_kwargs = {'api_key': api_key}
+        
+        # Log what we're passing to OpenAI
+        logger.debug(f"OpenAI initialization parameters: {client_kwargs}")
+        
+        # Try direct initialization as a last resort
+        client = OpenAI(**client_kwargs)
+        logger.debug("Successfully initialized OpenAI client")
         return client
     except Exception as e:
-        st.error(f"Error initializing OpenAI client: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Error initializing OpenAI client: {error_msg}")
+        logger.exception("Full exception details:")
+        
+        # Try alternative initialization if 'proxies' is in the error
+        if 'proxies' in error_msg:
+            logger.debug("Trying alternative initialization approach due to proxies error")
+            try:
+                # Alternative approach - don't use OpenAI client class directly
+                # Instead use a simple function-based approach
+                
+                # Define a simple function to make API requests directly
+                def simple_transcribe(audio_file):
+                    import requests
+                    url = "https://api.openai.com/v1/audio/transcriptions"
+                    headers = {
+                        "Authorization": f"Bearer {api_key}"
+                    }
+                    files = {
+                        "file": audio_file,
+                        "model": (None, "whisper-1")
+                    }
+                    response = requests.post(url, headers=headers, files=files)
+                    return response.json()
+                
+                # Create a minimal client object that just has the transcribe method
+                class MinimalOpenAIClient:
+                    def __init__(self, api_key):
+                        self.api_key = api_key
+                        self.audio = type('', (), {})()
+                        self.audio.transcriptions = type('', (), {})()
+                        self.audio.transcriptions.create = simple_transcribe
+                
+                logger.debug("Created minimal OpenAI client replacement")
+                return MinimalOpenAIClient(api_key)
+            except Exception as alt_e:
+                logger.error(f"Alternative initialization also failed: {str(alt_e)}")
+        
+        st.error(f"Error initializing OpenAI client: {error_msg}")
         return None
 
 def get_anthropic_client():
@@ -1691,6 +1760,8 @@ def transcribe_audio(audio_file):
     start_time = time.time()
     
     try:
+        logger.debug(f"Starting transcription of audio file: {getattr(audio_file, 'name', str(audio_file))}")
+        
         # Check if audio_file is a string (path) or an UploadedFile object
         if isinstance(audio_file, str):
             audio_path = audio_file
@@ -1701,13 +1772,17 @@ def transcribe_audio(audio_file):
             file_name = audio_file.name
             file_extension = file_name.split('.')[-1].lower()
             
+            logger.debug(f"Processing uploaded file: {file_name} (extension: {file_extension})")
+            
             # Validate file extension
             valid_extensions = ['mp3', 'wav', 'ogg', 'm4a', 'mp4', 'mpeg', 'mpga', 'webm']
             if file_extension not in valid_extensions:
+                logger.error(f"Invalid file extension: {file_extension}")
                 return f"Error: Unsupported file format '{file_extension}'. Please upload an audio file in one of these formats: {', '.join(valid_extensions)}"
             
             # Create temp file with proper extension
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
+                logger.debug(f"Created temporary file: {tmp_file.name}")
                 tmp_file.write(audio_file.getvalue())
                 audio_path = tmp_file.name
                 file_size = os.path.getsize(audio_path)
@@ -1716,11 +1791,13 @@ def transcribe_audio(audio_file):
         MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
         if file_size > MAX_FILE_SIZE:
             error_msg = f"File size ({file_size/(1024*1024):.1f} MB) exceeds the maximum allowed size of 500MB."
+            logger.error(error_msg)
             st.error(error_msg)
             return f"Error: {error_msg}"
         
         # Display file information to user
         file_size_mb = file_size / (1024 * 1024)
+        logger.debug(f"File size: {file_size_mb:.2f} MB")
         st.info(f"Processing '{file_name}' ({file_size_mb:.1f} MB)")
         
         # Size threshold for chunking - adjusted for different file sizes
@@ -1730,49 +1807,75 @@ def transcribe_audio(audio_file):
         else:
             # For smaller files, use a lower threshold for better accuracy
             CHUNK_THRESHOLD = 25 * 1024 * 1024  # 25MB threshold for smaller files
-        
-        # Get OpenAI client with user's API key
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
+            
+        logger.debug(f"Chunk threshold: {CHUNK_THRESHOLD/(1024*1024):.2f} MB")
         
         # Process based on file size
         if file_size > CHUNK_THRESHOLD:
+            logger.debug("Large file detected. Processing in chunks.")
             st.info(f"Large file detected ({file_size_mb:.1f} MB). Processing in chunks for better reliability.")
             # Process large file in chunks
             transcript = transcribe_large_file(audio_path)
         else:
-            # Process small file directly
+            # Process small file directly - try multiple methods if needed
+            logger.debug("Processing small file directly.")
             with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
                 try:
-                    # Get a fresh instance of the OpenAI client with only the API key
+                    # METHOD 1: Try using standard OpenAI client first
+                    logger.debug("Attempt 1: Using standard OpenAI client")
                     api_key = get_api_key_for_service("openai")
                     if not api_key:
+                        logger.error("Missing OpenAI API key")
                         return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
                     
-                    # Initialize client directly to avoid any proxy settings
-                    client = OpenAI(api_key=api_key)
+                    # Try to initialize with only API key
+                    try:
+                        logger.debug("Initializing OpenAI client")
+                        client = OpenAI(api_key=api_key)
+                        
+                        logger.debug("Sending transcription request")
+                        with open(audio_path, "rb") as audio:
+                            response = client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=audio
+                            )
+                            transcript = response.text
+                            logger.debug(f"Transcription successful. Length: {len(transcript)} characters")
+                    except Exception as client_error:
+                        error_msg = str(client_error)
+                        logger.error(f"OpenAI client error: {error_msg}")
+                        
+                        # METHOD 2: Try direct API call if client fails
+                        if "proxies" in error_msg or "Client.init" in error_msg:
+                            logger.debug("Attempt 2: Using direct API call due to client error")
+                            transcript = direct_transcribe_audio(audio_path, api_key)
+                            if transcript and not transcript.startswith("Error:"):
+                                logger.debug("Direct transcription successful")
+                            else:
+                                logger.error(f"Direct transcription failed: {transcript}")
+                                raise Exception(transcript)
+                        else:
+                            raise client_error
                     
-                    with open(audio_path, "rb") as audio:
-                        response = client.audio.transcriptions.create(
-                            model="whisper-1",
-                            file=audio
-                        )
-                        transcript = response.text
                 except Exception as api_error:
                     error_msg = str(api_error)
+                    logger.error(f"API Error: {error_msg}")
                     st.error(f"API Error: {error_msg}")
                     
                     # Try to provide more helpful error messages for common issues
                     if "rate limit" in error_msg.lower():
+                        logger.error("Rate limit exceeded")
                         return "Error: OpenAI API rate limit reached. Please try again in a few minutes."
                     elif "api key" in error_msg.lower():
+                        logger.error("Invalid API key")
                         return "Error: Invalid OpenAI API key. Please check your API key configuration."
                     elif "file size" in error_msg.lower() or "too large" in error_msg.lower():
                         # If direct upload fails due to size, try chunking as fallback
+                        logger.warning("File size error. Attempting chunking as fallback.")
                         st.warning("File size error from API. Attempting to process in chunks as a fallback...")
                         transcript = transcribe_large_file(audio_path)
                     elif "proxies" in error_msg.lower() or "client.init" in error_msg.lower():
+                        logger.error("OpenAI client configuration issue")
                         return "Error: OpenAI client configuration issue. Restarting the application should fix this."
                     else:
                         return f"Error transcribing audio: {error_msg}"
@@ -1780,9 +1883,10 @@ def transcribe_audio(audio_file):
         # Clean up temporary file if we created it
         if not isinstance(audio_file, str):
             try:
+                logger.debug(f"Cleaning up temporary file: {audio_path}")
                 os.remove(audio_path)
-            except:
-                pass
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to clean up temporary file: {str(cleanup_error)}")
         
         # Update usage tracking
         end_time = time.time()
@@ -1790,11 +1894,13 @@ def transcribe_audio(audio_file):
         update_usage_tracking(duration)
         
         if transcript:
+            logger.debug(f"Transcription complete. Result length: {len(transcript)} characters")
             st.success(f"✅ Transcription complete! ({len(transcript)} characters)")
             
         return transcript
         
     except Exception as e:
+        logger.exception("Unhandled exception in transcribe_audio")
         st.error(f"Transcription error: {str(e)}")
         # Provide more specific error messages for common issues
         if "ffmpeg" in str(e).lower():
@@ -2384,6 +2490,140 @@ def main():
         </script>
         """
         st.markdown(cookie_banner_html, unsafe_allow_html=True)
+    
+    # Display tool area if transcript is available
+    if st.session_state.get("transcript"):
+        with st.expander("🛠️ Tools", expanded=True):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            # First column - transcript actions
+            with col1:
+                st.subheader("Transcript")
+                if st.button("📝 Copy Transcript"):
+                    st.session_state.clipboard = st.session_state.transcript
+                    st.toast("Transcript copied to clipboard")
+                
+                if st.button("💾 Save Transcript"):
+                    st.session_state.file_to_save = "transcript.txt"
+                    st.session_state.content_to_save = st.session_state.transcript
+                    st.toast("Preparing transcript for download...")
+            
+            # Second column - wisdom actions
+            with col2:
+                st.subheader("Wisdom")
+                
+                direct_wisdom_button = st.button("🧠 Direct Wisdom")
+                if direct_wisdom_button:
+                    with st.spinner("Generating wisdom directly..."):
+                        try:
+                            transcript = st.session_state.get("transcript", "")
+                            if transcript:
+                                wisdom = direct_anthropic_completion(
+                                    transcript, 
+                                    "Extract the key insights, lessons, and wisdom from this transcript. Format as bullet points."
+                                )
+                                if not wisdom.startswith("Error:"):
+                                    st.session_state.wisdom = wisdom
+                                    st.toast("Wisdom extracted successfully!")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error(wisdom)
+                            else:
+                                st.error("No transcript available")
+                        except Exception as e:
+                            logger.exception("Error in direct wisdom generation:")
+                            st.error(f"Error generating wisdom: {str(e)}")
+                
+                if st.session_state.get("wisdom"):
+                    if st.button("📝 Copy Wisdom"):
+                        st.session_state.clipboard = st.session_state.wisdom
+                        st.toast("Wisdom copied to clipboard")
+                    
+                    if st.button("💾 Save Wisdom"):
+                        st.session_state.file_to_save = "wisdom.txt"
+                        st.session_state.content_to_save = st.session_state.wisdom
+                        st.toast("Preparing wisdom for download...")
+            
+            # Third column - outline actions
+            with col3:
+                st.subheader("Outline")
+                
+                direct_outline_button = st.button("📋 Direct Outline")
+                if direct_outline_button:
+                    with st.spinner("Generating outline directly..."):
+                        try:
+                            transcript = st.session_state.get("transcript", "")
+                            if transcript:
+                                outline = direct_anthropic_completion(
+                                    transcript, 
+                                    "Create a detailed outline of this content, with hierarchical sections and subsections."
+                                )
+                                if not outline.startswith("Error:"):
+                                    st.session_state.outline = outline
+                                    st.toast("Outline created successfully!")
+                                    st.experimental_rerun()
+                                else:
+                                    st.error(outline)
+                            else:
+                                st.error("No transcript available")
+                        except Exception as e:
+                            logger.exception("Error in direct outline generation:")
+                            st.error(f"Error generating outline: {str(e)}")
+                
+                if st.session_state.get("outline"):
+                    if st.button("📝 Copy Outline"):
+                        st.session_state.clipboard = st.session_state.outline
+                        st.toast("Outline copied to clipboard")
+                    
+                    if st.button("💾 Save Outline"):
+                        st.session_state.file_to_save = "outline.txt"
+                        st.session_state.content_to_save = st.session_state.outline
+                        st.toast("Preparing outline for download...")
+            
+            # Fourth column - export actions
+            with col4:
+                st.subheader("Export")
+                
+                # Add Direct Save to Notion button
+                direct_notion_button = st.button("📕 Direct Notion Save")
+                if direct_notion_button:
+                    with st.spinner("Saving to Notion directly..."):
+                        try:
+                            title = st.session_state.get("file_name", "Untitled Audio")
+                            transcript = st.session_state.get("transcript", "")
+                            wisdom = st.session_state.get("wisdom", None)
+                            outline = st.session_state.get("outline", None)
+                            
+                            if transcript:
+                                result = direct_notion_save(
+                                    title=title,
+                                    transcript=transcript,
+                                    wisdom=wisdom,
+                                    outline=outline
+                                )
+                                
+                                if "error" not in result:
+                                    st.toast("Successfully saved to Notion!")
+                                    st.markdown(f"[Open in Notion]({result['url']})")
+                                else:
+                                    st.error(result["error"])
+                            else:
+                                st.error("No transcript available to save")
+                        except Exception as e:
+                            logger.exception("Error in direct Notion save:")
+                            st.error(f"Error saving to Notion: {str(e)}")
+                
+                # Normal Notion export button
+                if os.environ.get("NOTION_API_KEY") or st.session_state.get("NOTION_API_KEY"):
+                    if st.button("📘 Export to Notion"):
+                        with st.spinner("Exporting to Notion..."):
+                            try:
+                                export_to_notion()
+                            except Exception as e:
+                                logger.exception("Error exporting to Notion:")
+                                st.error(f"Error exporting to Notion: {str(e)}")
+    
+    # ... existing code ...
 
 def show_main_page():
     # This function contains the original main app functionality
@@ -2487,21 +2727,66 @@ def show_main_page():
         
         # Transcribe Button
         if uploaded_file is not None:
-            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
-                with st.spinner("Transcribing your audio..."):
-                    transcription = transcribe_audio(uploaded_file)
-                    if transcription:
-                        st.session_state.transcription = transcription
-                        st.session_state.audio_file = uploaded_file
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
+                    with st.spinner("Transcribing your audio..."):
+                        transcription = transcribe_audio(uploaded_file)
+                        if transcription:
+                            st.session_state.transcription = transcription
+                            st.session_state.audio_file = uploaded_file
+                            
+                            # Generate a title if none provided
+                            if not content_title and transcription:
+                                with st.spinner("Generating title..."):
+                                    generated_title = generate_title(transcription)
+                                    if generated_title:
+                                        # Update the value, not the widget state directly
+                                        st.session_state.content_title_value = generated_title
+                                        st.rerun()  # Rerun to update the UI with the new title
+            
+            with col2:
+                if st.button("🎙️ Direct Transcribe (Fallback)", key="direct_transcribe_button", use_container_width=True):
+                    with st.spinner("Directly transcribing audio (bypassing client)..."):
+                        # Save the file to a temporary location
+                        file_name = uploaded_file.name
+                        file_extension = file_name.split('.')[-1].lower()
                         
-                        # Generate a title if none provided
-                        if not content_title and transcription:
-                            with st.spinner("Generating title..."):
-                                generated_title = generate_title(transcription)
-                                if generated_title:
-                                    # Update the value, not the widget state directly
-                                    st.session_state.content_title_value = generated_title
-                                    st.rerun()  # Rerun to update the UI with the new title
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
+                            tmp_file.write(uploaded_file.getvalue())
+                            audio_path = tmp_file.name
+                        
+                        # Use direct transcription
+                        api_key = get_api_key_for_service("openai") 
+                        if not api_key:
+                            st.error("OpenAI API key is required for transcription")
+                        else:
+                            transcription = direct_transcribe_audio(audio_path, api_key)
+                            
+                            # Clean up temp file
+                            try:
+                                os.remove(audio_path)
+                            except:
+                                pass
+                                
+                            if transcription and not transcription.startswith("Error:"):
+                                st.session_state.transcription = transcription
+                                st.session_state.audio_file = uploaded_file
+                                st.success("Direct transcription successful!")
+                                
+                                # Generate a title if none provided
+                                if not content_title and transcription:
+                                    with st.spinner("Generating title..."):
+                                        try:
+                                            # Simple direct title generation
+                                            prompt = f"Create a concise title (5-7 words) for this transcript: {transcription[:1000]}..."
+                                            generated_title = direct_anthropic_completion(prompt, api_key=get_api_key_for_service("anthropic"))
+                                            if generated_title and not generated_title.startswith("Error:"):
+                                                st.session_state.content_title_value = generated_title
+                                                st.rerun()
+                                        except:
+                                            pass
         
         # Display transcription result if available
         if st.session_state.transcription:
@@ -2518,16 +2803,45 @@ def show_main_page():
                 # Wisdom extraction
                 wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
                 with wisdom_expander:
-                    if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
-                        with st.spinner("Extracting key insights..."):
-                            wisdom = generate_wisdom(
-                                st.session_state.transcription, 
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model,
-                                knowledge_base=knowledge_base
-                            )
-                            if wisdom:
-                                st.session_state.wisdom = wisdom
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
+                            with st.spinner("Extracting key insights..."):
+                                wisdom = generate_wisdom(
+                                    st.session_state.transcription, 
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    knowledge_base=knowledge_base
+                                )
+                                if wisdom:
+                                    st.session_state.wisdom = wisdom
+                    
+                    with col2:
+                        if st.button("Direct API Wisdom (Fallback)", key="direct_wisdom_button", use_container_width=True):
+                            with st.spinner("Extracting wisdom directly via API..."):
+                                # Create a prompt for wisdom extraction
+                                prompt = f"""Extract key insights, lessons, and wisdom from the transcript. Focus on actionable takeaways and profound realizations.
+
+Transcript: {st.session_state.transcription[:2000]}...
+
+Please provide a well-formatted, structured response with the main insights clearly outlined."""
+                                
+                                # Get API key
+                                api_key = get_api_key_for_service("anthropic")
+                                if api_key:
+                                    try:
+                                        # Use direct API call
+                                        wisdom = direct_anthropic_completion(prompt, api_key)
+                                        if wisdom and not wisdom.startswith("Error"):
+                                            st.session_state.wisdom = wisdom
+                                            st.success("Direct wisdom extraction successful!")
+                                        else:
+                                            st.error(f"Failed to extract wisdom: {wisdom}")
+                                    except Exception as e:
+                                        st.error(f"Error: {str(e)}")
+                                else:
+                                    st.error("Anthropic API key is required")
                     
                     if st.session_state.get("wisdom"):
                         st.markdown("### Extracted Wisdom")
@@ -3496,6 +3810,324 @@ def show_legal_page():
         
         If you have questions about our privacy practices, please contact us at privacy@whisperforge.ai.
         """)
+
+def direct_transcribe_audio(audio_file_path, api_key=None):
+    """
+    Transcribe audio directly using the OpenAI API without relying on the OpenAI Python client.
+    This is a fallback method to use when the OpenAI client has initialization issues.
+    """
+    logger.debug(f"Starting direct transcription of {audio_file_path}")
+    
+    if not api_key:
+        api_key = get_api_key_for_service("openai")
+        if not api_key:
+            logger.error("No OpenAI API key available")
+            return "Error: OpenAI API key is not provided or configured"
+    
+    try:
+        import requests
+        
+        logger.debug("Preparing API request for direct transcription")
+        url = "https://api.openai.com/v1/audio/transcriptions"
+        headers = {
+            "Authorization": f"Bearer {api_key}"
+        }
+        
+        # Check file exists
+        if not os.path.exists(audio_file_path):
+            logger.error(f"Audio file not found: {audio_file_path}")
+            return "Error: Audio file not found"
+        
+        # Log file details
+        file_size = os.path.getsize(audio_file_path)
+        logger.debug(f"Audio file size: {file_size/1024/1024:.2f} MB")
+        
+        # Open the file in binary mode
+        with open(audio_file_path, "rb") as audio_file:
+            files = {
+                "file": (os.path.basename(audio_file_path), audio_file, "audio/mpeg"),
+                "model": (None, "whisper-1")
+            }
+            
+            logger.debug("Sending request to OpenAI API")
+            response = requests.post(url, headers=headers, files=files, timeout=120)
+            
+            # Check for errors
+            if response.status_code != 200:
+                logger.error(f"API Error: {response.status_code} - {response.text}")
+                return f"Error: API returned status code {response.status_code}: {response.text}"
+            
+            # Parse the response
+            try:
+                result = response.json()
+                logger.debug("Successfully received transcription from API")
+                return result.get("text", "")
+            except Exception as parse_error:
+                logger.error(f"Error parsing API response: {str(parse_error)}")
+                return f"Error parsing API response: {str(parse_error)}"
+                
+    except Exception as e:
+        logger.exception("Exception in direct_transcribe_audio:")
+        return f"Error transcribing audio directly: {str(e)}"
+
+def direct_anthropic_completion(prompt, api_key=None, model="claude-3-haiku-20240307"):
+    """
+    Generate content directly using the Anthropic API without relying on the Anthropic client.
+    This is a fallback method to use when the Anthropic client has initialization issues.
+    """
+    logger.debug(f"Starting direct Anthropic API call for model: {model}")
+    
+    if not api_key:
+        api_key = get_api_key_for_service("anthropic")
+        if not api_key:
+            logger.error("No Anthropic API key available")
+            return "Error: Anthropic API key is not provided or configured"
+    
+    try:
+        import requests
+        import json
+        
+        logger.debug("Preparing API request for Anthropic")
+        url = "https://api.anthropic.com/v1/messages"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        
+        # Prepare the payload
+        payload = {
+            "model": model,
+            "max_tokens": 1500,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+        
+        logger.debug(f"Payload prepared, content length: {len(prompt)} characters")
+        
+        # Send the request
+        logger.debug("Sending request to Anthropic API")
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        
+        # Check for errors
+        if response.status_code != 200:
+            logger.error(f"API Error: {response.status_code} - {response.text}")
+            return f"Error: API returned status code {response.status_code}: {response.text}"
+        
+        # Parse the response
+        try:
+            result = response.json()
+            logger.debug("Successfully received content from Anthropic API")
+            # Extract the content
+            if "content" in result and len(result["content"]) > 0:
+                return result["content"][0]["text"]
+            else:
+                logger.error("Response did not contain expected content")
+                return "Error: Response did not contain expected content"
+        except Exception as parse_error:
+            logger.error(f"Error parsing API response: {str(parse_error)}")
+            return f"Error parsing Anthropic API response: {str(parse_error)}"
+            
+    except Exception as e:
+        logger.exception("Exception in direct_anthropic_completion:")
+        return f"Error generating content directly with Anthropic: {str(e)}"
+
+def export_to_notion():
+    """Export content to Notion using the create_content_notion_entry function"""
+    try:
+        logger.debug("Starting export to Notion")
+        
+        # Gather content
+        title = st.session_state.get("file_name", "Untitled Audio")
+        transcript = st.session_state.get("transcript", "")
+        wisdom = st.session_state.get("wisdom", None)
+        outline = st.session_state.get("outline", None)
+        social_content = st.session_state.get("social_content", None)
+        image_prompts = st.session_state.get("image_prompts", None)
+        article = st.session_state.get("article", None)
+        
+        # Create content in Notion
+        result = create_content_notion_entry(
+            title=title,
+            transcript=transcript,
+            wisdom=wisdom,
+            outline=outline,
+            social_content=social_content,
+            image_prompts=image_prompts,
+            article=article
+        )
+        
+        if result:
+            logger.debug(f"Successfully exported to Notion: {result}")
+            return result
+        else:
+            logger.error("Failed to export to Notion")
+            st.error("Failed to export to Notion. Please check your Notion API configuration.")
+            return None
+    
+    except Exception as e:
+        logger.exception("Error in export_to_notion:")
+        st.error(f"Error exporting to Notion: {str(e)}")
+        return None
+
+def direct_notion_save(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
+    """
+    Save content directly to Notion API without relying on the notion_client library.
+    """
+    logger.debug(f"Starting direct Notion save for title: {title}")
+    
+    # Get API key and database ID
+    api_key = get_api_key_for_service("notion")
+    database_id = get_notion_database_id()
+    
+    if not api_key:
+        logger.error("No Notion API key available")
+        return {"error": "Error: Notion API key is not provided or configured"}
+        
+    if not database_id:
+        logger.error("No Notion database ID available")
+        return {"error": "Error: Notion database ID is not provided or configured"}
+    
+    try:
+        import requests
+        import json
+        from datetime import datetime
+        
+        logger.debug("Preparing API request for Notion")
+        url = "https://api.notion.com/v1/pages"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Notion-Version": "2022-06-28"
+        }
+        
+        # Initialize content blocks
+        children = []
+        
+        # Add summary if wisdom is available
+        if wisdom:
+            children.append({
+                "object": "block",
+                "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}],
+                    "color": "purple_background",
+                    "icon": {"type": "emoji", "emoji": "💜"}
+                }
+            })
+        
+        # Add transcript toggle
+        if transcript:
+            # Split transcript into chunks to respect Notion's block size limit
+            transcript_chunks = [transcript[i:i+2000] for i in range(0, len(transcript), 2000)]
+            
+            # Create transcript toggle
+            transcript_blocks = [{
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                }
+            } for chunk in transcript_chunks]
+            
+            children.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
+                    "children": transcript_blocks
+                }
+            })
+        
+        # Add wisdom toggle
+        if wisdom:
+            children.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}]
+                        }
+                    }]
+                }
+            })
+        
+        # Add outline toggle
+        if outline:
+            children.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": outline[:2000]}}]
+                        }
+                    }]
+                }
+            })
+        
+        # Add metadata section
+        children.append({
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
+            }
+        })
+        
+        children.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {"type": "text", "text": {"content": "Created with "}},
+                    {"type": "text", "text": {"content": "WhisperForge"}, "annotations": {"bold": True, "color": "purple"}}
+                ]
+            }
+        })
+        
+        # Prepare the payload
+        payload = {
+            "parent": {"database_id": database_id},
+            "properties": {
+                "Name": {
+                    "title": [{"text": {"content": title}}]
+                },
+                "Created": {
+                    "date": {"start": datetime.now().isoformat()}
+                }
+            },
+            "children": children
+        }
+        
+        logger.debug(f"Payload prepared with {len(children)} content blocks")
+        
+        # Send the request
+        logger.debug("Sending request to Notion API")
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # Check for errors
+        if response.status_code != 200:
+            logger.error(f"API Error: {response.status_code} - {response.text}")
+            return {"error": f"Error: API returned status code {response.status_code}: {response.text}"}
+        
+        # Parse the response
+        result = response.json()
+        logger.debug("Successfully saved page to Notion")
+        
+        return {"url": result.get("url", ""), "id": result.get("id", "")}
+            
+    except Exception as e:
+        logger.exception("Exception in direct_notion_save:")
+        return {"error": f"Error saving to Notion: {str(e)}"}
 
 if __name__ == "__main__":
     main() 
