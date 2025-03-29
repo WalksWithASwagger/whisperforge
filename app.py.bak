@@ -260,7 +260,7 @@ def local_css():
         border-radius: var(--card-radius);
         background: linear-gradient(110deg, rgba(121, 40, 202, 0.10) 0%, rgba(0, 0, 0, 0) 80%);
         border: 1px solid rgba(121, 40, 202, 0.25);
-        padding: 12px 20px;
+        padding: 16px 24px;
         margin-bottom: 20px;
         display: flex;
         justify-content: space-between;
@@ -290,55 +290,47 @@ def local_css():
     
     .header-nav {
         display: flex;
-        gap: 16px;
+        gap: 12px;
         align-items: center;
         justify-content: center;
     }
     
     .nav-item {
-        color: var(--text-secondary);
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        padding: 4px 12px;
-        border-radius: 4px;
+        background: linear-gradient(110deg, rgba(121, 40, 202, 0.08) 0%, rgba(255, 0, 128, 0.05) 100%);
+        border: 1px solid rgba(121, 40, 202, 0.25);
+        color: var(--text-primary);
+        border-radius: var(--border-radius);
+        padding: 8px 16px;
+        font-family: var(--system-font);
         transition: all 0.2s ease;
-        position: relative;
+        font-weight: 500;
+        font-size: 0.85rem;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
     }
     
     .nav-item:hover {
+        background: linear-gradient(110deg, rgba(121, 40, 202, 0.15) 0%, rgba(255, 0, 128, 0.08) 100%);
+        border-color: rgba(121, 40, 202, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         color: var(--text-primary);
-        background: rgba(121, 40, 202, 0.1);
-    }
-    
-    .nav-item::after {
-        content: "";
-        position: absolute;
-        bottom: -2px;
-        left: 50%;
-        right: 50%;
-        height: 2px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .nav-item:hover::after {
-        left: 0;
-        right: 0;
-        opacity: 1;
     }
     
     .nav-item.active {
+        background: linear-gradient(110deg, rgba(121, 40, 202, 0.2) 0%, rgba(255, 0, 128, 0.1) 100%);
+        border-color: rgba(121, 40, 202, 0.5);
         color: var(--text-primary);
-        background: rgba(121, 40, 202, 0.15);
-        box-shadow: 0 0 8px rgba(121, 40, 202, 0.2);
+        box-shadow: 0 0 12px rgba(121, 40, 202, 0.25);
+    }
+    
+    .nav-item::after {
+        display: none;
     }
     
     .nav-item.active::after {
-        left: 0;
-        right: 0;
-        opacity: 1;
+        display: none;
     }
     
     @keyframes header-shine {
@@ -808,7 +800,6 @@ def local_css():
         from { transform: translateX(100%); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
     }
-    </style>
     
     <!-- Add the scanner line animation -->
     <div class="scanner-line"></div>
@@ -874,7 +865,11 @@ def load_prompts():
     return users, users_prompts
 
 def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
-    """Apply a specific prompt using the selected model and provider, incorporating user knowledge"""
+    """Apply a specific prompt using the selected model and provider, incorporating user knowledge with streaming output"""
+    # Create a placeholder for streaming output
+    stream_container = st.empty()
+    stream_content = ""
+    
     try:
         prompt_parts = prompt_content.split('## Prompt')
         if len(prompt_parts) > 1:
@@ -893,56 +888,100 @@ def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
 
 {knowledge_context}
 
-When analyzing the content, please incorporate these perspectives and style guidelines.
+When analyzing the content, please STRICTLY incorporate these perspectives and style guidelines.
+The response MUST sound like it was written by the same person who wrote the knowledge base content.
+Match their tone, vocabulary, sentence structure, and characteristic expressions.
 
 Original Prompt:
 {prompt_text}"""
 
+        # Display initial message
+        stream_container.markdown("Processing your prompt...")
+
         if provider == "OpenAI":
+            openai_client = get_openai_client()
+            if not openai_client:
+                return "Error: OpenAI API key is not configured."
+                
+            # Stream response from OpenAI
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ],
-                max_tokens=1500
+                max_tokens=1500,
+                stream=True
             )
-            return response.choices[0].message.content
-
+            
+            result = ""
+            # Process the streaming response
+            for chunk in response:
+                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content is not None:
+                    content_chunk = chunk.choices[0].delta.content
+                    result += content_chunk
+                    stream_content += content_chunk
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
+            
         elif provider == "Anthropic":
-            response = anthropic_client.messages.create(
+            anthropic_client = get_anthropic_client()
+            if not anthropic_client:
+                return "Error: Anthropic API key is not configured."
+                
+            # Stream response from Anthropic
+            with anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1500,
                 system=system_prompt,
                 messages=[
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ]
-            )
-            return response.content[0].text
-
+            ) as stream:
+                result = ""
+                for text_chunk in stream.text_stream:
+                    result += text_chunk
+                    stream_content += text_chunk
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
+            
         elif provider == "Grok":
-            # Grok API endpoint (you'll need to adjust this based on actual Grok API documentation)
+            grok_api_key = get_grok_api_key()
+            if not grok_api_key:
+                return "Error: Grok API key is not configured."
+
+            # Grok doesn't support streaming yet, so we use a progress display
             headers = {
-                "Authorization": f"Bearer {GROK_API_KEY}",
+                "Authorization": f"Bearer {grok_api_key}",
                 "Content-Type": "application/json"
             }
             payload = {
-                "model": model,
+                "model": "grok-1",
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": f"Here's the transcription to analyze:\n\n{text}"}
                 ]
             }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",  # Adjust URL as needed
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
-
+            
+            # Show a progress indicator
+            with st.spinner("Generating response with Grok (this may take a moment)..."):
+                response = requests.post(
+                    "https://api.grok.x.ai/v1/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                result = response.json()["choices"][0]["message"]["content"]
+                # Display the complete result
+                stream_container.markdown(result)
+                
+        # Clear the streaming container when done
+        stream_container.empty()
+        
+        return result
     except Exception as e:
-        st.error(f"Analysis error with {provider} {model}: {str(e)}")
-        return None
+        logger.exception("Error processing custom prompt:")
+        stream_container.error(f"Error: {str(e)}")
+        return f"Error processing prompt: {str(e)}"
 
 def chunk_audio(audio_path, target_size_mb=25):
     """Split audio file into chunks of approximately target_size_mb"""
@@ -1142,7 +1181,7 @@ def generate_short_title(text):
         api_key = get_api_key_for_service("anthropic")
         if not api_key:
             return "Untitled Audio Transcription"
-        
+            
         # Create a better prompt for title generation
         prompt = f"""Create a descriptive, specific title (5-8 words) that accurately captures the core topic or theme of this content. 
         The title should be informative and specific enough that someone reading it would immediately understand what the content is about.
@@ -1491,7 +1530,7 @@ def generate_content_tags(transcript, wisdom=None):
         result = direct_anthropic_completion(prompt, api_key, model="claude-3-7-sonnet-20250219")
         
         if result and not result.startswith("Error"):
-            # Split the response into individual tags and clean them
+        # Split the response into individual tags and clean them
             tags = [tag.strip() for tag in result.split(',') if tag.strip()]
             
             # Ensure we have at least 3 tags but no more than 7
@@ -1530,7 +1569,7 @@ def get_available_anthropic_models():
     return {
         "Claude 3.7 Sonnet": "claude-3-7-sonnet-20250219",
         "Claude 3 Opus": "claude-3-opus-20240229",
-        "Claude 3 Sonnet": "claude-3-sonnet-20240229", 
+        "Claude 3 Sonnet": "claude-3-sonnet-20240229",
         "Claude 3 Haiku": "claude-3-haiku-20240307",
     }
 
@@ -1923,10 +1962,10 @@ def transcribe_audio(audio_file):
                     
                     # Always use direct API call for more reliability
                     logger.debug("Using direct API call for transcription")
-                    transcript = direct_transcribe_audio(audio_path, api_key)
+                            transcript = direct_transcribe_audio(audio_path, api_key)
                     
                     if not transcript or transcript.startswith("Error:"):
-                        logger.error(f"Direct transcription failed: {transcript}")
+                                logger.error(f"Direct transcription failed: {transcript}")
                         raise Exception(transcript or "Unknown transcription error")
                     
                 except Exception as api_error:
@@ -2054,9 +2093,9 @@ Original Prompt:
                 ]
             ) as stream:
                 result = ""
-                for text in stream.text_stream:
-                    result += text
-                    stream_content += text
+                for text_chunk in stream.text_stream:
+                    result += text_chunk
+                    stream_content += text_chunk
                     # Update the stream display
                     stream_container.markdown(stream_content)
             
@@ -2064,7 +2103,7 @@ Original Prompt:
             grok_api_key = get_grok_api_key()
             if not grok_api_key:
                 return "Error: Grok API key is not configured."
-
+                
             # Grok doesn't support streaming yet, so we use a progress display
             headers = {
                 "Authorization": f"Bearer {grok_api_key}",
@@ -2181,9 +2220,9 @@ Original Prompt:
                 ]
             ) as stream:
                 result = ""
-                for text in stream.text_stream:
-                    result += text
-                    stream_content += text
+                for text_chunk in stream.text_stream:
+                    result += text_chunk
+                    stream_content += text_chunk
                     # Update the stream display
                     stream_container.markdown(stream_content)
             
@@ -2191,7 +2230,7 @@ Original Prompt:
             grok_api_key = get_grok_api_key()
             if not grok_api_key:
                 return "Error: Grok API key is not configured."
-                
+
             headers = {
                 "Authorization": f"Bearer {grok_api_key}",
                 "Content-Type": "application/json"
@@ -2466,7 +2505,7 @@ def generate_seo_metadata(content, title):
         return None
 
 def process_all_content(text, ai_provider, model, knowledge_base=None):
-    """Process all content stages at once with detailed streaming progress"""
+    """Process all content stages at once with real-time streaming of results"""
     try:
         results = {
             'wisdom': None,
@@ -2476,733 +2515,107 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
             'article': None
         }
         
-        # Main progress container
+        # Create main content area with tabbed interface
+        content_tabs = st.tabs(["Wisdom", "Outline", "Social Posts", "Image Prompts", "Article"])
+        
+        # Progress indicator
         progress_container = st.empty()
         progress_container.markdown("### Content Generation Progress")
-        
-        # Sequential processing with progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
-        content_preview = st.empty()
         
-        # Generate wisdom
+        # Step 1: Generate wisdom from transcript
         status_text.text("Step 1/5: Extracting wisdom...")
-        with st.status("Extracting key insights from your content...") as status:
+            with content_tabs[0]:
+            st.markdown("### Extracting Wisdom")
+            wisdom_container = st.empty()
+            wisdom_container.info("Analyzing your content to extract key insights...")
+            
             results['wisdom'] = generate_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
+            
             if results['wisdom']:
+                wisdom_container.markdown(results['wisdom'])
                 progress_bar.progress(0.2)
-                status.update(label="✅ Wisdom extracted successfully!", state="complete")
-                content_preview.markdown(f"**Wisdom Preview:**\n{results['wisdom'][:300]}...")
-            else:
-                status.update(label="❌ Wisdom extraction failed.", state="error")
+                status_text.text("✅ Step 1/5: Wisdom extracted")
+                                        else:
+                wisdom_container.error("Failed to extract wisdom")
+                return None
         
-        # Generate outline
+        # Step 2: Generate outline using transcript + wisdom
         status_text.text("Step 2/5: Creating outline...")
-        with st.status("Organizing content into a structured outline...") as status:
+        with content_tabs[1]:
+            st.markdown("### Creating Outline")
+            outline_container = st.empty()
+            outline_container.info("Creating a structured outline based on the wisdom and transcript...")
+            
             results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
+            
             if results['outline']:
+                outline_container.markdown(results['outline'])
                 progress_bar.progress(0.4)
-                status.update(label="✅ Outline created successfully!", state="complete")
-                content_preview.markdown(f"**Outline Preview:**\n{results['outline'][:300]}...")
-            else:
-                status.update(label="❌ Outline creation failed.", state="error")
+                status_text.text("✅ Step 2/5: Outline created")
+                        else:
+                outline_container.error("Failed to create outline")
+                return None
         
-        # Generate social content
-        status_text.text("Step 3/5: Generating social media content...")
-        with st.status("Creating social media posts from your content...") as status:
+        # Step 3: Generate social media content using wisdom + outline
+        status_text.text("Step 3/5: Creating social media content...")
+            with content_tabs[2]:
+            st.markdown("### Generating Social Media Content")
+            social_container = st.empty()
+            social_container.info("Creating social media posts based on your content...")
+            
             results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            
             if results['social_posts']:
+                social_container.markdown(results['social_posts'])
                 progress_bar.progress(0.6)
-                status.update(label="✅ Social media content generated!", state="complete")
-                content_preview.markdown(f"**Social Posts Preview:**\n{results['social_posts'][:300]}...")
+                status_text.text("✅ Step 3/5: Social media content created")
             else:
-                status.update(label="❌ Social content generation failed.", state="error")
+                social_container.error("Failed to generate social media content")
+                return None
         
-        # Generate image prompts
+        # Step 4: Generate image prompts using wisdom + outline
         status_text.text("Step 4/5: Creating image prompts...")
-        with st.status("Generating image description prompts...") as status:
+        with content_tabs[3]:
+            st.markdown("### Generating Image Prompts")
+            image_prompts_container = st.empty()
+            image_prompts_container.info("Creating descriptive image prompts for visualizing your content...")
+            
             results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            
             if results['image_prompts']:
+                image_prompts_container.markdown(results['image_prompts'])
                 progress_bar.progress(0.8)
-                status.update(label="✅ Image prompts created successfully!", state="complete")
-                content_preview.markdown(f"**Image Prompts Preview:**\n{results['image_prompts'][:300]}...")
-            else:
-                status.update(label="❌ Image prompt creation failed.", state="error")
+                status_text.text("✅ Step 4/5: Image prompts created")
+                            else:
+                image_prompts_container.error("Failed to generate image prompts")
+                return None
         
-        # Generate article
+        # Step 5: Generate full article using transcript + wisdom + outline
         status_text.text("Step 5/5: Writing full article...")
-        with st.status("Writing a complete article from your content...") as status:
+        with content_tabs[4]:
+            st.markdown("### Writing Full Article")
+            article_container = st.empty()
+            article_container.info("Writing a comprehensive article based on your content...")
+            
             results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            
             if results['article']:
+                article_container.markdown(results['article'])
                 progress_bar.progress(1.0)
-                status.update(label="✅ Article written successfully!", state="complete")
-                content_preview.markdown(f"**Article Preview:**\n{results['article'][:300]}...")
-            else:
-                status.update(label="❌ Article generation failed.", state="error")
+                status_text.text("✅ All content generated successfully!")
+    else:
+                article_container.error("Failed to generate article")
+                return None
         
-        status_text.text("🎉 Content generation complete!")
-        progress_container.markdown("### ✅ All content generated successfully!")
-        content_preview.empty()
-        
+        progress_container.success("### ✅ All content generated successfully!")
         return results
         
     except Exception as e:
         logger.exception("Error in batch processing:")
         st.error(f"Error in batch processing: {str(e)}")
         return None
-
-def main():
-    # Initialize session state variables
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = 1  # Set to admin user ID
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = True  # Auto-authenticate for testing
-    if 'page' not in st.session_state:
-        st.session_state.page = "home"
-    if 'show_cookie_banner' not in st.session_state:
-        st.session_state.show_cookie_banner = True
-    if 'transcription' not in st.session_state:
-        st.session_state.transcription = ""
-    if 'wisdom' not in st.session_state:
-        st.session_state.wisdom = ""
-    if 'audio_file' not in st.session_state:
-        st.session_state.audio_file = None
-    if 'ai_provider' not in st.session_state:
-        st.session_state.ai_provider = "Anthropic"
-    if 'ai_model' not in st.session_state:
-        # Set default model to Claude 3.7 Sonnet
-        st.session_state.ai_model = "claude-3-7-sonnet-20250219"
-    if 'transcription_provider' not in st.session_state:
-        st.session_state.transcription_provider = "OpenAI"
-    if 'transcription_model' not in st.session_state:
-        st.session_state.transcription_model = "whisper-1"
-    if 'content_title_value' not in st.session_state:
-        st.session_state.content_title_value = ""
-    
-    # Check for URL query parameters
-    if "page" in st.query_params:
-        st.session_state.page = st.query_params["page"]
-    
-    # Apply production CSS enhancements
-    add_production_css()
-    
-    # Initialize database and create admin user if needed
-    init_db()
-    init_admin_user()
-    
-    # Apply the improved cyberpunk theme
-    local_css()
-    
-    # Skip authentication for testing purposes
-    # Authentication handling
-    # if not st.session_state.authenticated:
-    #     show_login_page()
-    #     return
-    
-    # Create a custom header with the refined styling and navigation
-    create_custom_header()
-    
-    # Sidebar configuration with reduced items
-    with st.sidebar:
-        st.markdown('<div class="section-header">Configuration</div>', unsafe_allow_html=True)
-        
-        # Account section with logout
-        show_account_sidebar()
-        
-        # User Profile selection
-        st.markdown("### User Profile")
-        selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
-        
-        # Footer links
-        st.markdown("---")
-        st.markdown("### About")
-        if st.button("Terms & Privacy"):
-            st.session_state.page = "legal"
-            st.rerun()
-        st.markdown("[Website](https://whisperforge.ai)")
-        st.markdown("[Support](mailto:support@whisperforge.ai)")
-        
-        # Version info
-        st.markdown("---")
-        st.markdown("WhisperForge v1.0.0")
-    
-    # Show different pages based on selection
-    if st.session_state.page == "home":
-        show_main_page()
-    elif st.session_state.page == "api":
-        show_api_keys_page()
-    elif st.session_state.page == "usage":
-        show_usage_page()
-    elif st.session_state.page == "admin":
-        show_admin_page()
-    elif st.session_state.page == "legal":
-        show_legal_page()
-    
-    # Show cookie consent banner if necessary
-    if st.session_state.show_cookie_banner:
-        cookie_banner_html = """
-        <div class="cookie-banner">
-            <div>
-                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
-                <a href="?page=legal">Learn more</a>
-            </div>
-            <div class="cookie-banner-buttons">
-                <button onclick="document.querySelector('.cookie-banner').style.display='none'; localStorage.setItem('cookies_accepted', 'true');">
-                    Accept
-                </button>
-            </div>
-        </div>
-        <script>
-            if (localStorage.getItem('cookies_accepted') === 'true') {
-                document.querySelector('.cookie-banner').style.display = 'none';
-            }
-        </script>
-        """
-        st.markdown(cookie_banner_html, unsafe_allow_html=True)
-    
-    # Display tool area if transcript is available
-    if st.session_state.get("transcript"):
-        with st.expander("🛠️ Tools", expanded=True):
-            col1, col2, col3 = st.columns(3)
-            
-            # First column - transcript actions
-            with col1:
-                st.subheader("Transcript")
-                if st.button("📝 Copy Transcript"):
-                    st.session_state.clipboard = st.session_state.transcript
-                    st.toast("Transcript copied to clipboard")
-                
-                if st.button("💾 Save Transcript"):
-                    st.session_state.file_to_save = "transcript.txt"
-                    st.session_state.content_to_save = st.session_state.transcript
-                    st.toast("Preparing transcript for download...")
-            
-            # Second column - wisdom actions
-            with col2:
-                st.subheader("Wisdom")
-                
-                if st.session_state.get("wisdom"):
-                    if st.button("📝 Copy Wisdom"):
-                        st.session_state.clipboard = st.session_state.wisdom
-                        st.toast("Wisdom copied to clipboard")
-                    
-                    if st.button("💾 Save Wisdom"):
-                        st.session_state.file_to_save = "wisdom.txt"
-                        st.session_state.content_to_save = st.session_state.wisdom
-                        st.toast("Preparing wisdom for download...")
-            
-            # Third column - outline actions
-            with col3:
-                st.subheader("Outline")
-                
-                if st.session_state.get("outline"):
-                    if st.button("📝 Copy Outline"):
-                        st.session_state.clipboard = st.session_state.outline
-                        st.toast("Outline copied to clipboard")
-                    
-                    if st.button("💾 Save Outline"):
-                        st.session_state.file_to_save = "outline.txt"
-                        st.session_state.content_to_save = st.session_state.outline
-                        st.toast("Preparing outline for download...")
-    
-    # ... existing code ...
-
-def show_main_page():
-    # This function contains the original main app functionality
-    
-    # Get user's API keys
-    api_keys = get_user_api_keys()
-    
-    # Check if API keys are set up
-    openai_key = api_keys.get("openai")
-    anthropic_key = api_keys.get("anthropic")
-    notion_key = api_keys.get("notion")
-    
-    if not openai_key:
-        st.warning("⚠️ Your OpenAI API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
-    
-    if not anthropic_key:
-        st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
-    
-    # Get selected user from the sidebar
-    selected_user = st.session_state.get("user_profile_sidebar", "Default")
-    
-    # Load knowledge base for selected user
-    knowledge_base = load_user_knowledge_base(selected_user)
-    
-    # Display the current models being used
-    st.info(f"Using {st.session_state.transcription_provider} {st.session_state.transcription_model} for transcription and {st.session_state.ai_provider} {st.session_state.ai_model} for content processing. Model settings can be changed in the Admin panel.")
-    
-    # Add tabs for input selection
-    input_tabs = st.tabs(["Audio Upload", "Text Input"])
-    
-    # Tab 1: Audio Upload
-    with input_tabs[0]:
-        st.markdown('<div class="section-header">Audio Transcription</div>', unsafe_allow_html=True)
-        
-        # Update the file uploader with clear message about 500MB limit
-        uploaded_file = st.file_uploader(
-            "Upload your audio file", 
-            type=['mp3', 'wav', 'ogg', 'm4a'],
-            key="audio_uploader",
-            help="Files up to 500MB are supported. Large files will be automatically chunked for parallel processing."
-        )
-        
-        # Transcribe Button
-        if uploaded_file is not None:
-            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
-                with st.spinner("Transcribing your audio..."):
-                    transcription = transcribe_audio(uploaded_file)
-                    if transcription:
-                        st.session_state.transcription = transcription
-                        st.session_state.audio_file = uploaded_file
-        
-        # Display transcription result if available
-        if st.session_state.transcription:
-            st.markdown("### Transcription Result")
-            st.text_area("Transcript", st.session_state.transcription, height=200, key="transcript_display")
-            
-            # Content generation section
-            st.markdown('<div class="section-header">Content Generation</div>', unsafe_allow_html=True)
-            
-            # Show content generation options
-            content_tabs = st.tabs(["Step-by-Step", "All-in-One", "Custom"])
-            
-            with content_tabs[0]:
-                # Wisdom extraction
-                wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
-                with wisdom_expander:
-                    if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
-                        with st.spinner("Extracting key insights..."):
-                            wisdom = generate_wisdom(
-                                st.session_state.transcription, 
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model,
-                                knowledge_base=knowledge_base
-                            )
-                            if wisdom:
-                                st.session_state.wisdom = wisdom
-                    
-                    if st.session_state.get("wisdom"):
-                        st.markdown("### Extracted Wisdom")
-                        st.markdown(st.session_state.wisdom)
-                
-                # Outline creation
-                outline_expander = st.expander("📋 Create Outline", expanded=False)
-                with outline_expander:
-                    if st.button("Generate Outline", key="outline_button", use_container_width=True):
-                        if not st.session_state.get("wisdom"):
-                            st.warning("Please extract wisdom first.")
-                        else:
-                            with st.spinner("Creating outline..."):
-                                outline = generate_outline(
-                                    st.session_state.transcription,
-                                    st.session_state.wisdom,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if outline:
-                                    st.session_state.outline = outline
-                    
-                    if st.session_state.get("outline"):
-                        st.markdown("### Content Outline")
-                        st.markdown(st.session_state.outline)
-                
-                # Social media content
-                social_expander = st.expander("📱 Social Media Content", expanded=False)
-                with social_expander:
-                    if st.button("Generate Social Posts", key="social_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Creating social media content..."):
-                                social = generate_social_content(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if social:
-                                    st.session_state.social = social
-                    
-                    if st.session_state.get("social"):
-                        st.markdown("### Social Media Content")
-                        st.markdown(st.session_state.social)
-                
-                # Image prompts
-                image_expander = st.expander("🖼️ Image Prompts", expanded=False)
-                with image_expander:
-                    if st.button("Generate Image Prompts", key="image_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Creating image prompts..."):
-                                prompts = generate_image_prompts(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if prompts:
-                                    st.session_state.image_prompts = prompts
-                    
-                    if st.session_state.get("image_prompts"):
-                        st.markdown("### Image Prompts")
-                        st.markdown(st.session_state.image_prompts)
-                
-                # Full article
-                article_expander = st.expander("📄 Full Article", expanded=False)
-                with article_expander:
-                    if st.button("Generate Article", key="article_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Writing full article..."):
-                                article = generate_article(
-                                    st.session_state.transcription,
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if article:
-                                    st.session_state.article = article
-                    
-                    if st.session_state.get("article"):
-                        st.markdown("### Generated Article")
-                        st.markdown(st.session_state.article)
-            
-            with content_tabs[1]:
-                # All-in-one generation
-                if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
-                    with st.spinner("Processing all content..."):
-                        results = process_all_content(
-                            st.session_state.transcription,
-                            st.session_state.ai_provider,
-                            st.session_state.ai_model,
-                            knowledge_base=knowledge_base
-                        )
-                        if results:
-                            st.session_state.wisdom = results.get('wisdom', '')
-                            st.session_state.outline = results.get('outline', '')
-                            st.session_state.social = results.get('social_posts', '')
-                            st.session_state.image_prompts = results.get('image_prompts', '')
-                            st.session_state.article = results.get('article', '')
-                            st.success("✅ All content generated successfully!")
-            
-            with content_tabs[2]:
-                # Custom prompt generation
-                st.markdown("### Custom Prompt")
-                custom_prompt = st.text_area(
-                    "Enter your custom prompt",
-                    placeholder="Ask anything about the transcription...",
-                    height=100
-                )
-                
-                if st.button("Send Custom Prompt", key="custom_prompt_button", use_container_width=True):
-                    if custom_prompt:
-                        with st.spinner("Processing custom prompt..."):
-                            result = apply_prompt(
-                                st.session_state.transcription, 
-                                custom_prompt,
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model,
-                                user_knowledge=knowledge_base
-                            )
-                            if result:
-                                st.markdown("### Result")
-                                st.markdown(result)
-            
-            # Notion export
-            st.markdown('<div class="section-header">Export to Notion</div>', unsafe_allow_html=True)
-            
-            # Check if Notion API key is configured
-            notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
-            notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
-            
-            if not notion_key or not notion_db:
-                st.warning("⚠️ Notion integration is not configured. Please set up your Notion API key and database ID in Settings.")
-            else:
-                title = st.session_state.content_title_value or "Untitled Content"
-                
-                if st.button("💾 Save to Notion", key="notion_save", use_container_width=True):
-                    with st.spinner("Saving to Notion..."):
-                        try:
-                            # Always generate an AI title for better results
-                            if st.session_state.transcription:
-                                with st.status("Generating a descriptive title...") as status:
-                                    title_to_use = generate_short_title(st.session_state.transcription)
-                                    status.update(label=f"Title generated: \"{title_to_use}\"", state="complete")
-                            else:
-                                title_to_use = "WhisperForge Content"
-                            
-                            with st.status("Saving to Notion...") as status:
-                                result = create_content_notion_entry(
-                                    title_to_use,
-                                    st.session_state.transcription,
-                                    wisdom=st.session_state.get("wisdom"),
-                                    outline=st.session_state.get("outline"),
-                                    social_content=st.session_state.get("social"),
-                                    image_prompts=st.session_state.get("image_prompts"),
-                                    article=st.session_state.get("article")
-                                )
-                                
-                                if result:
-                                    status.update(label="Successfully saved to Notion!", state="complete")
-                                else:
-                                    status.update(label="Failed to save to Notion", state="error")
-                        except Exception as e:
-                            logger.exception("Error saving to Notion:")
-                            st.error(f"Error saving to Notion: {str(e)}")
-    
-    # Tab 2: Text Input
-    with input_tabs[1]:
-        st.markdown('<div class="section-header">Manual Text Input</div>', unsafe_allow_html=True)
-        
-        text_input = st.text_area(
-            "Enter your text",
-            placeholder="Paste your transcript or any text to process...",
-            height=300,
-            key="manual_text"
-        )
-        
-        if st.button("Use This Text", key="use_text_button", use_container_width=True):
-            if text_input:
-                st.session_state.transcription = text_input
-                st.success("Text loaded for processing!")
-                st.rerun()
-
-def show_api_keys_page():
-    st.markdown("## API Keys Management")
-    st.markdown("Set up your API keys to use with WhisperForge. Your keys are encrypted and stored securely.")
-    
-    # Get current API keys
-    api_keys = get_user_api_keys()
-    
-    # OpenAI API Key
-    st.markdown("### OpenAI API Key")
-    st.markdown("Required for audio transcription and most AI capabilities.")
-    
-    # Create a masked display of the current key if it exists
-    openai_key = api_keys.get("openai", "")
-    openai_key_display = f"••••••••••••••••••{openai_key[-4:]}" if openai_key else "Not set"
-    
-    st.markdown(f"**Current key:** {openai_key_display}")
-    
-    # Input for new key
-    new_openai_key = st.text_input("Enter new OpenAI API key", type="password", key="new_openai_key")
-    if st.button("Save OpenAI Key"):
-        if new_openai_key:
-            update_api_key("openai", new_openai_key)
-            st.success("OpenAI API key updated successfully!")
-            time.sleep(1)
-            st.rerun()
-    
-    st.markdown("---")
-    
-    # Anthropic API Key
-    st.markdown("### Anthropic API Key")
-    st.markdown("Optional: Used for Claude AI models.")
-    
-    anthropic_key = api_keys.get("anthropic", "")
-    anthropic_key_display = f"••••••••••••••••••{anthropic_key[-4:]}" if anthropic_key else "Not set"
-    
-    st.markdown(f"**Current key:** {anthropic_key_display}")
-    
-    new_anthropic_key = st.text_input("Enter new Anthropic API key", type="password", key="new_anthropic_key")
-    if st.button("Save Anthropic Key"):
-        update_api_key("anthropic", new_anthropic_key)
-        st.success("Anthropic API key updated successfully!")
-        time.sleep(1)
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Notion API Key
-    st.markdown("### Notion API Key")
-    st.markdown("Optional: Used for exporting content to Notion.")
-    
-    notion_key = api_keys.get("notion", "")
-    notion_key_display = f"••••••••••••••••••{notion_key[-4:]}" if notion_key else "Not set"
-    
-    st.markdown(f"**Current key:** {notion_key_display}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        new_notion_key = st.text_input("Enter new Notion API key", type="password", key="new_notion_key")
-    with col2:
-        notion_database_id = st.text_input("Notion Database ID", value=api_keys.get("notion_database_id", ""), key="notion_database_id")
-    
-    if st.button("Save Notion Settings"):
-        update_api_key("notion", new_notion_key)
-        update_api_key("notion_database_id", notion_database_id)
-        st.success("Notion settings updated successfully!")
-        time.sleep(1)
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Grok API Key
-    st.markdown("### Grok API Key (Experimental)")
-    st.markdown("Optional: Used for Grok AI models.")
-    
-    grok_key = api_keys.get("grok", "")
-    grok_key_display = f"••••••••••••••••••{grok_key[-4:]}" if grok_key else "Not set"
-    
-    st.markdown(f"**Current key:** {grok_key_display}")
-    
-    new_grok_key = st.text_input("Enter new Grok API key", type="password", key="new_grok_key")
-    if st.button("Save Grok Key"):
-        update_api_key("grok", new_grok_key)
-        st.success("Grok API key updated successfully!")
-        time.sleep(1)
-        st.rerun()
-
-def show_usage_page():
-    st.markdown("## Usage Statistics")
-    
-    # Get user info
-    conn = get_db_connection()
-    user = conn.execute(
-        "SELECT email, subscription_tier, usage_quota, usage_current, created_at FROM users WHERE id = ?",
-        (st.session_state.user_id,)
-    ).fetchone()
-    conn.close()
-    
-    if not user:
-        st.error("Error retrieving user data")
-        return
-    
-    # User info section
-    st.markdown("### Account Information")
-    st.write(f"**Email:** {user['email']}")
-    st.write(f"**Account created:** {user['created_at']}")
-    st.write(f"**Subscription tier:** {user['subscription_tier'].title()}")
-    
-    # Usage statistics
-    st.markdown("### Current Usage")
-    
-    # Calculate percentage
-    usage_percent = min(100, (user['usage_current'] / user['usage_quota']) * 100) if user['usage_quota'] > 0 else 0
-    
-    # Show progress bar
-    st.progress(usage_percent / 100)
-    st.write(f"**Usage this month:** {user['usage_current']} / {user['usage_quota']} minutes ({usage_percent:.1f}%)")
-    
-    # Upgrade options
-    st.markdown("### Upgrade Your Plan")
-    st.markdown("""
-    | Plan | Monthly Price | Minutes/Month | Features |
-    |------|---------------|---------------|----------|
-    | Free | $0 | 60 | Basic transcription |
-    | Basic | $9.99 | 300 | + Claude AI models |
-    | Pro | $19.99 | 1,000 | + Advanced processing |
-    | Enterprise | Contact us | Custom | Custom integrations |
-    """)
-    
-    if user['subscription_tier'] != 'enterprise':
-        if st.button("Upgrade Now"):
-            st.info("This would redirect to a payment page in the production version.")
-    
-    # Reset usage manually (for testing)
-    if st.button("Reset Usage Counter"):
-        conn = get_db_connection()
-        conn.execute(
-            "UPDATE users SET usage_current = 0 WHERE id = ?",
-            (st.session_state.user_id,)
-        )
-        conn.commit()
-        conn.close()
-        st.success("Usage counter reset to 0")
-        time.sleep(1)
-        st.rerun()
-
-def update_api_key(key_name, key_value):
-    if not st.session_state.authenticated:
-        return False
-    
-    conn = get_db_connection()
-    
-    # Get current api_keys JSON
-    user = conn.execute(
-        "SELECT api_keys FROM users WHERE id = ?",
-        (st.session_state.user_id,)
-    ).fetchone()
-    
-    if not user:
-        conn.close()
-        return False
-    
-    # Update the specific key
-    api_keys = json.loads(user['api_keys']) if user['api_keys'] else {}
-    
-    # If key value is empty, remove the key
-    if key_value:
-        api_keys[key_name] = key_value
-    else:
-        api_keys.pop(key_name, None)
-    
-    # Save back to the database
-    conn.execute(
-        "UPDATE users SET api_keys = ? WHERE id = ?",
-        (json.dumps(api_keys), st.session_state.user_id)
-    )
-    conn.commit()
-    conn.close()
-    return True
-    
-def get_api_key_for_service(service_name):
-    """Get the API key for a specific service from the user's stored keys"""
-    # Prioritize environment variables for testing
-    if service_name == "openai":
-        env_key = os.getenv("OPENAI_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "anthropic":
-        env_key = os.getenv("ANTHROPIC_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "notion":
-        env_key = os.getenv("NOTION_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "grok":
-        env_key = os.getenv("GROK_API_KEY")
-        if env_key:
-            return env_key
-    
-    if not st.session_state.authenticated:
-        # Fallback to environment variables
-        if service_name == "openai":
-            return os.getenv("OPENAI_API_KEY")
-        elif service_name == "anthropic":
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif service_name == "notion":
-            return os.getenv("NOTION_API_KEY")
-        elif service_name == "grok":
-            return os.getenv("GROK_API_KEY")
-        return None
-    
-    # Get from user's stored keys
-    api_keys = get_user_api_keys()
-    key = api_keys.get(service_name)
-    
-    # Fallback to environment if user doesn't have a key
-    if not key:
-        if service_name == "openai":
-            return os.getenv("OPENAI_API_KEY")
-        elif service_name == "anthropic":
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif service_name == "notion":
-            return os.getenv("NOTION_API_KEY")
-        elif service_name == "grok":
-            return os.getenv("GROK_API_KEY")
-    
-    return key
 
 # Authentication UI
 def show_login_page():
@@ -3532,98 +2945,98 @@ def show_admin_page():
     
     # System Overview Tab
     with admin_tabs[0]:
-        st.markdown("### System Overview")
-        
-        # Get statistics
-        user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        active_users = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE usage_current > 0"
-        ).fetchone()[0]
-        paying_users = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE subscription_tier != 'free'"
-        ).fetchone()[0]
-        
-        # Display stats in a grid
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Users", user_count)
-        with col2:
-            st.metric("Active Users", active_users)
-        with col3:
-            st.metric("Paying Users", paying_users)
+    st.markdown("### System Overview")
+    
+    # Get statistics
+    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    active_users = conn.execute(
+        "SELECT COUNT(*) FROM users WHERE usage_current > 0"
+    ).fetchone()[0]
+    paying_users = conn.execute(
+        "SELECT COUNT(*) FROM users WHERE subscription_tier != 'free'"
+    ).fetchone()[0]
+    
+    # Display stats in a grid
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Users", user_count)
+    with col2:
+        st.metric("Active Users", active_users)
+    with col3:
+        st.metric("Paying Users", paying_users)
     
     # User Management Tab
     with admin_tabs[1]:
-        st.markdown("### User Management")
+    st.markdown("### User Management")
+    
+    # List all users
+    users = conn.execute(
+        "SELECT id, email, created_at, subscription_tier, usage_quota, usage_current, is_admin FROM users ORDER BY id"
+    ).fetchall()
+    
+    if not users:
+        st.info("No users found.")
+    else:
+        # Create table
+        data = []
+        for user in users:
+            data.append({
+                "ID": user["id"],
+                "Email": user["email"],
+                "Created": user["created_at"].split(" ")[0] if " " in user["created_at"] else user["created_at"],
+                "Plan": user["subscription_tier"],
+                "Usage": f"{user['usage_current']}/{user['usage_quota']} min",
+                "Admin": "Yes" if user["is_admin"] else "No"
+            })
         
-        # List all users
-        users = conn.execute(
-            "SELECT id, email, created_at, subscription_tier, usage_quota, usage_current, is_admin FROM users ORDER BY id"
-        ).fetchall()
+        st.dataframe(data)
+    
+    # Edit user form
+    st.markdown("### Edit User")
+    user_id = st.number_input("User ID", min_value=1, step=1)
+    
+    if st.button("Load User"):
+        user = conn.execute(
+            "SELECT * FROM users WHERE id = ?", 
+            (user_id,)
+        ).fetchone()
         
-        if not users:
-            st.info("No users found.")
+        if user:
+            st.session_state.edit_user = dict(user)
+            st.success(f"Loaded user: {user['email']}")
         else:
-            # Create table
-            data = []
-            for user in users:
-                data.append({
-                    "ID": user["id"],
-                    "Email": user["email"],
-                    "Created": user["created_at"].split(" ")[0] if " " in user["created_at"] else user["created_at"],
-                    "Plan": user["subscription_tier"],
-                    "Usage": f"{user['usage_current']}/{user['usage_quota']} min",
-                    "Admin": "Yes" if user["is_admin"] else "No"
-                })
-            
-            st.dataframe(data)
+            st.error("User not found")
+    
+    if hasattr(st.session_state, "edit_user"):
+        user = st.session_state.edit_user
         
-        # Edit user form
-        st.markdown("### Edit User")
-        user_id = st.number_input("User ID", min_value=1, step=1)
+        email = st.text_input("Email", value=user["email"])
+        subscription = st.selectbox(
+            "Subscription Tier", 
+            options=["free", "basic", "pro", "enterprise"],
+            index=["free", "basic", "pro", "enterprise"].index(user["subscription_tier"])
+        )
+        quota = st.number_input("Usage Quota (minutes)", value=user["usage_quota"], min_value=0)
+        reset_usage = st.checkbox("Reset current usage to 0")
+        is_admin = st.checkbox("Admin", value=bool(user["is_admin"]))
         
-        if st.button("Load User"):
-            user = conn.execute(
-                "SELECT * FROM users WHERE id = ?", 
-                (user_id,)
-            ).fetchone()
-            
-            if user:
-                st.session_state.edit_user = dict(user)
-                st.success(f"Loaded user: {user['email']}")
+        if st.button("Save Changes"):
+            if reset_usage:
+                usage_current = 0
             else:
-                st.error("User not found")
-        
-        if hasattr(st.session_state, "edit_user"):
-            user = st.session_state.edit_user
-            
-            email = st.text_input("Email", value=user["email"])
-            subscription = st.selectbox(
-                "Subscription Tier", 
-                options=["free", "basic", "pro", "enterprise"],
-                index=["free", "basic", "pro", "enterprise"].index(user["subscription_tier"])
+                usage_current = user["usage_current"]
+                
+            conn.execute(
+                """
+                UPDATE users 
+                SET email = ?, subscription_tier = ?, usage_quota = ?, 
+                    usage_current = ?, is_admin = ?
+                WHERE id = ?
+                """,
+                (email, subscription, quota, usage_current, int(is_admin), user_id)
             )
-            quota = st.number_input("Usage Quota (minutes)", value=user["usage_quota"], min_value=0)
-            reset_usage = st.checkbox("Reset current usage to 0")
-            is_admin = st.checkbox("Admin", value=bool(user["is_admin"]))
-            
-            if st.button("Save Changes"):
-                if reset_usage:
-                    usage_current = 0
-                else:
-                    usage_current = user["usage_current"]
-                    
-                conn.execute(
-                    """
-                    UPDATE users 
-                    SET email = ?, subscription_tier = ?, usage_quota = ?, 
-                        usage_current = ?, is_admin = ?
-                    WHERE id = ?
-                    """,
-                    (email, subscription, quota, usage_current, int(is_admin), user_id)
-                )
-                conn.commit()
-                st.success("User updated successfully")
+            conn.commit()
+            st.success("User updated successfully")
     
     # Model Configuration Tab
     with admin_tabs[2]:
@@ -4185,9 +3598,9 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
                     "rich_text": [
                         {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
                         {"type": "text", "text": {"content": tags_text}}
-                    ]
-                }
-            })
+                ]
+            }
+        })
         
         # Prepare the payload
         payload = {
@@ -4298,5 +3711,459 @@ def create_custom_header():
     full_header = header_html + js_code
     st.markdown(full_header, unsafe_allow_html=True)
 
+def show_custom_prompt_tab(knowledge_base=None):
+    """Show the custom prompt tab with streaming response capability"""
+    st.markdown("### Custom Prompt")
+    st.write("Ask anything about the transcription or specify how you want the content processed.")
+    
+    custom_prompt = st.text_area(
+        "Enter your custom prompt",
+        placeholder="For example: Create a podcast script from this transcript, Generate a newsletter, Extract technical terminology...",
+        height=150
+    )
+    
+    # Add example prompts
+    with st.expander("Example Prompts"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            - **Content Transformation**
+              - Create a podcast script from this transcript
+              - Transform this into a newsletter format
+              - Convert this content into a how-to tutorial
+            
+            - **Information Extraction**
+              - Extract technical terminology and explain each term
+              - Identify the main arguments and supporting evidence
+              - Extract action items and next steps
+            """)
+        with col2:
+            st.markdown("""
+            - **Specialized Content**
+              - Generate social media copy in my voice
+              - Create a Q&A format version of this content
+              - Write a executive summary for busy professionals
+            
+            - **Other Formats**
+              - Create a bullet-point summary with emojis
+              - Generate discussion questions based on this content
+              - Write a persuasive pitch based on these ideas
+            """)
+    
+    if st.button("Generate Custom Content", key="custom_prompt_button", use_container_width=True):
+        if custom_prompt:
+            if not st.session_state.get("transcription"):
+                st.error("Please provide a transcript first")
+                return
+                
+            # The apply_prompt function now handles streaming internally
+            result = apply_prompt(
+                st.session_state.transcription, 
+                custom_prompt,
+                st.session_state.ai_provider,
+                st.session_state.ai_model,
+                user_knowledge=knowledge_base
+            )
+            
+            if result:
+                st.session_state.custom_result = result
+                st.success("Custom content generated successfully!")
+                st.markdown("### Result")
+                st.markdown(result)
+                
+                # Add copy button
+                if st.button("📋 Copy to Clipboard", key="copy_custom"):
+                    st.session_state.clipboard = result
+                    st.toast("Custom content copied to clipboard")
+    
+    # Show previous results if available
+    elif st.session_state.get("custom_result"):
+        st.markdown("### Previous Result")
+        st.markdown(st.session_state.custom_result)
+        
+        # Add copy button for previous result
+        if st.button("📋 Copy to Clipboard", key="copy_previous_custom"):
+            st.session_state.clipboard = st.session_state.custom_result
+            st.toast("Custom content copied to clipboard")
+
+def main():
+    """Main application entry point"""
+    # Apply production CSS enhancements
+    add_production_css()
+    
+    # Initialize database and create admin user if needed
+    init_db()
+    init_admin_user()
+    
+    # Apply the improved cyberpunk theme
+    local_css()
+    
+    # Create a custom header with the refined styling and navigation
+    create_custom_header()
+    
+    # Sidebar configuration with reduced items
+    with st.sidebar:
+        st.markdown('<div class="section-header">Configuration</div>', unsafe_allow_html=True)
+        
+        # Account section with logout
+        show_account_sidebar()
+        
+        # User Profile selection
+        st.markdown("### User Profile")
+        selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
+        
+        # Footer links
+        st.markdown("---")
+        st.markdown("### About")
+        if st.button("Terms & Privacy"):
+            st.session_state.page = "legal"
+            st.rerun()
+        st.markdown("[Website](https://whisperforge.ai)")
+        st.markdown("[Support](mailto:support@whisperforge.ai)")
+        
+        # Version info
+        st.markdown("---")
+        st.markdown("WhisperForge v1.0.0")
+    
+    # Show different pages based on selection
+    if st.session_state.page == "home":
+        show_main_page()
+    elif st.session_state.page == "api":
+        show_api_keys_page()
+    elif st.session_state.page == "usage":
+        show_usage_page()
+    elif st.session_state.page == "admin":
+        show_admin_page()
+    elif st.session_state.page == "legal":
+        show_legal_page()
+    
+    # Show cookie consent banner if necessary
+    if st.session_state.show_cookie_banner:
+        cookie_banner_html = """
+        <div class="cookie-banner">
+            <div>
+                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
+                <a href="?page=legal">Learn more</a>
+            </div>
+            <div class="cookie-banner-buttons">
+                <button onclick="document.querySelector('.cookie-banner').style.display='none'; localStorage.setItem('cookies_accepted', 'true');">
+                    Accept
+                </button>
+            </div>
+        </div>
+        <script>
+            if (localStorage.getItem('cookies_accepted') === 'true') {
+                document.querySelector('.cookie-banner').style.display = 'none';
+            }
+        </script>
+        """
+        st.markdown(cookie_banner_html, unsafe_allow_html=True)
+
+def show_main_page():
+    """Show the main application page with audio upload and content generation"""
+    # Get user's API keys
+    api_keys = get_user_api_keys()
+    
+    # Check if API keys are set up
+    openai_key = api_keys.get("openai")
+    anthropic_key = api_keys.get("anthropic")
+    
+    if not openai_key:
+        st.warning("⚠️ Your OpenAI API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
+    
+    if not anthropic_key:
+        st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
+    
+    # Get selected user from the sidebar
+    selected_user = st.session_state.get("user_profile_sidebar", "Default")
+    
+    # Load knowledge base for selected user
+    knowledge_base = load_user_knowledge_base(selected_user)
+    
+    # Display the current models being used
+    st.info(f"Using {st.session_state.transcription_provider} {st.session_state.transcription_model} for transcription and {st.session_state.ai_provider} {st.session_state.ai_model} for content processing. Model settings can be changed in the Admin panel.")
+    
+    # Add tabs for input selection
+    input_tabs = st.tabs(["Audio Upload", "Text Input"])
+    
+    # Tab 1: Audio Upload
+    with input_tabs[0]:
+        st.markdown('<div class="section-header">Audio Transcription</div>', unsafe_allow_html=True)
+        
+        # Update the file uploader with clear message about 500MB limit
+        uploaded_file = st.file_uploader(
+            "Upload your audio file", 
+            type=['mp3', 'wav', 'ogg', 'm4a'],
+            key="audio_uploader",
+            help="Files up to 500MB are supported. Large files will be automatically chunked for parallel processing."
+        )
+        
+        # Transcribe Button
+        if uploaded_file is not None:
+            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
+                with st.spinner("Transcribing your audio..."):
+                    transcription = transcribe_audio(uploaded_file)
+                    if transcription:
+                        st.session_state.transcription = transcription
+                        st.session_state.audio_file = uploaded_file
+                        st.success("Audio transcribed successfully!")
+                        st.rerun()
+    
+    # Tab 2: Text Input
+    with input_tabs[1]:
+        st.markdown('<div class="section-header">Manual Text Input</div>', unsafe_allow_html=True)
+        
+        text_input = st.text_area(
+            "Enter your text",
+            placeholder="Paste your transcript or any text to process...",
+            height=300,
+            key="manual_text"
+        )
+        
+        if st.button("Use This Text", key="use_text_button", use_container_width=True):
+            if text_input:
+                st.session_state.transcription = text_input
+                st.success("Text loaded for processing!")
+                st.rerun()
+    
+    # Display transcription result if available
+    if st.session_state.transcription:
+        st.markdown("### Transcription Result")
+        st.text_area("Transcript", st.session_state.transcription, height=200, key="transcript_display")
+        
+        # Content generation section
+        st.markdown('<div class="section-header">Content Generation</div>', unsafe_allow_html=True)
+        
+        # Show content generation options
+        content_tabs = st.tabs(["Step-by-Step", "All-in-One", "Custom"])
+        
+        # Step-by-Step tab
+        with content_tabs[0]:
+            # Wisdom extraction
+            wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
+            with wisdom_expander:
+                if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
+                    # Wisdom will be generated with streaming in the generate_wisdom function
+                    wisdom = generate_wisdom(
+                        st.session_state.transcription, 
+                        st.session_state.ai_provider,
+                        st.session_state.ai_model,
+                        knowledge_base=knowledge_base
+                    )
+                    if wisdom:
+                        st.session_state.wisdom = wisdom
+                
+                if st.session_state.get("wisdom"):
+                    st.markdown("### Extracted Wisdom")
+                    st.markdown(st.session_state.wisdom)
+            
+            # Outline creation
+            outline_expander = st.expander("📋 Create Outline", expanded=False)
+            with outline_expander:
+                if st.button("Generate Outline", key="outline_button", use_container_width=True):
+                    if not st.session_state.get("wisdom"):
+                        st.warning("Please extract wisdom first.")
+                    else:
+                        # Outline will be generated with streaming
+                        outline = generate_outline(
+                            st.session_state.transcription,
+                            st.session_state.wisdom,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base=knowledge_base
+                        )
+                        if outline:
+                            st.session_state.outline = outline
+                
+                if st.session_state.get("outline"):
+                    st.markdown("### Content Outline")
+                    st.markdown(st.session_state.outline)
+            
+            # Social media content
+            social_expander = st.expander("📱 Social Media Content", expanded=False)
+            with social_expander:
+                if st.button("Generate Social Posts", key="social_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        social = generate_social_content(
+                            st.session_state.wisdom,
+                            st.session_state.outline,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base=knowledge_base
+                        )
+                        if social:
+                            st.session_state.social = social
+                
+                if st.session_state.get("social"):
+                    st.markdown("### Social Media Content")
+                    st.markdown(st.session_state.social)
+            
+            # Image prompts
+            image_expander = st.expander("🖼️ Image Prompts", expanded=False)
+            with image_expander:
+                if st.button("Generate Image Prompts", key="image_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        prompts = generate_image_prompts(
+                            st.session_state.wisdom,
+                            st.session_state.outline,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base=knowledge_base
+                        )
+                        if prompts:
+                            st.session_state.image_prompts = prompts
+                
+                if st.session_state.get("image_prompts"):
+                    st.markdown("### Image Prompts")
+                    st.markdown(st.session_state.image_prompts)
+            
+            # Full article
+            article_expander = st.expander("📄 Full Article", expanded=False)
+            with article_expander:
+                if st.button("Generate Article", key="article_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        article = generate_article(
+                            st.session_state.transcription,
+                            st.session_state.wisdom,
+                            st.session_state.outline,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base=knowledge_base
+                        )
+                        if article:
+                            st.session_state.article = article
+                
+                if st.session_state.get("article"):
+                    st.markdown("### Generated Article")
+                    st.markdown(st.session_state.article)
+        
+        # All-in-One tab
+        with content_tabs[1]:
+            # All-in-one generation
+            st.markdown("### Generate All Content at Once")
+            st.write("This will create wisdom, outline, social posts, image prompts, and an article in one step.")
+            
+            if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
+                results = process_all_content(
+                    st.session_state.transcription,
+                    st.session_state.ai_provider,
+                    st.session_state.ai_model,
+                    knowledge_base=knowledge_base
+                )
+                if results:
+                    st.session_state.wisdom = results.get('wisdom', '')
+                    st.session_state.outline = results.get('outline', '')
+                    st.session_state.social = results.get('social_posts', '')
+                    st.session_state.image_prompts = results.get('image_prompts', '')
+                    st.session_state.article = results.get('article', '')
+        
+        # Custom tab
+        with content_tabs[2]:
+            # Show the custom prompt tab with examples
+            show_custom_prompt_tab(knowledge_base=knowledge_base)
+        
+        # Export options
+        st.markdown('<div class="section-header">Export Options</div>', unsafe_allow_html=True)
+        
+        # Check if Notion API key is configured
+        notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
+        notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
+        
+        if not notion_key or not notion_db:
+            st.warning("⚠️ Notion integration is not configured. Please set up your Notion API key and database ID in [API settings](?page=api).")
+        else:
+            if st.button("💾 Save to Notion", key="notion_save", use_container_width=True):
+                with st.spinner("Saving to Notion..."):
+                    try:
+                        # Generate an AI title for better results
+                        with st.status("Generating a descriptive title...") as status:
+                            title_to_use = generate_short_title(st.session_state.transcription)
+                            status.update(label=f"Title generated: \"{title_to_use}\"", state="complete")
+                        
+                        with st.status("Saving to Notion...") as status:
+                            result = create_content_notion_entry(
+                                title_to_use,
+                                st.session_state.transcription,
+                                wisdom=st.session_state.get("wisdom"),
+                                outline=st.session_state.get("outline"),
+                                social_content=st.session_state.get("social"),
+                                image_prompts=st.session_state.get("image_prompts"),
+                                article=st.session_state.get("article")
+                            )
+                            
+                            if result:
+                                status.update(label="Successfully saved to Notion!", state="complete")
+                            else:
+                                status.update(label="Failed to save to Notion", state="error")
+                    except Exception as e:
+                        logger.exception("Error saving to Notion:")
+                        st.error(f"Error saving to Notion: {str(e)}")
+        
+        # Download options
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.download_button(
+                "📥 Download Transcript",
+                data=st.session_state.transcription,
+                file_name="transcript.txt",
+                mime="text/plain"
+            ):
+                st.toast("Transcript downloaded")
+        
+        with col2:
+            if st.session_state.get("wisdom"):
+                if st.download_button(
+                    "📥 Download Wisdom",
+                    data=st.session_state.wisdom,
+                    file_name="wisdom.txt",
+                    mime="text/plain"
+                ):
+                    st.toast("Wisdom downloaded")
+        
+        with col3:
+            if st.session_state.get("article"):
+                if st.download_button(
+                    "📥 Download Article",
+                    data=st.session_state.article,
+                    file_name="article.md",
+                    mime="text/markdown"
+                ):
+                    st.toast("Article downloaded")
+
 if __name__ == "__main__":
+    # Initialize session state variables
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = 1  # Set to admin user ID
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = True  # Auto-authenticate for testing
+    if 'page' not in st.session_state:
+        st.session_state.page = "home"
+    if 'show_cookie_banner' not in st.session_state:
+        st.session_state.show_cookie_banner = True
+    if 'transcription' not in st.session_state:
+        st.session_state.transcription = ""
+    if 'wisdom' not in st.session_state:
+        st.session_state.wisdom = ""
+    if 'audio_file' not in st.session_state:
+        st.session_state.audio_file = None
+    if 'ai_provider' not in st.session_state:
+        st.session_state.ai_provider = "Anthropic"
+    if 'ai_model' not in st.session_state:
+        # Set default model to Claude 3.7 Sonnet
+        st.session_state.ai_model = "claude-3-7-sonnet-20250219"
+    if 'transcription_provider' not in st.session_state:
+        st.session_state.transcription_provider = "OpenAI"
+    if 'transcription_model' not in st.session_state:
+        st.session_state.transcription_model = "whisper-1"
+    if 'content_title_value' not in st.session_state:
+        st.session_state.content_title_value = ""
+    if 'custom_result' not in st.session_state:
+        st.session_state.custom_result = ""
+    
     main() 
