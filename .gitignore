@@ -33,3 +33,4 @@ ODDSNENDS/
 uploads/
 audio_chunks/
 whisperforge.log
+*.log
