@@ -2081,9 +2081,9 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
 def main():
     # Initialize session state variables
     if 'user_id' not in st.session_state:
-        st.session_state.user_id = None
+        st.session_state.user_id = 1  # Set to admin user ID
     if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
+        st.session_state.authenticated = True  # Auto-authenticate for testing
     if 'page' not in st.session_state:
         st.session_state.page = "main"
     if 'show_cookie_banner' not in st.session_state:
@@ -2109,10 +2109,11 @@ def main():
     # Apply the improved cyberpunk theme
     local_css()
     
+    # Skip authentication for testing purposes
     # Authentication handling
-    if not st.session_state.authenticated:
-        show_login_page()
-        return
+    # if not st.session_state.authenticated:
+    #     show_login_page()
+    #     return
     
     # Create a custom header with the refined styling
     st.markdown(f"""
@@ -2279,8 +2280,235 @@ def show_main_page():
             help="Files up to 500MB are supported. Large files will be automatically chunked for processing."
         )
         
-        # Rest of the audio upload tab functionality
-        # ...
+        # Add a title input for better organization
+        content_title = st.text_input("Content Title (Optional)", 
+                                     placeholder="Enter a title, or leave blank to auto-generate",
+                                     key="content_title")
+        
+        # Transcribe Button
+        if uploaded_file is not None:
+            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
+                with st.spinner("Transcribing your audio..."):
+                    transcription = transcribe_audio(uploaded_file)
+                    if transcription:
+                        st.session_state.transcription = transcription
+                        st.session_state.audio_file = uploaded_file
+                        
+                        # Generate a title if none provided
+                        if not content_title and transcription:
+                            with st.spinner("Generating title..."):
+                                generated_title = generate_title(transcription)
+                                if generated_title:
+                                    st.session_state.content_title = generated_title
+        
+        # Display transcription result if available
+        if st.session_state.transcription:
+            st.markdown("### Transcription Result")
+            st.text_area("Transcript", st.session_state.transcription, height=200, key="transcript_display")
+            
+            # Content generation section
+            st.markdown('<div class="section-header">Content Generation</div>', unsafe_allow_html=True)
+            
+            # Show content generation options
+            content_tabs = st.tabs(["Step-by-Step", "All-in-One", "Custom"])
+            
+            with content_tabs[0]:
+                # Wisdom extraction
+                wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
+                with wisdom_expander:
+                    if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
+                        with st.spinner("Extracting key insights..."):
+                            wisdom = generate_wisdom(
+                                st.session_state.transcription, 
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                knowledge_base=knowledge_base
+                            )
+                            if wisdom:
+                                st.session_state.wisdom = wisdom
+                    
+                    if st.session_state.get("wisdom"):
+                        st.markdown("### Extracted Wisdom")
+                        st.markdown(st.session_state.wisdom)
+                
+                # Outline creation
+                outline_expander = st.expander("📋 Create Outline", expanded=False)
+                with outline_expander:
+                    if st.button("Generate Outline", key="outline_button", use_container_width=True):
+                        if not st.session_state.get("wisdom"):
+                            st.warning("Please extract wisdom first.")
+                        else:
+                            with st.spinner("Creating outline..."):
+                                outline = generate_outline(
+                                    st.session_state.transcription,
+                                    st.session_state.wisdom,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    knowledge_base=knowledge_base
+                                )
+                                if outline:
+                                    st.session_state.outline = outline
+                    
+                    if st.session_state.get("outline"):
+                        st.markdown("### Content Outline")
+                        st.markdown(st.session_state.outline)
+                
+                # Social media content
+                social_expander = st.expander("📱 Social Media Content", expanded=False)
+                with social_expander:
+                    if st.button("Generate Social Posts", key="social_button", use_container_width=True):
+                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                            st.warning("Please extract wisdom and create an outline first.")
+                        else:
+                            with st.spinner("Creating social media content..."):
+                                social = generate_social_content(
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    knowledge_base=knowledge_base
+                                )
+                                if social:
+                                    st.session_state.social = social
+                    
+                    if st.session_state.get("social"):
+                        st.markdown("### Social Media Content")
+                        st.markdown(st.session_state.social)
+                
+                # Image prompts
+                image_expander = st.expander("🖼️ Image Prompts", expanded=False)
+                with image_expander:
+                    if st.button("Generate Image Prompts", key="image_button", use_container_width=True):
+                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                            st.warning("Please extract wisdom and create an outline first.")
+                        else:
+                            with st.spinner("Creating image prompts..."):
+                                prompts = generate_image_prompts(
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    knowledge_base=knowledge_base
+                                )
+                                if prompts:
+                                    st.session_state.image_prompts = prompts
+                    
+                    if st.session_state.get("image_prompts"):
+                        st.markdown("### Image Prompts")
+                        st.markdown(st.session_state.image_prompts)
+                
+                # Full article
+                article_expander = st.expander("📄 Full Article", expanded=False)
+                with article_expander:
+                    if st.button("Generate Article", key="article_button", use_container_width=True):
+                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                            st.warning("Please extract wisdom and create an outline first.")
+                        else:
+                            with st.spinner("Writing full article..."):
+                                article = generate_article(
+                                    st.session_state.transcription,
+                                    st.session_state.wisdom,
+                                    st.session_state.outline,
+                                    st.session_state.ai_provider,
+                                    st.session_state.ai_model,
+                                    knowledge_base=knowledge_base
+                                )
+                                if article:
+                                    st.session_state.article = article
+                    
+                    if st.session_state.get("article"):
+                        st.markdown("### Generated Article")
+                        st.markdown(st.session_state.article)
+            
+            with content_tabs[1]:
+                # All-in-one generation
+                if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
+                    with st.spinner("Processing all content..."):
+                        results = process_all_content(
+                            st.session_state.transcription,
+                            st.session_state.ai_provider,
+                            st.session_state.ai_model,
+                            knowledge_base=knowledge_base
+                        )
+                        if results:
+                            st.session_state.wisdom = results.get('wisdom', '')
+                            st.session_state.outline = results.get('outline', '')
+                            st.session_state.social = results.get('social_posts', '')
+                            st.session_state.image_prompts = results.get('image_prompts', '')
+                            st.session_state.article = results.get('article', '')
+                            st.success("✅ All content generated successfully!")
+            
+            with content_tabs[2]:
+                # Custom prompt generation
+                st.markdown("### Custom Prompt")
+                custom_prompt = st.text_area(
+                    "Enter your custom prompt",
+                    placeholder="Ask anything about the transcription...",
+                    height=100
+                )
+                
+                if st.button("Send Custom Prompt", key="custom_prompt_button", use_container_width=True):
+                    if custom_prompt:
+                        with st.spinner("Processing custom prompt..."):
+                            result = apply_prompt(
+                                st.session_state.transcription, 
+                                custom_prompt,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                user_knowledge=knowledge_base
+                            )
+                            if result:
+                                st.markdown("### Result")
+                                st.markdown(result)
+            
+            # Notion export
+            st.markdown('<div class="section-header">Export to Notion</div>', unsafe_allow_html=True)
+            
+            # Check if Notion API key is configured
+            notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
+            notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
+            
+            if not notion_key or not notion_db:
+                st.warning("⚠️ Notion integration is not configured. Please set up your Notion API key and database ID in Settings.")
+            else:
+                title = st.session_state.get("content_title", "") or "Untitled Content"
+                
+                if st.button("💾 Save to Notion", key="notion_save", use_container_width=True):
+                    with st.spinner("Saving to Notion..."):
+                        try:
+                            result = create_content_notion_entry(
+                                title,
+                                st.session_state.transcription,
+                                wisdom=st.session_state.get("wisdom"),
+                                outline=st.session_state.get("outline"),
+                                social_content=st.session_state.get("social"),
+                                image_prompts=st.session_state.get("image_prompts"),
+                                article=st.session_state.get("article")
+                            )
+                            
+                            if result and result.get("url"):
+                                st.success(f"✅ Content saved to Notion! [View Page]({result['url']})")
+                            else:
+                                st.error("Failed to save to Notion. Please check your API keys and database ID.")
+                        except Exception as e:
+                            st.error(f"Notion export error: {str(e)}")
+    
+    # Tab 2: Text Input
+    with input_tabs[1]:
+        st.markdown('<div class="section-header">Manual Text Input</div>', unsafe_allow_html=True)
+        
+        text_input = st.text_area(
+            "Enter your text",
+            placeholder="Paste your transcript or any text to process...",
+            height=300,
+            key="manual_text"
+        )
+        
+        if st.button("Use This Text", key="use_text_button", use_container_width=True):
+            if text_input:
+                st.session_state.transcription = text_input
+                st.success("Text loaded for processing!")
+                st.rerun()
 
 def show_api_keys_page():
     st.markdown("## API Keys Management")
@@ -2463,6 +2691,24 @@ def update_api_key(key_name, key_value):
     
 def get_api_key_for_service(service_name):
     """Get the API key for a specific service from the user's stored keys"""
+    # Prioritize environment variables for testing
+    if service_name == "openai":
+        env_key = os.getenv("OPENAI_API_KEY")
+        if env_key:
+            return env_key
+    elif service_name == "anthropic":
+        env_key = os.getenv("ANTHROPIC_API_KEY")
+        if env_key:
+            return env_key
+    elif service_name == "notion":
+        env_key = os.getenv("NOTION_API_KEY")
+        if env_key:
+            return env_key
+    elif service_name == "grok":
+        env_key = os.getenv("GROK_API_KEY")
+        if env_key:
+            return env_key
+    
     if not st.session_state.authenticated:
         # Fallback to environment variables
         if service_name == "openai":

@@ -1,9 +1,0 @@
-# Testing
-pytest
-pytest-asyncio
-httpx
-fastapi
-
-# Development
-black
-flake8 
