@@ -26,6 +26,7 @@ import threading
 import openai
 import logging
 import sys
+import soundfile as sf
 
 # Set up logging
 logging.basicConfig(
@@ -215,604 +216,11 @@ LLM_MODELS = {
 
 def local_css():
     """Apply refined cyberpunk styling inspired by Luma's interface"""
-    st.markdown("""
-    <style>
-    /* Refined Cyberpunk Theme - WhisperForge Command Center */
-    
-    /* Base variables for limited color palette */
-    :root {
-        --bg-primary: #121218;
-        --bg-secondary: #1a1a24;
-        --bg-tertiary: #222230;
-        --accent-primary: #7928CA;
-        --accent-secondary: #FF0080;
-        --text-primary: #f0f0f0;
-        --text-secondary: #a0a0a0;
-        --text-muted: #707070;
-        --success: #36D399;
-        --warning: #FBBD23;
-        --error: #F87272;
-        --info: #3ABFF8;
-        --border-radius: 6px;
-        --card-radius: 10px;
-        --glow-intensity: 4px;
-        --terminal-font: 'JetBrains Mono', 'Courier New', monospace;
-        --system-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    }
-    
-    /* Global styles */
-    .stApp {
-        background: linear-gradient(160deg, var(--bg-primary) 0%, #0f0f17 100%);
-        color: var(--text-primary);
-        font-family: var(--system-font);
-    }
-    
-    /* Fixed main column width */
-    .main .block-container {
-        max-width: 1024px;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        margin: 0 auto;
-    }
-    
-    /* Clean, compact header */
-    .header-container {
-        border-radius: var(--card-radius);
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.10) 0%, rgba(0, 0, 0, 0) 80%);
-        border: 1px solid rgba(121, 40, 202, 0.25);
-        padding: 12px 20px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .header-container::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(121, 40, 202, 0.5), transparent);
-        animation: header-shine 3s ease-in-out infinite;
-    }
-    
-    /* Header navigation styles */
-    .header-left, .header-right {
-        display: flex;
-        align-items: center;
-    }
-    
-    .header-nav {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .nav-item {
-        color: var(--text-secondary);
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        padding: 4px 12px;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-    
-    .nav-item:hover {
-        color: var(--text-primary);
-        background: rgba(121, 40, 202, 0.1);
-    }
-    
-    .nav-item::after {
-        content: "";
-        position: absolute;
-        bottom: -2px;
-        left: 50%;
-        right: 50%;
-        height: 2px;
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .nav-item:hover::after {
-        left: 0;
-        right: 0;
-        opacity: 1;
-    }
-    
-    .nav-item.active {
-        color: var(--text-primary);
-        background: rgba(121, 40, 202, 0.15);
-        box-shadow: 0 0 8px rgba(121, 40, 202, 0.2);
-    }
-    
-    .nav-item.active::after {
-        left: 0;
-        right: 0;
-        opacity: 1;
-    }
-    
-    @keyframes header-shine {
-        0% { transform: translateX(-100%); }
-        50% { transform: translateX(100%); }
-        100% { transform: translateX(-100%); }
-    }
-    
-    .header-title {
-        font-family: var(--terminal-font);
-        font-size: 1.4rem;
-        font-weight: 500;
-        background: linear-gradient(90deg, #7928CA, #FF0080);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: 0.02em;
-    }
-    
-    .header-date {
-        font-family: var(--terminal-font);
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-        opacity: 0.8;
-    }
-    
-    /* Compact status cards */
-    .status-container {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin: 12px 0 18px 0;
-    }
-    
-    .status-card {
-        background: linear-gradient(120deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-        border-radius: var(--card-radius);
-        padding: 12px;
-        transition: all 0.2s ease;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .status-card:hover {
-        border: 1px solid rgba(121, 40, 202, 0.3);
-        box-shadow: 0 0 10px rgba(121, 40, 202, 0.15);
-    }
-    
-    .status-card::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 1.5px;
-        background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    
-    .status-card:hover::after {
-        opacity: 1;
-    }
-    
-    .status-card h3 {
-        margin: 0;
-        color: var(--text-secondary);
-        font-size: 0.8rem;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
-    
-    .status-value {
-        font-size: 1.15rem;
-        font-weight: 600;
-        text-align: center;
-        color: var(--text-primary);
-        font-family: var(--terminal-font);
-    }
-    
-    /* Quick access buttons */
-    .quick-access {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        margin: 12px 0;
-    }
-    
-    .quick-button {
-        background: rgba(121, 40, 202, 0.1);
-        border-radius: var(--card-radius);
-        padding: 10px;
-        text-align: center;
-        color: var(--text-primary);
-        transition: all 0.2s ease;
-        cursor: pointer;
-        border: 1px solid rgba(121, 40, 202, 0.1);
-        font-size: 0.85rem;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-    }
-    
-    .quick-button:hover {
-        background: rgba(121, 40, 202, 0.15);
-        border-color: rgba(121, 40, 202, 0.3);
-        transform: translateY(-2px);
-    }
-    
-    /* Section headers with subtle underline */
-    .section-header {
-        color: var(--text-primary);
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin: 20px 0 8px 0;
-        padding-bottom: 6px;
-        position: relative;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-    
-    .section-header::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        height: 1px;
-        width: 100%;
-        background: linear-gradient(90deg, var(--accent-primary), transparent);
-    }
-    
-    /* Tabs styling */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: var(--bg-secondary);
-        border-radius: var(--border-radius);
-        padding: 4px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        gap: 2px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        border-radius: var(--border-radius);
-        color: var(--text-secondary);
-        background-color: transparent;
-        transition: all 0.2s ease;
-        font-size: 0.85rem;
-        font-weight: 500;
-        padding: 8px 16px;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        color: var(--text-primary);
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.15) 0%, rgba(255, 0, 128, 0.05) 100%);
-        color: var(--text-primary) !important;
-        border: 1px solid rgba(121, 40, 202, 0.25) !important;
-    }
-    
-    /* File uploader styling */
-    [data-testid="stFileUploader"] {
-        background: linear-gradient(120deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-        border: 1px dashed rgba(121, 40, 202, 0.3);
-        border-radius: var(--card-radius);
-        padding: 15px;
-        transition: all 0.2s ease;
-    }
-    
-    [data-testid="stFileUploader"]:hover {
-        border-color: rgba(121, 40, 202, 0.5);
-        box-shadow: 0 0 15px rgba(121, 40, 202, 0.15);
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.08) 0%, rgba(255, 0, 128, 0.05) 100%);
-        border: 1px solid rgba(121, 40, 202, 0.25);
-        color: var(--text-primary);
-        border-radius: var(--border-radius);
-        padding: 8px 16px;
-        font-family: var(--system-font);
-        transition: all 0.2s ease;
-        font-weight: 500;
-        font-size: 0.85rem;
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.15) 0%, rgba(255, 0, 128, 0.08) 100%);
-        border-color: rgba(121, 40, 202, 0.4);
-        transform: translateY(-1px);
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-    }
-    
-    .stButton > button:active {
-        transform: translateY(0px);
-    }
-    
-    /* "I'm Feeling Lucky" special button */
-    .lucky-button {
-        background: linear-gradient(110deg, rgba(54, 211, 153, 0.1) 0%, rgba(255, 0, 128, 0.05) 100%) !important;
-        border: 1px solid rgba(54, 211, 153, 0.3) !important;
-    }
-    
-    .lucky-button:hover {
-        background: linear-gradient(110deg, rgba(54, 211, 153, 0.15) 0%, rgba(255, 0, 128, 0.08) 100%) !important;
-        border-color: rgba(54, 211, 153, 0.5) !important;
-    }
-    
-    /* Audio player styling */
-    audio {
-        width: 100%;
-        border-radius: var(--border-radius);
-        background: var(--bg-secondary);
-        margin: 10px 0;
-        height: 32px;
-    }
-    
-    /* Text area styling */
-    .stTextArea > div > div > textarea {
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        border: 1px solid rgba(121, 40, 202, 0.2);
-        border-radius: var(--border-radius);
-        padding: 10px;
-        font-family: var(--system-font);
-    }
-    
-    .stTextArea > div > div > textarea:focus {
-        border: 1px solid rgba(121, 40, 202, 0.4);
-        box-shadow: 0 0 0 1px rgba(121, 40, 202, 0.2);
-    }
-    
-    /* Text input styling */
-    .stTextInput > div > div > input {
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        border: 1px solid rgba(121, 40, 202, 0.2);
-        border-radius: var(--border-radius);
-        padding: 8px 12px;
-        font-family: var(--system-font);
-        height: 36px;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border: 1px solid rgba(121, 40, 202, 0.4);
-        box-shadow: 0 0 0 1px rgba(121, 40, 202, 0.2);
-    }
-    
-    /* Selectbox styling */
-    .stSelectbox > div {
-        background-color: var(--bg-secondary);
-    }
-    
-    .stSelectbox > div > div {
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        border: 1px solid rgba(121, 40, 202, 0.2);
-        border-radius: var(--border-radius);
-    }
-    
-    /* Progress bar styling */
-    .stProgress > div > div > div {
-        background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-        border-radius: var(--border-radius);
-    }
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background-color: var(--bg-secondary);
-        border-radius: var(--border-radius);
-        border: 1px solid rgba(121, 40, 202, 0.1);
-        font-size: 0.85rem;
-        padding: 8px 12px;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        border-color: rgba(121, 40, 202, 0.25);
-    }
-    
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {
-        background-color: var(--bg-primary);
-        border-right: 1px solid rgba(121, 40, 202, 0.15);
-    }
-    
-    [data-testid="stSidebar"] [data-testid="stMarkdown"] h1,
-    [data-testid="stSidebar"] [data-testid="stMarkdown"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdown"] h3 {
-        color: var(--accent-primary);
-        font-size: 1rem;
-    }
-    
-    /* Content section styling */
-    .content-section {
-        background: linear-gradient(120deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-        border-radius: var(--card-radius);
-        padding: 15px;
-        margin: 12px 0;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .content-section h3 {
-        color: var(--text-primary);
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-weight: 500;
-        font-size: 1rem;
-        padding-bottom: 8px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    
-    /* Terminal-style output */
-    .terminal-output {
-        background-color: rgba(0, 0, 0, 0.2);
-        border-left: 2px solid var(--accent-primary);
-        border-radius: var(--border-radius);
-        padding: 10px 15px;
-        font-family: var(--terminal-font);
-        color: var(--text-primary);
-        font-size: 0.85rem;
-        margin: 10px 0;
-    }
-    
-    /* Process indicator */
-    .process-indicator {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: var(--bg-secondary);
-        padding: 10px;
-        border-radius: var(--border-radius);
-        margin: 15px 0;
-        border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    
-    .process-indicator .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--accent-primary);
-        margin-right: 10px;
-        animation: pulse 1.5s infinite;
-    }
-    
-    @keyframes pulse {
-        0% { opacity: 0.4; }
-        50% { opacity: 1; }
-        100% { opacity: 0.4; }
-    }
-    
-    .process-status {
-        flex-grow: 1;
-        font-size: 0.85rem;
-    }
-    
-    /* Notion button styling */
-    .notion-button {
-        display: inline-block;
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.1) 0%, rgba(255, 0, 128, 0.05) 100%);
-        border: 1px solid rgba(121, 40, 202, 0.25);
-        border-radius: var(--border-radius);
-        padding: 8px 15px;
-        color: var(--text-primary);
-        text-decoration: none;
-        font-family: var(--system-font);
-        transition: all 0.2s ease;
-        font-size: 0.85rem;
-        font-weight: 500;
-        margin-top: 10px;
-    }
-    
-    .notion-button:hover {
-        background: linear-gradient(110deg, rgba(121, 40, 202, 0.15) 0%, rgba(255, 0, 128, 0.08) 100%);
-        border-color: rgba(121, 40, 202, 0.4);
-        transform: translateY(-1px);
-    }
-    
-    /* Footer styling */
-    .app-footer {
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid rgba(121, 40, 202, 0.15);
-        font-size: 0.8rem;
-        text-align: center;
-        color: var(--text-muted);
-    }
-    
-    .footer-content {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .footer-status {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        margin: 10px 0;
-    }
-    
-    .footer-status span {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .footer-status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-    
-    .status-secure .footer-status-dot {
-        background-color: var(--success);
-        box-shadow: 0 0 5px var(--success);
-    }
-    
-    .status-sovereignty .footer-status-dot {
-        background-color: var(--accent-primary);
-        box-shadow: 0 0 5px var(--accent-primary);
-    }
-    
-    .status-offline .footer-status-dot {
-        background-color: var(--info);
-        box-shadow: 0 0 5px var(--info);
-    }
-    
-    /* Animations and effects */
-    .scanner-line {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
-        opacity: 0.4;
-        z-index: 1000;
-        animation: scanner-move 8s linear infinite;
-    }
-    
-    @keyframes scanner-move {
-        0% { top: 0; }
-        100% { top: 100%; }
-    }
-    
-    /* Toast notifications */
-    .toast-notification {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: var(--bg-secondary);
-        border-radius: var(--border-radius);
-        padding: 10px 15px;
-        border-left: 3px solid var(--success);
-        color: var(--text-primary);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-        font-size: 0.85rem;
-        animation: toast-in 0.3s ease forwards;
-    }
-    
-    @keyframes toast-in {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    </style>
-    
-    <!-- Add the scanner line animation -->
-    <div class="scanner-line"></div>
-    """, unsafe_allow_html=True)
+    with open('static/css/main.css') as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    
+    # Add the scanner line animation div
+    st.markdown('<div class="scanner-line"></div>', unsafe_allow_html=True)
 
 def load_user_knowledge_base(user):
     """Load knowledge base files for a specific user"""
@@ -947,7 +355,18 @@ Original Prompt:
 def chunk_audio(audio_path, target_size_mb=25):
     """Split audio file into chunks of approximately target_size_mb"""
     try:
-        audio = AudioSegment.from_file(audio_path)
+        # Log the start of the chunking process
+        logger.debug(f"Starting to chunk audio file: {audio_path}")
+        logger.debug(f"Target chunk size: {target_size_mb}MB")
+        
+        # Load the audio file
+        try:
+            audio = AudioSegment.from_file(audio_path)
+            logger.debug(f"Successfully loaded audio file. Duration: {len(audio)}ms")
+        except Exception as load_error:
+            logger.error(f"Failed to load audio file: {str(load_error)}")
+            st.error(f"Error loading audio file: {str(load_error)}")
+            return [], None
         
         # Calculate optimal chunk size based on file size
         file_size = os.path.getsize(audio_path)
@@ -961,22 +380,29 @@ def chunk_audio(audio_path, target_size_mb=25):
         else:
             target_size_mb = 20  # Smaller chunks for better accuracy on smaller files
         
+        logger.debug(f"Adjusted target chunk size: {target_size_mb}MB")
+        
+        # Calculate total chunks based on file size
         total_chunks = math.ceil(file_size / (target_size_mb * 1024 * 1024))
+        logger.debug(f"Initial calculation: {total_chunks} chunks")
         
         # Ensure we have reasonable chunking
         MIN_CHUNK_LENGTH_MS = 5000  # 5 seconds minimum
-        MAX_CHUNKS = 30  # Increased from 20 to handle larger files
+        MAX_CHUNKS = 20  # Reduced from 30 to avoid OpenAI API limits
         
         if total_chunks > MAX_CHUNKS:
             target_size_mb = math.ceil(file_size / (MAX_CHUNKS * 1024 * 1024))
             total_chunks = MAX_CHUNKS
+            logger.debug(f"Limited to max {MAX_CHUNKS} chunks. New target size: {target_size_mb}MB")
         
         # Adjust chunk size based on audio length rather than just file size
         # This ensures more even chunks with complete sentences
         chunk_length_ms = max(len(audio) // total_chunks, MIN_CHUNK_LENGTH_MS)
+        logger.debug(f"Chunk length: {chunk_length_ms}ms")
         
         # Create temporary directory for chunks
         temp_dir = tempfile.mkdtemp(prefix='whisperforge_chunks_')
+        logger.debug(f"Created temp directory: {temp_dir}")
         chunks = []
         
         # Show chunking progress
@@ -988,11 +414,14 @@ def chunk_audio(audio_path, target_size_mb=25):
             from pydub.silence import detect_silence
             silences = detect_silence(audio, min_silence_len=500, silence_thresh=-40)
             has_silence_data = len(silences) > 0
-        except:
+            logger.debug(f"Silence detection successful. Found {len(silences)} silence points.")
+        except Exception as silence_error:
+            logger.warning(f"Failed to detect silences: {str(silence_error)}")
             has_silence_data = False
         
         # Process and save chunks
         if has_silence_data and len(silences) > total_chunks:
+            logger.debug("Using silence-based chunking")
             # Use silences as natural chunk boundaries
             chunk_points = []
             silence_step = max(1, len(silences) // (total_chunks + 1))
@@ -1002,6 +431,7 @@ def chunk_audio(audio_path, target_size_mb=25):
             
             # Add start and end points
             chunk_points = [0] + chunk_points + [len(audio)]
+            logger.debug(f"Created {len(chunk_points)-1} chunks based on silence points")
             
             # Create chunks based on silence points
             for i in range(len(chunk_points) - 1):
@@ -1009,28 +439,64 @@ def chunk_audio(audio_path, target_size_mb=25):
                 end = chunk_points[i + 1]
                 
                 if end - start < MIN_CHUNK_LENGTH_MS:
+                    logger.debug(f"Skipping chunk {i+1} as it's too short ({end-start}ms)")
                     continue
                 
-                chunk = audio[start:end]
-                chunk_path = os.path.join(temp_dir, f'chunk_{i}.mp3')
-                chunk.export(chunk_path, format='mp3')
-                chunks.append(chunk_path)
+                try:
+                    chunk = audio[start:end]
+                    chunk_path = os.path.join(temp_dir, f'chunk_{i}.mp3')
+                    
+                    # Export with specific parameters that work well with OpenAI's API
+                    chunk.export(
+                        chunk_path, 
+                        format='mp3',
+                        parameters=["-ac", "1", "-ar", "16000"]  # Mono, 16kHz
+                    )
+                    
+                    # Verify the exported file exists and has content
+                    if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 0:
+                        chunks.append(chunk_path)
+                        logger.debug(f"Created chunk {i+1}: {chunk_path} (Duration: {len(chunk)}ms)")
+                    else:
+                        logger.warning(f"Failed to create chunk {i+1}: File is empty or doesn't exist")
+                except Exception as chunk_error:
+                    logger.error(f"Error creating chunk {i+1}: {str(chunk_error)}")
                 
                 # Update progress
                 progress = (i + 1) / (len(chunk_points) - 1)
                 progress_bar.progress(min(progress, 1.0))
                 progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
         else:
+            logger.debug("Using time-based chunking")
             # Standard time-based chunking if silence detection failed
+            chunk_count = 0
             for i in range(0, len(audio), chunk_length_ms):
                 chunk = audio[i:i + chunk_length_ms]
+                
                 if len(chunk) < MIN_CHUNK_LENGTH_MS:
+                    logger.debug(f"Skipping chunk at position {i}ms as it's too short ({len(chunk)}ms)")
                     continue
+                
+                try:
+                    # Save chunk with index in filename
+                    chunk_path = os.path.join(temp_dir, f'chunk_{chunk_count}.mp3')
                     
-                # Save chunk with index in filename
-                chunk_path = os.path.join(temp_dir, f'chunk_{i//chunk_length_ms}.mp3')
-                chunk.export(chunk_path, format='mp3')
-                chunks.append(chunk_path)
+                    # Export with specific parameters that work well with OpenAI's API
+                    chunk.export(
+                        chunk_path, 
+                        format='mp3',
+                        parameters=["-ac", "1", "-ar", "16000"]  # Mono, 16kHz
+                    )
+                    
+                    # Verify the exported file exists and has content
+                    if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 0:
+                        chunks.append(chunk_path)
+                        chunk_count += 1
+                        logger.debug(f"Created chunk {chunk_count}: {chunk_path} (Duration: {len(chunk)}ms)")
+                    else:
+                        logger.warning(f"Failed to create chunk at position {i}ms: File is empty or doesn't exist")
+                except Exception as chunk_error:
+                    logger.error(f"Error creating chunk at position {i}ms: {str(chunk_error)}")
                 
                 # Update progress
                 progress = (i + chunk_length_ms) / len(audio)
@@ -1041,47 +507,150 @@ def chunk_audio(audio_path, target_size_mb=25):
         progress_bar.empty()
         
         # Display chunking summary
+        logger.info(f"Successfully created {len(chunks)} chunks out of {total_chunks} planned")
         st.info(f"Audio split into {len(chunks)} chunks for processing. Total file size: {file_size_mb:.1f} MB")
         
+        if len(chunks) == 0:
+            logger.error("No chunks were created successfully")
+            st.error("Failed to create any valid audio chunks. Please try a different file.")
+            return [], None
+            
         return chunks, temp_dir
     except Exception as e:
+        logger.error(f"Error chunking audio: {str(e)}", exc_info=True)
         st.error(f"Error chunking audio: {str(e)}")
         return [], None
 
 def transcribe_chunk(chunk_path, i, total_chunks):
-    """Transcribe a single chunk with error handling and progress tracking"""
+    """Transcribe a single audio chunk using OpenAI's API"""
     try:
-        # Get the API key directly
+        # Log the processing of this chunk
+        logger.debug(f"Processing chunk {i+1}/{total_chunks} ({os.path.getsize(chunk_path)/1024:.1f}KB): {chunk_path}")
+        
+        # Get API key
         api_key = get_api_key_for_service("openai")
         if not api_key:
-            return f"[Error in chunk {i+1}: OpenAI API key is not configured]"
+            error_msg = "OpenAI API key is not configured"
+            logger.error(error_msg)
+            return f"[Error: {error_msg}]"
         
-        # Create a fresh client instance with just the API key
+        # Check if file exists
+        if not os.path.exists(chunk_path):
+            error_msg = f"Chunk file not found: {chunk_path}"
+            logger.error(error_msg)
+            return f"[Error: {error_msg}]"
+        
+        # Check if file size is valid
+        file_size = os.path.getsize(chunk_path)
+        if file_size == 0:
+            error_msg = f"Chunk file is empty: {chunk_path}"
+            logger.error(error_msg)
+            return f"[Error: {error_msg}]"
+        
+        # Try direct API call
         try:
-            client = OpenAI(api_key=api_key)
+            logger.debug(f"Making direct API call for chunk {i+1}")
             
-            with open(chunk_path, "rb") as audio:
+            import requests
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            url = "https://api.openai.com/v1/audio/transcriptions"
+            
+            # Set transcription options
+            model = st.session_state.get('transcription_model', 'whisper-1')
+            
+            # Create form data
+            files = {
+                'file': open(chunk_path, 'rb')
+            }
+            
+            data = {
+                'model': model,
+                'response_format': 'text'
+            }
+            
+            # Check for language code in session state
+            if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
+                data['language'] = st.session_state.get('language_code')
+                logger.debug(f"Setting language for chunk {i+1} to: {data['language']}")
+            
+            # Make the API request
+            response = requests.post(url, headers=headers, files=files, data=data)
+            
+            # Handle different response codes
+            if response.status_code == 200:
+                transcript = response.text
+                logger.debug(f"Successfully transcribed chunk {i+1} (Length: {len(transcript)} chars)")
+                return transcript
+                
+            elif response.status_code == 429:
+                error_msg = f"Rate limit exceeded for chunk {i+1}"
+                logger.error(f"API Rate Limit (429): {error_msg}")
+                return f"[Rate limit exceeded: Try again later for chunk {i+1}]"
+                
+            elif response.status_code == 401:
+                error_msg = f"Invalid API key when processing chunk {i+1}"
+                logger.error(f"API Authentication Error (401): {error_msg}")
+                return f"[Failed: Invalid API key for chunk {i+1}]"
+                
+            else:
+                # Try to parse error details
                 try:
-                    transcript = client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', f"Unknown API error for chunk {i+1}")
+                except:
+                    error_msg = f"API error (status {response.status_code}) for chunk {i+1}: {response.text}"
+                
+                logger.error(f"API Error in chunk {i+1}: {error_msg}")
+                return f"[Error: {error_msg}]"
+                
+        except requests.exceptions.RequestException as req_error:
+            # Handle connection errors
+            error_msg = f"API request failed for chunk {i+1}: {str(req_error)}"
+            logger.error(error_msg)
+            
+            # Try OpenAI client as fallback
+            try:
+                logger.debug(f"Attempting fallback with client library for chunk {i+1}")
+                
+                from openai import OpenAI
+                
+                client = OpenAI(api_key=api_key)
+                
+                # Set options
+                options = {}
+                if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
+                    options['language'] = st.session_state.get('language_code')
+                
+                # Get model preference or use default
+                model = st.session_state.get('transcription_model', 'whisper-1')
+                
+                with open(chunk_path, "rb") as audio_file:
+                    # Use client library as fallback
+                    response = client.audio.transcriptions.create(
+                        model=model,
+                        file=audio_file,
+                        response_format="text",
+                        **options
                     )
-                    return transcript.text
-                except Exception as api_error:
-                    error_msg = str(api_error)
-                    # Handle specific API errors
-                    if "rate limit" in error_msg.lower():
-                        return f"[Error in chunk {i+1}: API rate limit exceeded]"
-                    elif "api key" in error_msg.lower():
-                        return f"[Error in chunk {i+1}: Invalid API key]"
-                    elif "proxies" in error_msg.lower() or "client.init" in error_msg.lower():
-                        return f"[Error in chunk {i+1}: OpenAI client configuration issue]"
-                    else:
-                        return f"[Error in chunk {i+1}: {error_msg}]"
-        except Exception as client_error:
-            return f"[Error initializing OpenAI client for chunk {i+1}: {str(client_error)}]"
+                
+                # If we get here, the fallback worked
+                transcript = response
+                logger.debug(f"Fallback succeeded for chunk {i+1} (Length: {len(transcript)} chars)")
+                return transcript
+                
+            except Exception as client_error:
+                error_msg = f"Fallback also failed for chunk {i+1}: {str(client_error)}"
+                logger.error(error_msg)
+                return f"[Failed: {error_msg}]"
+    
     except Exception as e:
-        return f"[Error processing chunk {i+1} of {total_chunks}: {str(e)}]"
+        error_msg = f"Unexpected error processing chunk {i+1}: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return f"[Error: {error_msg}]"
 
 def generate_title(transcript):
     """Generate a descriptive 5-7 word title based on the transcript"""
@@ -1715,12 +1284,18 @@ def configure_prompts(selected_user, users_prompts):
 def transcribe_large_file(file_path):
     """Process a large audio file by chunking it and transcribing each chunk with concurrent processing"""
     try:
+        # Start with info message
         st.info("Processing large audio file in chunks...")
+        logger.info(f"Starting transcription of large file: {file_path}")
         
         # Split audio into chunks
         chunks, temp_dir = chunk_audio(file_path)
-        if not chunks:
-            st.error("Failed to chunk audio file.")
+        
+        # Validate chunks
+        if not chunks or len(chunks) == 0:
+            error_msg = "Failed to create audio chunks for processing"
+            logger.error(error_msg)
+            st.error(error_msg)
             return ""
         
         # Create progress indicators
@@ -1728,20 +1303,24 @@ def transcribe_large_file(file_path):
         overall_status = st.empty()
         progress_bar = st.progress(0)
         
+        # Log and display info about chunks
+        logger.info(f"Created {len(chunks)} chunks for processing")
         overall_status.info(f"Beginning transcription of {len(chunks)} audio segments...")
         
         # Determine optimal number of concurrent processes
-        # For very large files (many chunks), we'll use more concurrency
         import os
         import concurrent.futures
+        import time
         
         # Adjust concurrency based on number of chunks
         if len(chunks) > 20:
-            max_workers = min(8, len(chunks))  # Up to 8 workers for very large files
+            max_workers = min(6, len(chunks))  # Reduced to 6 workers for very large files
         elif len(chunks) > 10:
-            max_workers = min(5, len(chunks))  # Up to 5 workers for medium files
+            max_workers = min(4, len(chunks))  # Reduced to 4 workers for medium files
         else:
-            max_workers = min(3, len(chunks))  # Up to 3 workers for smaller files
+            max_workers = min(2, len(chunks))  # Reduced to 2 workers for smaller files
+            
+        logger.debug(f"Using {max_workers} concurrent workers for {len(chunks)} chunks")
         
         # Set up shared variables for progress tracking
         import threading
@@ -1750,8 +1329,13 @@ def transcribe_large_file(file_path):
             'completed': 0,
             'success': 0,
             'failed': 0,
-            'results': [None] * len(chunks)
+            'results': [None] * len(chunks),
+            'errors': []  # Track detailed error information
         }
+        
+        # Create a thread-safe structure for progress updates
+        progress_updates_lock = threading.Lock()
+        progress_updates = []
         
         # Function for processing a single chunk with progress tracking
         def process_chunk(args):
@@ -1763,64 +1347,170 @@ def transcribe_large_file(file_path):
                 # Update progress tracker
                 with lock:
                     progress_tracker['completed'] += 1
-                    if chunk_text and not any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
-                        progress_tracker['success'] += 1
-                    else:
+                    
+                    # Check for error markers or empty results
+                    is_error = False
+                    if not chunk_text:
+                        is_error = True
+                        progress_tracker['errors'].append(f"Empty result for chunk {idx+1}")
+                    elif any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
+                        is_error = True
+                        progress_tracker['errors'].append(chunk_text)
+                    
+                    if is_error:
                         progress_tracker['failed'] += 1
+                    else:
+                        progress_tracker['success'] += 1
                     
                     progress_tracker['results'][idx] = chunk_text
                     
-                    # Update progress display
+                    # Calculate progress but don't update UI directly from thread
+                    # This avoids NoSessionContext errors
                     completed = progress_tracker['completed']
-                    success = progress_tracker['success']
-                    failed = progress_tracker['failed']
                     progress = completed / total
                     
-                    # Update UI from the main thread
-                    progress_bar.progress(progress)
-                    progress_text.text(f"Transcribing: {completed}/{total} chunks processed...")
-                    overall_status.info(f"Progress: {completed}/{total} chunks ({success} successful, {failed} failed)")
+                    # Add to a separate list that the main thread can safely read
+                    with progress_updates_lock:
+                        progress_updates.append({
+                            'progress': progress,
+                            'completed': completed,
+                            'total': total,
+                            'success': progress_tracker['success'],
+                            'failed': progress_tracker['failed']
+                        })
                 
                 # Clean up chunk file
                 try:
                     os.remove(chunk_path)
-                except:
-                    pass
+                    logger.debug(f"Removed chunk file: {chunk_path}")
+                except Exception as clean_error:
+                    logger.warning(f"Failed to remove chunk file {chunk_path}: {str(clean_error)}")
                 
                 return chunk_text
             except Exception as e:
+                error_msg = f"Error processing chunk {idx+1}: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                
                 with lock:
                     progress_tracker['completed'] += 1
                     progress_tracker['failed'] += 1
+                    progress_tracker['errors'].append(error_msg)
                     progress_tracker['results'][idx] = f"[Error processing chunk {idx+1}: {str(e)}]"
                     
-                    # Update progress
-                    progress = progress_tracker['completed'] / total
-                    progress_bar.progress(progress)
+                    # Calculate progress but don't update UI directly
+                    completed = progress_tracker['completed']
+                    progress = completed / total
+                    with progress_updates_lock:
+                        progress_updates.append({
+                            'progress': progress,
+                            'completed': completed,
+                            'total': total,
+                            'success': progress_tracker['success'],
+                            'failed': progress_tracker['failed']
+                        })
+                
+                # Try to clean up even on error
+                try:
+                    if os.path.exists(chunk_path):
+                        os.remove(chunk_path)
+                except:
+                    pass
+                    
                 return f"[Error processing chunk {idx+1}: {str(e)}]"
         
         # Process chunks with concurrent execution
         chunk_args = [(chunk_path, i, len(chunks)) for i, chunk_path in enumerate(chunks)]
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Show processing message
+            st.info(f"Transcribing audio using {max_workers} concurrent processes...")
+            logger.debug(f"Starting {max_workers} workers for {len(chunks)} chunks")
+            
             # Start all tasks
             future_to_chunk = {executor.submit(process_chunk, arg): arg for arg in chunk_args}
             
-            # Wait for all tasks to complete
-            concurrent.futures.wait(future_to_chunk)
+            # Create a thread-safe way to track cancellation
+            should_terminate = threading.Event()
+            
+            # Main loop to update UI from the main thread while tasks are running
+            while not should_terminate.is_set():
+                # Check if all tasks are done
+                all_done = all(future.done() for future in future_to_chunk)
+                
+                # Process any UI updates from worker threads
+                updates_to_process = []
+                with progress_updates_lock:
+                    if progress_updates:
+                        updates_to_process = progress_updates.copy()
+                        progress_updates.clear()
+                
+                # Apply UI updates from the main thread
+                if updates_to_process:
+                    # Use the latest update
+                    latest = updates_to_process[-1]
+                    
+                    # Update progress indicators (safely from main thread)
+                    progress_bar.progress(latest['progress'])
+                    progress_text.text(f"Transcribing: {latest['completed']}/{latest['total']} chunks processed...")
+                    
+                    # Update overall status occasionally
+                    if latest['completed'] % 2 == 0 or latest['completed'] == latest['total'] or all_done:
+                        overall_status.info(f"Progress: {latest['completed']}/{latest['total']} chunks "
+                                           f"({latest['success']} successful, {latest['failed']} failed)")
+                
+                # If all done, exit the loop
+                if all_done:
+                    break
+                    
+                # Sleep briefly to avoid hogging CPU
+                time.sleep(0.1)
+            
+            try:
+                # Wait for all tasks to complete
+                done, not_done = concurrent.futures.wait(
+                    future_to_chunk, 
+                    timeout=600,  # 10 minute timeout for all chunks
+                    return_when=concurrent.futures.ALL_COMPLETED
+                )
+                
+                if not_done:
+                    logger.warning(f"{len(not_done)} chunk processing tasks did not complete within the timeout")
+                    for future in not_done:
+                        chunk_idx = future_to_chunk[future][1]
+                        progress_tracker['errors'].append(f"Timeout processing chunk {chunk_idx+1}")
+                        progress_tracker['results'][chunk_idx] = f"[Error: Processing timeout for chunk {chunk_idx+1}]"
+            except Exception as wait_error:
+                logger.error(f"Error waiting for tasks to complete: {str(wait_error)}")
         
-        # Collect results in correct order
-        transcriptions = progress_tracker['results']
+        # Collect results in correct order, filtering out None or error entries
+        transcriptions = []
+        for idx, result in enumerate(progress_tracker['results']):
+            if result and not result.startswith("[Error"):
+                transcriptions.append(result)
+            elif result and result.startswith("[Error"):
+                logger.debug(f"Skipping error result from chunk {idx+1}: {result}")
+                # Include a placeholder for failed chunks to maintain context
+                transcriptions.append(f"[...]")
         
         # Clean up temporary directory
         if temp_dir:
             try:
                 shutil.rmtree(temp_dir)
-            except:
-                pass
+                logger.debug(f"Removed temporary directory: {temp_dir}")
+            except Exception as rmdir_error:
+                logger.warning(f"Failed to remove temporary directory: {str(rmdir_error)}")
         
         # Combine all transcriptions with proper spacing
         full_transcript = " ".join([t for t in transcriptions if t])
+        
+        # Log the results
+        logger.info(f"Transcription complete: {progress_tracker['success']} successful chunks, {progress_tracker['failed']} failed chunks")
+        if progress_tracker['failed'] > 0:
+            logger.warning(f"Errors during transcription: {progress_tracker['errors']}")
+        
+        # Calculate character count for successful transcript
+        char_count = len(full_transcript) if full_transcript else 0
+        logger.debug(f"Generated transcript with {char_count} characters")
         
         # Clear progress indicators
         progress_text.empty()
@@ -1828,156 +1518,103 @@ def transcribe_large_file(file_path):
         
         # Final status message
         if progress_tracker['failed'] > 0:
-            overall_status.warning(f"⚠️ Transcription partially complete. Processed {progress_tracker['success']} of {len(chunks)} chunks successfully. {progress_tracker['failed']} chunks had errors.")
+            if progress_tracker['success'] > 0:
+                # Partial success
+                overall_status.warning(f"⚠️ Transcription partially complete. Processed {progress_tracker['success']} of {len(chunks)} chunks successfully. {progress_tracker['failed']} chunks had errors.")
+                st.success(f"✅ Transcription complete! ({char_count} characters)")
+            else:
+                # Complete failure
+                overall_status.error(f"❌ Transcription failed. All {len(chunks)} chunks had errors.")
+                if progress_tracker['errors']:
+                    st.error(f"Error details: {progress_tracker['errors'][0]}")
         else:
+            # Complete success
             overall_status.success(f"✅ Transcription complete! Successfully processed all {len(chunks)} audio segments.")
+            st.success(f"✅ Transcription complete! ({char_count} characters)")
         
         return full_transcript
-        
     except Exception as e:
-        st.error(f"Error processing large file: {str(e)}")
-        if "ffmpeg" in str(e).lower():
-            st.error("FFmpeg error. Please ensure FFmpeg is properly installed on your system.")
-        elif "memory" in str(e).lower():
-            st.error("Memory error. File may be too large for processing.")
-        return ""
+        error_msg = f"Error in large file transcription: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        st.error(error_msg)
+        return f"Error transcribing audio: {str(e)}"
 
 def transcribe_audio(audio_file):
-    """Transcribe an audio file with size-based handling for files up to 500MB"""
-    # Start timing for usage tracking
-    start_time = time.time()
-    
+    """Transcribe an audio file using the appropriate method based on file size"""
     try:
-        logger.debug(f"Starting transcription of audio file: {getattr(audio_file, 'name', str(audio_file))}")
+        if audio_file is None:
+            logger.warning("No audio file provided for transcription")
+            return ""
         
-        # Get the provider and model from session state or use defaults
-        provider = st.session_state.get('transcription_provider', 'OpenAI')
-        model = st.session_state.get('transcription_model', 'whisper-1')
+        # Save the uploaded file to a temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.name)[1]) as tmp_file:
+            tmp_file.write(audio_file.getbuffer())
+            temp_path = tmp_file.name
         
-        logger.debug(f"Using transcription provider: {provider}, model: {model}")
+        logger.info(f"Processing audio file: {audio_file.name} (Size: {audio_file.size/1024/1024:.2f} MB)")
         
-        # Check if audio_file is a string (path) or an UploadedFile object
-        if isinstance(audio_file, str):
-            audio_path = audio_file
-            file_size = os.path.getsize(audio_path)
-            file_name = os.path.basename(audio_path)
-        else:
-            # Save uploaded file temporarily
-            file_name = audio_file.name
-            file_extension = file_name.split('.')[-1].lower()
-            
-            logger.debug(f"Processing uploaded file: {file_name} (extension: {file_extension})")
-            
-            # Validate file extension
-            valid_extensions = ['mp3', 'wav', 'ogg', 'm4a', 'mp4', 'mpeg', 'mpga', 'webm']
-            if file_extension not in valid_extensions:
-                logger.error(f"Invalid file extension: {file_extension}")
-                return f"Error: Unsupported file format '{file_extension}'. Please upload an audio file in one of these formats: {', '.join(valid_extensions)}"
-            
-            # Create temp file with proper extension
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
-                logger.debug(f"Created temporary file: {tmp_file.name}")
-                tmp_file.write(audio_file.getvalue())
-                audio_path = tmp_file.name
-                file_size = os.path.getsize(audio_path)
-        
-        # Check for maximum file size (500MB)
-        MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
-        if file_size > MAX_FILE_SIZE:
-            error_msg = f"File size ({file_size/(1024*1024):.1f} MB) exceeds the maximum allowed size of 500MB."
-            logger.error(error_msg)
-            st.error(error_msg)
-            return f"Error: {error_msg}"
-        
-        # Display file information to user
-        file_size_mb = file_size / (1024 * 1024)
-        logger.debug(f"File size: {file_size_mb:.2f} MB")
-        st.info(f"Processing '{file_name}' ({file_size_mb:.1f} MB)")
-        
-        # Size threshold for chunking - adjusted for different file sizes
-        if file_size_mb > 100:
-            # For larger files, use a higher threshold to reduce the number of chunks
-            CHUNK_THRESHOLD = 40 * 1024 * 1024  # 40MB threshold for larger files
-        else:
-            # For smaller files, use a lower threshold for better accuracy
-            CHUNK_THRESHOLD = 25 * 1024 * 1024  # 25MB threshold for smaller files
-            
-        logger.debug(f"Chunk threshold: {CHUNK_THRESHOLD/(1024*1024):.2f} MB")
-        
-        # Process based on file size
-        if file_size > CHUNK_THRESHOLD:
-            logger.debug("Large file detected. Processing in chunks.")
-            st.info(f"Large file detected ({file_size_mb:.1f} MB). Processing in chunks for better reliability.")
-            # Process large file in chunks
-            transcript = transcribe_large_file(audio_path)
-        else:
-            # Process small file directly with the direct API method
-            logger.debug("Processing small file directly with direct transcription.")
-            with st.spinner(f"Transcribing audio file ({file_size_mb:.1f} MB)..."):
-                try:
-                    # Use the direct transcription method for reliability
-                    api_key = get_api_key_for_service("openai")
-                    if not api_key:
-                        logger.error("Missing OpenAI API key")
-                        return "Error: OpenAI API key is not configured. Please set up your API key in the settings."
-                    
-                    # Always use direct API call for more reliability
-                    logger.debug("Using direct API call for transcription")
-                    transcript = direct_transcribe_audio(audio_path, api_key)
-                    
-                    if not transcript or transcript.startswith("Error:"):
-                        logger.error(f"Direct transcription failed: {transcript}")
-                        raise Exception(transcript or "Unknown transcription error")
-                    
-                except Exception as api_error:
-                    error_msg = str(api_error)
-                    logger.error(f"API Error: {error_msg}")
-                    st.error(f"API Error: {error_msg}")
-                    
-                    # Try to provide more helpful error messages for common issues
-                    if "rate limit" in error_msg.lower():
-                        logger.error("Rate limit exceeded")
-                        return "Error: OpenAI API rate limit reached. Please try again in a few minutes."
-                    elif "api key" in error_msg.lower():
-                        logger.error("Invalid API key")
-                        return "Error: Invalid OpenAI API key. Please check your API key configuration."
-                    elif "file size" in error_msg.lower() or "too large" in error_msg.lower():
-                        # If direct upload fails due to size, try chunking as fallback
-                        logger.warning("File size error. Attempting chunking as fallback.")
-                        st.warning("File size error from API. Attempting to process in chunks as a fallback...")
-                        transcript = transcribe_large_file(audio_path)
-                    else:
-                        return f"Error transcribing audio: {error_msg}"
-        
-        # Clean up temporary file if we created it
-        if not isinstance(audio_file, str):
+        try:
+            # Check if file is valid audio
             try:
-                logger.debug(f"Cleaning up temporary file: {audio_path}")
-                os.remove(audio_path)
-            except Exception as cleanup_error:
-                logger.warning(f"Failed to clean up temporary file: {str(cleanup_error)}")
-        
-        # Update usage tracking
-        end_time = time.time()
-        duration = end_time - start_time
-        update_usage_tracking(duration)
-        
-        if transcript:
-            logger.debug(f"Transcription complete. Result length: {len(transcript)} characters")
-            st.success(f"✅ Transcription complete! ({len(transcript)} characters)")
+                audio_info = sf.info(temp_path)
+                logger.info(f"Audio file details: {audio_file.name}, Duration: {audio_info.duration:.2f}s, "
+                           f"Sample rate: {audio_info.samplerate}Hz, Channels: {audio_info.channels}")
+                
+                # Add file details to the UI
+                st.write(f"📊 **File details**: Duration: {audio_info.duration:.2f}s, "
+                        f"Sample rate: {audio_info.samplerate}Hz, Channels: {audio_info.channels}")
+            except Exception as audio_error:
+                logger.warning(f"Could not read audio details: {str(audio_error)}")
+                st.warning("⚠️ Could not read detailed audio information from file")
             
-        return transcript
+            # Determine processing method based on file size
+            file_size_mb = os.path.getsize(temp_path) / (1024 * 1024)
+            
+            # Decision logic for transcription method
+            if file_size_mb > 25:  # Large file threshold
+                logger.info(f"Large file detected ({file_size_mb:.2f} MB), using chunked processing")
+                st.info(f"🔄 Large audio file detected ({file_size_mb:.2f} MB), processing in chunks for reliability...")
+                transcript = transcribe_large_file(temp_path)
+            else:
+                logger.info(f"Standard file size ({file_size_mb:.2f} MB), using direct transcription")
+                st.info(f"🔄 Processing audio file ({file_size_mb:.2f} MB)...")
+                transcript = transcribe_with_whisper(temp_path)
+            
+            # Clean up the temporary file
+            try:
+                os.unlink(temp_path)
+                logger.debug(f"Removed temporary file: {temp_path}")
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to remove temporary file: {str(cleanup_error)}")
+            
+            return transcript
         
+        except Exception as process_error:
+            # Clean up on error
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+            
+            # Re-raise for outer exception handler
+            raise process_error
+    
     except Exception as e:
-        logger.exception("Unhandled exception in transcribe_audio")
-        st.error(f"Transcription error: {str(e)}")
-        # Provide more specific error messages for common issues
+        error_msg = f"Error processing audio file: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        
+        # Provide more specific error messages based on error type
         if "ffmpeg" in str(e).lower():
-            st.error("Audio processing error. Please ensure the file is a valid audio format.")
-        elif "permission" in str(e).lower():
-            st.error("File permission error. Please try uploading the file again.")
+            st.error("❌ FFmpeg error. Please ensure FFmpeg is properly installed on your system.")
         elif "memory" in str(e).lower():
-            st.error("Memory error. The file may be too large to process with available system resources.")
+            st.error("❌ Memory error. File may be too large for processing with current system resources.")
+        elif "format" in str(e).lower() or "invalid" in str(e).lower():
+            st.error("❌ Invalid audio format. Please upload a supported audio file type.")
+        elif "api" in str(e).lower() or "key" in str(e).lower():
+            st.error("❌ API error. Please check your OpenAI API key configuration.")
+        else:
+            st.error(f"❌ Error processing audio: {str(e)}")
+        
         return ""
 
 def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
@@ -2593,6 +2230,9 @@ def main():
     # Apply the improved cyberpunk theme
     local_css()
     
+    # Load JavaScript files
+    load_js()
+    
     # Skip authentication for testing purposes
     # Authentication handling
     # if not st.session_state.authenticated:
@@ -2638,27 +2278,8 @@ def main():
     elif st.session_state.page == "legal":
         show_legal_page()
     
-    # Show cookie consent banner if necessary
-    if st.session_state.show_cookie_banner:
-        cookie_banner_html = """
-        <div class="cookie-banner">
-            <div>
-                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
-                <a href="?page=legal">Learn more</a>
-            </div>
-            <div class="cookie-banner-buttons">
-                <button onclick="document.querySelector('.cookie-banner').style.display='none'; localStorage.setItem('cookies_accepted', 'true');">
-                    Accept
-                </button>
-            </div>
-        </div>
-        <script>
-            if (localStorage.getItem('cookies_accepted') === 'true') {
-                document.querySelector('.cookie-banner').style.display = 'none';
-            }
-        </script>
-        """
-        st.markdown(cookie_banner_html, unsafe_allow_html=True)
+    # Show cookie consent banner
+    show_cookie_banner()
     
     # Display tool area if transcript is available
     if st.session_state.get("transcript"):
@@ -3378,114 +2999,8 @@ def add_security_headers():
 
 # Add extended CSS for production look and feel
 def add_production_css():
-    st.markdown("""
-    <style>
-    /* Production-specific styles */
-    .pricing-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
-    }
-    
-    .pricing-table th, .pricing-table td {
-        padding: 12px 15px;
-        border: 1px solid rgba(121, 40, 202, 0.2);
-    }
-    
-    .pricing-table th {
-        background: rgba(121, 40, 202, 0.1);
-        color: var(--text-primary);
-        text-align: left;
-    }
-    
-    .pricing-table tr:nth-child(even) {
-        background: rgba(121, 40, 202, 0.03);
-    }
-    
-    .pricing-table tr:hover {
-        background: rgba(121, 40, 202, 0.05);
-    }
-    
-    .highlight-plan {
-        background: rgba(121, 40, 202, 0.08) !important;
-        border-left: 3px solid var(--accent-primary);
-    }
-    
-    /* Responsive tables */
-    @media (max-width: 768px) {
-        .pricing-table {
-            display: block;
-            overflow-x: auto;
-        }
-    }
-    
-    /* Badge styles */
-    .badge {
-        display: inline-block;
-        padding: 3px 7px;
-        font-size: 0.75rem;
-        border-radius: 12px;
-        font-weight: 500;
-    }
-    
-    .badge-pro {
-        background: linear-gradient(135deg, #7928CA 0%, #FF0080 100%);
-        color: white;
-    }
-    
-    .badge-free {
-        background: rgba(121, 40, 202, 0.1);
-        color: var(--text-primary);
-    }
-    
-    .badge-new {
-        background: linear-gradient(135deg, #36D399 0%, #3ABFF8 100%);
-        color: white;
-    }
-    
-    /* Cookie consent banner */
-    .cookie-banner {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--bg-secondary);
-        padding: 15px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top: 1px solid rgba(121, 40, 202, 0.2);
-        z-index: 9999;
-    }
-    
-    .cookie-banner-buttons {
-        display: flex;
-        gap: 10px;
-    }
-    
-    .admin-dashboard-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 15px;
-        margin: 20px 0;
-    }
-    
-    .admin-card {
-        background: var(--bg-secondary);
-        border-radius: var(--card-radius);
-        padding: 20px;
-        border: 1px solid rgba(121, 40, 202, 0.2);
-    }
-    
-    .admin-card h3 {
-        margin-top: 0;
-        font-size: 1.1rem;
-        color: var(--text-primary);
-        border-bottom: 1px solid rgba(121, 40, 202, 0.1);
-        padding-bottom: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    with open('static/css/production.css') as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 # Initialize database with admin user if not exists
 def init_admin_user():
@@ -4297,6 +3812,213 @@ def create_custom_header():
     # Combine the HTML and JavaScript
     full_header = header_html + js_code
     st.markdown(full_header, unsafe_allow_html=True)
+
+def load_js():
+    """Load JavaScript files"""
+    # Load cookie consent JavaScript
+    with open('static/js/cookie-consent.js') as f:
+        st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
+        
+    # Load UI interactions JavaScript
+    with open('static/js/ui-interactions.js') as f:
+        st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
+
+# Show cookie consent banner if necessary
+def show_cookie_banner():
+    if st.session_state.show_cookie_banner:
+        cookie_banner_html = """
+        <div class="cookie-banner">
+            <div>
+                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
+                <a href="?page=legal">Learn more</a>
+            </div>
+            <div class="cookie-banner-buttons">
+                <button>Accept</button>
+            </div>
+        </div>
+        """
+        st.markdown(cookie_banner_html, unsafe_allow_html=True)
+
+def transcribe_with_whisper(file_path):
+    """Transcribe an audio file directly using OpenAI's Whisper API"""
+    api_key = get_api_key_for_service("openai")
+    if not api_key:
+        error_msg = "OpenAI API key is not configured"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}. Please set up your API key in the settings.")
+        return ""
+    
+    try:
+        logger.info(f"Starting direct transcription of file: {file_path}")
+        
+        # Verify file exists and is readable
+        if not os.path.exists(file_path):
+            error_msg = f"File not found: {file_path}"
+            logger.error(error_msg)
+            st.error(f"❌ {error_msg}")
+            return ""
+        
+        # Check file size
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            error_msg = "Audio file is empty"
+            logger.error(error_msg)
+            st.error(f"❌ {error_msg}")
+            return ""
+        
+        # Create progress indicators
+        progress_text = st.empty()
+        progress_text.text("Preparing audio for transcription...")
+        progress_bar = st.progress(0)
+        
+        # Progress update function for use in both methods
+        def update_progress(progress, message):
+            progress_bar.progress(progress)
+            progress_text.text(message)
+        
+        # Try direct API call first (more robust method)
+        try:
+            update_progress(0.2, "Uploading audio to OpenAI API...")
+            
+            # Use requests for direct API call
+            import requests
+            import json
+            
+            # Prepare the API request
+            headers = {
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            url = "https://api.openai.com/v1/audio/transcriptions"
+            
+            # Set transcription options
+            options = {}
+            
+            # Check for language code in session state
+            if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
+                options['language'] = st.session_state.get('language_code')
+                logger.debug(f"Setting language to: {options['language']}")
+            
+            # Check for response format preference
+            response_format = st.session_state.get('response_format', 'text')
+            options['response_format'] = response_format
+            
+            # Get model preference or use default
+            model = st.session_state.get('transcription_model', 'whisper-1')
+            
+            # Create form data
+            files = {
+                'file': open(file_path, 'rb')
+            }
+            
+            data = {
+                'model': model,
+                **options
+            }
+            
+            # Attempt the API call
+            update_progress(0.4, "Sending request to OpenAI API...")
+            logger.debug(f"Making OpenAI API request with model: {model}, options: {options}")
+            
+            response = requests.post(url, headers=headers, files=files, data=data)
+            
+            # Process the response
+            update_progress(0.8, "Processing API response...")
+            
+            if response.status_code == 200:
+                if response_format == 'text':
+                    transcript = response.text
+                else:
+                    result = response.json()
+                    transcript = result.get('text', '')
+                
+                update_progress(1.0, "Transcription complete!")
+                logger.info(f"Transcription successful, received {len(transcript)} characters")
+                return transcript
+            
+            elif response.status_code == 429:
+                error_msg = "OpenAI API rate limit exceeded. Please try again later."
+                logger.error(f"API Rate Limit (429): {error_msg}")
+                raise Exception(error_msg)
+            
+            elif response.status_code == 401:
+                error_msg = "Invalid API key. Please check your OpenAI API key."
+                logger.error(f"API Authentication Error (401): {error_msg}")
+                raise Exception(error_msg)
+            
+            else:
+                # Try to parse error details
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get('error', {}).get('message', 'Unknown API error')
+                except:
+                    error_msg = f"API error (status {response.status_code}): {response.text}"
+                
+                logger.error(f"API Error: {error_msg}")
+                raise Exception(error_msg)
+        
+        except requests.exceptions.RequestException as req_error:
+            # If direct API call fails due to request issues, try OpenAI client library
+            logger.warning(f"Direct API request failed: {str(req_error)}. Falling back to client library.")
+            update_progress(0.3, "Direct API call failed, trying alternative method...")
+            
+            # Use OpenAI client library as fallback
+            try:
+                from openai import OpenAI
+                
+                # Create client
+                client = OpenAI(api_key=api_key)
+                
+                update_progress(0.5, "Processing with OpenAI client...")
+                
+                # Set transcription options
+                options = {}
+                
+                # Check for language code in session state
+                if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
+                    options['language'] = st.session_state.get('language_code')
+                
+                # Get model preference or use default
+                model = st.session_state.get('transcription_model', 'whisper-1')
+                
+                response_format = st.session_state.get('response_format', 'text')
+                
+                # Make the API call
+                with open(file_path, "rb") as audio_file:
+                    update_progress(0.7, "Sending to OpenAI service...")
+                    response = client.audio.transcriptions.create(
+                        model=model,
+                        file=audio_file,
+                        response_format=response_format,
+                        **options
+                    )
+                
+                update_progress(0.9, "Processing response...")
+                
+                # Extract transcript based on response format
+                if response_format == 'text':
+                    transcript = response
+                else:
+                    transcript = response.text
+                
+                update_progress(1.0, "Transcription complete!")
+                logger.info(f"Client library transcription successful, received {len(transcript)} characters")
+                return transcript
+                
+            except Exception as client_error:
+                logger.error(f"Client library transcription failed: {str(client_error)}")
+                raise Exception(f"Transcription failed: {str(client_error)}")
+        
+        finally:
+            # Clean up progress indicators
+            progress_text.empty()
+            progress_bar.empty()
+    
+    except Exception as e:
+        error_msg = f"Error in transcribe_with_whisper: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        st.error(f"❌ {error_msg}")
+        return f"[Error transcribing audio: {str(e)}]"
 
 if __name__ == "__main__":
     main() 
