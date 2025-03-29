@@ -1069,22 +1069,34 @@ def generate_summary(transcript):
         return "Summary of audio content"
 
 def generate_short_title(text):
-    """Generate a 5-7 word descriptive title from the transcript"""
+    """Generate a descriptive title from the transcript using Claude 3.7 Sonnet"""
     try:
-        openai_client = get_openai_client()
-        if not openai_client:
+        # Use Anthropic Claude 3.7 Sonnet for generating title
+        api_key = get_api_key_for_service("anthropic")
+        if not api_key:
             return "Untitled Audio Transcription"
-            
-        response = openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview",
-            messages=[
-                {"role": "system", "content": "Create a concise, descriptive 5-7 word title that captures the main topic or theme of this content. Make it clear and engaging. Return ONLY the title words, nothing else."},
-                {"role": "user", "content": f"Generate a 5-7 word title for this transcript:\n\n{text[:2000]}..."} # First 2000 chars for context
-            ]
-        )
-        return response.choices[0].message.content.strip()
+        
+        # Create a better prompt for title generation
+        prompt = f"""Create a descriptive, specific title (5-8 words) that accurately captures the core topic or theme of this content. 
+        The title should be informative and specific enough that someone reading it would immediately understand what the content is about.
+        
+        Content sample:
+        {text[:2000]}...
+        
+        Return only the title, no quotes, asterisks, or additional text. The title should be engaging but primarily informative and descriptive.
+        """
+        
+        # Use direct API call to Claude
+        result = direct_anthropic_completion(prompt, api_key, model="claude-3-7-sonnet-20250219")
+        
+        if result and not result.startswith("Error"):
+            # Clean the title
+            title = result.strip().rstrip('.').strip('"').strip("'")
+            return title
+        else:
+            return "Untitled Audio Transcription"
     except Exception as e:
-        st.error(f"Title generation error: {str(e)}")
+        logger.exception("Error generating title:")
         return "Untitled Audio Transcription"
 
 def chunk_text_for_notion(text, chunk_size=1900):
@@ -1386,36 +1398,44 @@ def estimate_token_usage(transcript, wisdom=None, outline=None, social_content=N
 def generate_content_tags(transcript, wisdom=None):
     """Generate relevant tags based on content"""
     try:
-        openai_client = get_openai_client()
-        if not openai_client:
+        # Use Anthropic Claude 3.7 Sonnet for generating tags
+        api_key = get_api_key_for_service("anthropic")
+        if not api_key:
             return ["audio", "transcription", "content", "notes", "whisperforge"]
             
-        # Use OpenAI to generate relevant tags
-        prompt = f"""Based on this content:
-        Transcript: {transcript[:500]}...
-        Wisdom: {wisdom[:500] if wisdom else ''}
+        # Create prompt for tag generation
+        content_sample = transcript[:1000] if transcript else ""
+        wisdom_sample = wisdom[:500] if wisdom else ""
         
-        Generate 5 relevant one-word tags that describe the main topics and themes.
-        Return only the tags separated by commas, lowercase. Examples: spiritual, history, technology, motivation, business"""
+        prompt = f"""Based on the following content, generate 5-7 descriptive, specific tags that accurately capture the main topics, themes, and concepts. 
+        Each tag can be 1-3 words and should be specific enough to categorize the content effectively.
+
+        Content sample:
+        {content_sample}
+
+        Key insights:
+        {wisdom_sample}
+
+        Return only the tags, separated by commas, with each tag being 1-3 words. Make them descriptive and specific to this content.
+        For example, instead of just 'technology', use 'AI ethics' or 'blockchain adoption'.
+        """
         
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that generates relevant content tags."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=50,
-            temperature=0.3
-        )
+        # Use direct API call to Claude
+        result = direct_anthropic_completion(prompt, api_key, model="claude-3-7-sonnet-20250219")
         
-        # Split the response into individual tags and clean them
-        tags = [tag.strip().lower() for tag in response.choices[0].message.content.split(',')]
-        
-        # Ensure we have exactly 5 tags
-        while len(tags) < 5:
-            tags.append("general")
-        return tags[:5]
+        if result and not result.startswith("Error"):
+            # Split the response into individual tags and clean them
+            tags = [tag.strip() for tag in result.split(',') if tag.strip()]
+            
+            # Ensure we have at least 3 tags but no more than 7
+            while len(tags) < 3:
+                tags.append("whisperforge content")
+            
+            return tags[:7]
+        else:
+            return ["audio content", "transcription", "whisperforge", "ai generated", "content notes"]
     except Exception as e:
+        logger.exception("Error generating content tags:")
         # Return default tags if there's an error
         return ["audio", "transcription", "content", "notes", "whisperforge"]
 
@@ -4018,6 +4038,18 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
         import json
         from datetime import datetime
         
+        # Generate AI title if none provided or generic title
+        if not title or title == "Untitled Audio" or title == "Untitled Content" or title.startswith("WhisperForge"):
+            logger.debug("Generating AI title for Notion page")
+            ai_title = generate_short_title(transcript)
+            title = ai_title
+            logger.debug(f"Generated title: {title}")
+        
+        # Generate tags for the content
+        logger.debug("Generating tags for Notion page")
+        content_tags = generate_content_tags(transcript, wisdom)
+        logger.debug(f"Generated tags: {content_tags}")
+        
         logger.debug("Preparing API request for Notion")
         url = "https://api.notion.com/v1/pages"
         headers = {
@@ -4118,6 +4150,20 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
             }
         })
         
+        # Add tags to metadata
+        if content_tags:
+            tags_text = ", ".join(content_tags)
+            children.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
+                        {"type": "text", "text": {"content": tags_text}}
+                    ]
+                }
+            })
+        
         # Prepare the payload
         payload = {
             "parent": {"database_id": database_id},
@@ -4131,6 +4177,10 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
             },
             "children": children
         }
+        
+        # Add tags to properties if the database has a multi-select Tags property
+        if content_tags:
+            payload["properties"]["Tags"] = {"multi_select": [{"name": tag} for tag in content_tags]}
         
         logger.debug(f"Payload prepared with {len(children)} content blocks")
         
