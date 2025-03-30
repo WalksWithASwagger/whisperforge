@@ -1,0 +1,64 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+whisperforge-env/
+ENV/
+.env
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Docker related
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Backup files
+*.bak
+*_backup_*
+backups/
+app_backup_*
+app.py.bak
+clean.py
+clean.py.save
+
+# Don't copy existing database - it will be mounted as a volume
+whisperforge.db
+
+# Other unnecessary files
+whisperforge.log
+spektor.log
+whisperforge2.code-workspace 

@@ -27,6 +27,12 @@ import openai
 import logging
 import sys
 import soundfile as sf
+# Import our config module
+from config import (
+    DATABASE_PATH, DATA_DIR, UPLOADS_DIR, TEMP_DIR, LOGS_DIR, PROMPTS_DIR,
+    OPENAI_API_KEY, ANTHROPIC_API_KEY, NOTION_API_KEY, NOTION_DATABASE_ID, GROK_API_KEY,
+    JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, logger
+)
 
 # Set up logging
 logging.basicConfig(
@@ -47,16 +53,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load environment variables
-load_dotenv()
+# Remove load_dotenv() as it's now handled in config.py
+# load_dotenv()
 
-# Database setup
+# Update the database setup
 def get_db_connection():
-    conn = sqlite3.connect('whisperforge.db', check_same_thread=False)
+    conn = sqlite3.connect(DATABASE_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
+    # Ensure data directory exists
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+    
     conn = get_db_connection()
     conn.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -88,14 +97,12 @@ def create_jwt_token(user_id):
         "user_id": user_id,
         "exp": expiration
     }
-    secret = os.getenv("JWT_SECRET", "whisperforge-secret-key")
-    token = jwt.encode(payload, secret, algorithm="HS256")
+    token = jwt.encode(payload, JWT_SECRET, algorithm="HS256")
     return token
 
 def validate_jwt_token(token):
     try:
-        secret = os.getenv("JWT_SECRET", "whisperforge-secret-key")
-        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
         return payload["user_id"]
     except:
         return None
@@ -105,44 +112,27 @@ def get_openai_client():
     logger.debug("Entering get_openai_client function")
     api_key = get_api_key_for_service("openai")
     if not api_key:
+        # Fallback to config
+        api_key = OPENAI_API_KEY
+    
+    if not api_key:
         logger.error("OpenAI API key is not set")
         st.error("OpenAI API key is not set. Please add your API key in the settings.")
         return None
     
     logger.debug(f"Got API key (length: {len(api_key)})")
     
-    # Log environment variables that might affect client initialization
-    logger.debug("Checking environment variables that might affect client initialization:")
-    for env_var in os.environ:
-        if 'proxy' in env_var.lower() or 'http_' in env_var.lower() or 'openai' in env_var.lower():
-            logger.debug(f"  Found environment variable: {env_var}")
-    
-    # Create client with just the API key, no extra parameters
     try:
-        logger.debug("Attempting to initialize OpenAI client with ONLY api_key parameter")
-        
-        # Create a completely clean approach - don't use any environment variables
-        client_kwargs = {'api_key': api_key}
-        
-        # Log what we're passing to OpenAI
-        logger.debug(f"OpenAI initialization parameters: {client_kwargs}")
-        
-        # Try direct initialization as a last resort
-        client = OpenAI(**client_kwargs)
-        logger.debug("Successfully initialized OpenAI client")
+        client = OpenAI(api_key=api_key)
         return client
     except Exception as e:
         error_msg = str(e)
-        logger.error(f"Error initializing OpenAI client: {error_msg}")
-        logger.exception("Full exception details:")
+        logger.error(f"Failed to initialize OpenAI client: {error_msg}")
         
-        # Try alternative initialization if 'proxies' is in the error
+        # Try alternative initialization for proxy environments
         if 'proxies' in error_msg:
             logger.debug("Trying alternative initialization approach due to proxies error")
             try:
-                # Alternative approach - don't use OpenAI client class directly
-                # Instead use a simple function-based approach
-                
                 # Define a simple function to make API requests directly
                 def simple_transcribe(audio_file):
                     import requests
@@ -176,12 +166,20 @@ def get_openai_client():
 def get_anthropic_client():
     api_key = get_api_key_for_service("anthropic")
     if not api_key:
+        # Fallback to config
+        api_key = ANTHROPIC_API_KEY
+    
+    if not api_key:
         st.error("Anthropic API key is not set. Please add your API key in the settings.")
         return None
     return Anthropic(api_key=api_key)
 
 def get_notion_client():
     api_key = get_api_key_for_service("notion")
+    if not api_key:
+        # Fallback to config
+        api_key = NOTION_API_KEY
+    
     if not api_key:
         st.error("Notion API key is not set. Please add your API key in the settings.")
         return None
@@ -191,11 +189,15 @@ def get_notion_database_id():
     api_keys = get_user_api_keys()
     db_id = api_keys.get("notion_database_id")
     if not db_id:
-        db_id = os.getenv("NOTION_DATABASE_ID")
+        db_id = NOTION_DATABASE_ID
     return db_id
 
 def get_grok_api_key():
-    return get_api_key_for_service("grok")
+    api_key = get_api_key_for_service("grok")
+    if not api_key:
+        # Fallback to config
+        api_key = GROK_API_KEY
+    return api_key
 
 # Available LLM models grouped by provider
 LLM_MODELS = {
@@ -3239,14 +3241,11 @@ def init_admin_user():
     
     if admin_exists == 0:
         # Create admin user with default password
-        admin_email = os.getenv("ADMIN_EMAIL", "admin@whisperforge.ai")
-        admin_password = os.getenv("ADMIN_PASSWORD", "WhisperForge2024!")
-        
-        hashed_password = hash_password(admin_password)
+        hashed_password = hash_password(ADMIN_PASSWORD)
         
         conn.execute(
             "INSERT INTO users (email, password, is_admin, subscription_tier, usage_quota) VALUES (?, ?, ?, ?, ?)",
-            (admin_email, hashed_password, 1, "enterprise", 100000)
+            (ADMIN_EMAIL, hashed_password, 1, "enterprise", 100000)
         )
         conn.commit()
     

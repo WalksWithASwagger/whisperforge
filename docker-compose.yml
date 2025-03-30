@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  whisperforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: whisperforge:latest
+    container_name: whisperforge-app
+    restart: unless-stopped
+    ports:
+      - "9000:8501"
+    volumes:
+      # Persistent storage for database
+      - whisperforge-data:/app/data
+      # Persistent storage for uploads
+      - whisperforge-uploads:/app/uploads
+      # Persistent storage for temporary files
+      - whisperforge-temp:/app/temp
+      # Persistent storage for logs
+      - whisperforge-logs:/app/logs
+      # Mount prompts directory for persistence
+      - ./prompts:/app/prompts
+    environment:
+      - DATABASE_PATH=/app/data/whisperforge.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - NOTION_API_KEY=${NOTION_API_KEY}
+      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
+      - GROK_API_KEY=${GROK_API_KEY}
+      - PYTHONPATH=/app
+      - TZ=UTC
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  whisperforge-data:
+    name: whisperforge-data
+  whisperforge-uploads:
+    name: whisperforge-uploads
+  whisperforge-temp:
+    name: whisperforge-temp
+  whisperforge-logs:
+    name: whisperforge-logs 
