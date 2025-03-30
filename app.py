@@ -359,6 +359,10 @@ def chunk_audio(audio_path, target_size_mb=25):
         logger.debug(f"Starting to chunk audio file: {audio_path}")
         logger.debug(f"Target chunk size: {target_size_mb}MB")
         
+        # Create temporary directory for chunks
+        temp_dir = tempfile.mkdtemp()
+        logger.debug(f"Created temporary directory for chunks: {temp_dir}")
+        
         # Load the audio file
         try:
             audio = AudioSegment.from_file(audio_path)
@@ -367,121 +371,134 @@ def chunk_audio(audio_path, target_size_mb=25):
             logger.error(f"Failed to load audio file: {str(load_error)}")
             st.error(f"Error loading audio file: {str(load_error)}")
             return [], None
-        
-        # Calculate optimal chunk size based on file size
-        file_size = os.path.getsize(audio_path)
-        file_size_mb = file_size / (1024 * 1024)
-        
-        # Adjust target chunk size based on file size for better handling of very large files
-        if file_size_mb > 300:  # For files larger than 300MB
-            target_size_mb = 30  # Larger chunks for very large files
-        elif file_size_mb > 100:  # For files between 100-300MB
-            target_size_mb = 25  # Medium chunks
-        else:
-            target_size_mb = 20  # Smaller chunks for better accuracy on smaller files
-        
-        logger.debug(f"Adjusted target chunk size: {target_size_mb}MB")
-        
-        # Calculate total chunks based on file size
-        total_chunks = math.ceil(file_size / (target_size_mb * 1024 * 1024))
-        logger.debug(f"Initial calculation: {total_chunks} chunks")
-        
-        # Ensure we have reasonable chunking
-        MIN_CHUNK_LENGTH_MS = 5000  # 5 seconds minimum
-        MAX_CHUNKS = 20  # Reduced from 30 to avoid OpenAI API limits
-        
-        if total_chunks > MAX_CHUNKS:
-            target_size_mb = math.ceil(file_size / (MAX_CHUNKS * 1024 * 1024))
-            total_chunks = MAX_CHUNKS
-            logger.debug(f"Limited to max {MAX_CHUNKS} chunks. New target size: {target_size_mb}MB")
-        
-        # Adjust chunk size based on audio length rather than just file size
-        # This ensures more even chunks with complete sentences
-        chunk_length_ms = max(len(audio) // total_chunks, MIN_CHUNK_LENGTH_MS)
-        logger.debug(f"Chunk length: {chunk_length_ms}ms")
-        
-        # Create temporary directory for chunks
-        temp_dir = tempfile.mkdtemp(prefix='whisperforge_chunks_')
-        logger.debug(f"Created temp directory: {temp_dir}")
+            
+        # Get file size and adjust chunk size for very large files
+        file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
         chunks = []
         
-        # Show chunking progress
-        progress_text = st.empty()
-        progress_bar = st.progress(0)
-        
-        # Try to detect silences to make better chunk boundaries when possible
-        try:
-            from pydub.silence import detect_silence
-            silences = detect_silence(audio, min_silence_len=500, silence_thresh=-40)
-            has_silence_data = len(silences) > 0
-            logger.debug(f"Silence detection successful. Found {len(silences)} silence points.")
-        except Exception as silence_error:
-            logger.warning(f"Failed to detect silences: {str(silence_error)}")
-            has_silence_data = False
-        
-        # Process and save chunks
-        if has_silence_data and len(silences) > total_chunks:
-            logger.debug("Using silence-based chunking")
-            # Use silences as natural chunk boundaries
-            chunk_points = []
-            silence_step = max(1, len(silences) // (total_chunks + 1))
-            for i in range(0, len(silences), silence_step):
-                if len(chunk_points) < total_chunks - 1:  # Leave room for the last chunk
-                    chunk_points.append(silences[i][1])  # End of silence
+        # Adjust strategy based on file size
+        if file_size_mb > 100:  # For very large files
+            # Use silence detection for more natural chunking
+            logger.debug(f"Large file detected ({file_size_mb:.2f} MB). Using silence-based chunking.")
             
-            # Add start and end points
-            chunk_points = [0] + chunk_points + [len(audio)]
-            logger.debug(f"Created {len(chunk_points)-1} chunks based on silence points")
+            # Detect silences in the audio
+            try:
+                silence_thresh = -40  # dB
+                min_silence_len = 700  # ms
+                
+                # Get silence ranges
+                silence_ranges = silence.detect_silence(
+                    audio, 
+                    min_silence_len=min_silence_len, 
+                    silence_thresh=silence_thresh
+                )
+                
+                # Convert silence ranges to chunk points
+                chunk_points = [0]  # Start with the beginning of the audio
+                
+                for start, end in silence_ranges:
+                    # Use the middle of each silence as a potential split point
+                    chunk_points.append((start + end) // 2)
+                
+                # Add the end of the audio
+                chunk_points.append(len(audio))
+                
+                # Ensure we don't create too many tiny chunks for very large files
+                # Filter points to create chunks of roughly the target size
+                target_chunk_len_ms = target_size_mb * 5 * 60 * 1000 / file_size_mb  # Scale based on file size
+                
+                filtered_points = [chunk_points[0]]  # Always keep the first point
+                current_pos = chunk_points[0]
+                
+                for point in chunk_points[1:]:
+                    if point - current_pos >= target_chunk_len_ms or point == chunk_points[-1]:
+                        filtered_points.append(point)
+                        current_pos = point
+                
+                logger.debug(f"Created {len(filtered_points)-1} chunk boundaries using silence detection")
+                chunk_points = filtered_points
+                
+                # Create progress bar
+                progress_bar = st.progress(0)
+                
+                # Process each chunk
+                for i in range(len(chunk_points) - 1):
+                    start = chunk_points[i]
+                    end = chunk_points[i+1]
+                    
+                    # Skip if segment is too short (less than 1 second)
+                    if end - start < 1000:
+                        logger.debug(f"Skipping segment {i+1} (too short: {end-start}ms)")
+                        continue
+                    
+                    try:
+                        chunk = audio[start:end]
+                        chunk_path = os.path.join(temp_dir, f'chunk_{i}.mp3')
+                        
+                        # Export with specific parameters that work well with OpenAI's API
+                        chunk.export(
+                            chunk_path, 
+                            format='mp3',
+                            parameters=["-ac", "1", "-ar", "16000"]  # Mono, 16kHz
+                        )
+                        
+                        # Verify the exported file exists and has content
+                        if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 0:
+                            chunks.append(chunk_path)
+                            logger.debug(f"Created chunk {i+1}: {chunk_path} (Duration: {len(chunk)}ms)")
+                        else:
+                            logger.warning(f"Failed to create chunk {i+1}: File is empty or doesn't exist")
+                    except Exception as chunk_error:
+                        logger.error(f"Error creating chunk {i+1}: {str(chunk_error)}")
+                    
+                    # Update progress
+                    progress = (i + 1) / (len(chunk_points) - 1)
+                    progress_bar.progress(progress)
+                
+                # Clear progress bar
+                progress_bar.empty()
+                
+            except Exception as silence_error:
+                logger.error(f"Error in silence detection: {str(silence_error)}")
+                # Fall back to simple chunking if silence detection fails
+                st.warning("Silence detection failed, falling back to uniform chunking")
+        
+        # Either silence detection failed or it's a smaller file, use simple chunking
+        if not chunks:
+            logger.debug("Using uniform chunking method")
             
-            # Create chunks based on silence points
-            for i in range(len(chunk_points) - 1):
-                start = chunk_points[i]
-                end = chunk_points[i + 1]
+            # Calculate chunk size based on target MB
+            target_chunk_bytes = target_size_mb * 1024 * 1024
+            bytes_per_ms = file_size_mb * 1024 * 1024 / len(audio)
+            chunk_length_ms = int(target_chunk_bytes / bytes_per_ms)
+            
+            # Ensure chunk length is reasonable
+            if chunk_length_ms < 5000:  # 5 seconds minimum
+                chunk_length_ms = 5000
+            elif chunk_length_ms > 300000:  # 5 minutes maximum
+                chunk_length_ms = 300000
                 
-                if end - start < MIN_CHUNK_LENGTH_MS:
-                    logger.debug(f"Skipping chunk {i+1} as it's too short ({end-start}ms)")
-                    continue
-                
-                try:
-                    chunk = audio[start:end]
-                    chunk_path = os.path.join(temp_dir, f'chunk_{i}.mp3')
-                    
-                    # Export with specific parameters that work well with OpenAI's API
-                    chunk.export(
-                        chunk_path, 
-                        format='mp3',
-                        parameters=["-ac", "1", "-ar", "16000"]  # Mono, 16kHz
-                    )
-                    
-                    # Verify the exported file exists and has content
-                    if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 0:
-                        chunks.append(chunk_path)
-                        logger.debug(f"Created chunk {i+1}: {chunk_path} (Duration: {len(chunk)}ms)")
-                    else:
-                        logger.warning(f"Failed to create chunk {i+1}: File is empty or doesn't exist")
-                except Exception as chunk_error:
-                    logger.error(f"Error creating chunk {i+1}: {str(chunk_error)}")
-                
-                # Update progress
-                progress = (i + 1) / (len(chunk_points) - 1)
-                progress_bar.progress(min(progress, 1.0))
-                progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
-        else:
-            logger.debug("Using time-based chunking")
-            # Standard time-based chunking if silence detection failed
+            logger.debug(f"Uniform chunk length: {chunk_length_ms}ms")
+            
+            # Create progress bar
+            progress_bar = st.progress(0)
+            
+            # Create chunks of uniform size
             chunk_count = 0
             for i in range(0, len(audio), chunk_length_ms):
-                chunk = audio[i:i + chunk_length_ms]
-                
-                if len(chunk) < MIN_CHUNK_LENGTH_MS:
-                    logger.debug(f"Skipping chunk at position {i}ms as it's too short ({len(chunk)}ms)")
+                # Skip if less than 1 second is remaining
+                if i + 1000 > len(audio):
+                    logger.debug(f"Skipping final segment (too short: {len(audio) - i}ms)")
                     continue
                 
                 try:
+                    # Extract chunk
+                    chunk = audio[i:min(i + chunk_length_ms, len(audio))]
+                    
                     # Save chunk with index in filename
                     chunk_path = os.path.join(temp_dir, f'chunk_{chunk_count}.mp3')
                     
-                    # Export with specific parameters that work well with OpenAI's API
+                    # Export with specific parameters for OpenAI
                     chunk.export(
                         chunk_path, 
                         format='mp3',
@@ -501,23 +518,21 @@ def chunk_audio(audio_path, target_size_mb=25):
                 # Update progress
                 progress = (i + chunk_length_ms) / len(audio)
                 progress_bar.progress(min(progress, 1.0))
-                progress_text.text(f"Chunking audio: {min(int(progress * 100), 100)}%")
+            
+            # Clear progress bar
+            progress_bar.empty()
         
-        progress_text.empty()
-        progress_bar.empty()
-        
-        # Display chunking summary
-        logger.info(f"Successfully created {len(chunks)} chunks out of {total_chunks} planned")
-        st.info(f"Audio split into {len(chunks)} chunks for processing. Total file size: {file_size_mb:.1f} MB")
-        
-        if len(chunks) == 0:
-            logger.error("No chunks were created successfully")
-            st.error("Failed to create any valid audio chunks. Please try a different file.")
+        # Check if any chunks were created
+        if not chunks:
+            logger.error("Failed to create any valid chunks from the audio file")
+            st.error("Failed to process the audio file into chunks.")
             return [], None
             
+        logger.debug(f"Successfully created {len(chunks)} chunks from audio file")
         return chunks, temp_dir
+        
     except Exception as e:
-        logger.error(f"Error chunking audio: {str(e)}", exc_info=True)
+        logger.error(f"Error in chunk_audio: {str(e)}", exc_info=True)
         st.error(f"Error chunking audio: {str(e)}")
         return [], None
 
@@ -618,6 +633,7 @@ def transcribe_chunk(chunk_path, i, total_chunks):
                 
                 from openai import OpenAI
                 
+                # Create client
                 client = OpenAI(api_key=api_key)
                 
                 # Set options
@@ -1466,7 +1482,7 @@ def transcribe_large_file(file_path):
                 time.sleep(0.1)
             
             try:
-                # Wait for all tasks to complete
+            # Wait for all tasks to complete
                 done, not_done = concurrent.futures.wait(
                     future_to_chunk, 
                     timeout=600,  # 10 minute timeout for all chunks
@@ -1579,7 +1595,7 @@ def transcribe_audio(audio_file):
                 logger.info(f"Standard file size ({file_size_mb:.2f} MB), using direct transcription")
                 st.info(f"🔄 Processing audio file ({file_size_mb:.2f} MB)...")
                 transcript = transcribe_with_whisper(temp_path)
-            
+        
             # Clean up the temporary file
             try:
                 os.unlink(temp_path)
@@ -1598,7 +1614,7 @@ def transcribe_audio(audio_file):
             
             # Re-raise for outer exception handler
             raise process_error
-    
+        
     except Exception as e:
         error_msg = f"Error processing audio file: {str(e)}"
         logger.error(error_msg, exc_info=True)
@@ -2277,6 +2293,10 @@ def main():
         show_admin_page()
     elif st.session_state.page == "legal":
         show_legal_page()
+    elif st.session_state.page == "user_config":
+        show_user_config_page()
+    else:
+        show_main_page()
     
     # Show cookie consent banner
     show_cookie_banner()
@@ -3761,7 +3781,7 @@ def create_custom_header():
     # See if Admin link should be visible
     admin_link = ""
     if is_admin_user():
-        admin_link = '<a href="#" class="nav-item" id="nav-admin" onclick="setPage(\'admin\')">Admin</a>'
+        admin_link = '<a href="?page=admin" class="nav-item" id="nav-admin">Admin</a>'
     
     # Create the HTML and JS as separate strings
     header_html = f'''
@@ -3770,10 +3790,12 @@ def create_custom_header():
             <div class="header-title">WhisperForge // Control_Center</div>
         </div>
         <div class="header-nav">
-            <a href="#" class="nav-item" id="nav-home" onclick="setPage('home')">Home</a>
-            <a href="#" class="nav-item" id="nav-api" onclick="setPage('api')">API Keys</a>
-            <a href="#" class="nav-item" id="nav-usage" onclick="setPage('usage')">Usage</a>
+            <a href="?page=home" class="nav-item" id="nav-home">Home</a>
+            <a href="?page=api" class="nav-item" id="nav-api">API Keys</a>
+            <a href="?page=usage" class="nav-item" id="nav-usage">Usage</a>
+            <a href="?page=user_config" class="nav-item" id="nav-user-config">User Config</a>
             {admin_link}
+            <a href="?page=legal" class="nav-item" id="nav-legal">Legal</a>
         </div>
         <div class="header-right">
             <div class="header-date">{datetime.now().strftime("%Y-%m-%d %H:%M")}</div>
@@ -3784,27 +3806,21 @@ def create_custom_header():
     # JavaScript as a separate string
     js_code = '''
     <script>
-        function setPage(page) {
-            // Remove active class from all nav items
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            
-            // Add active class to current page nav item
-            document.getElementById('nav-' + page).classList.add('active');
-            
-            // Set the page
-            window.location.href = "?page=" + page;
-        }
-        
-        // Set active class on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Get current URL and extract page parameter
             const urlParams = new URLSearchParams(window.location.search);
-            const page = urlParams.get('page') || 'home';
-            const navItem = document.getElementById('nav-' + page);
-            if (navItem) {
-                navItem.classList.add('active');
-            }
+            const currentPage = urlParams.get('page') || 'home';
+            
+            // Find all navigation links
+            const navLinks = document.querySelectorAll('.nav-item');
+            
+            // Loop through links and add active class to current page
+            navLinks.forEach(link => {
+                const linkId = link.id;
+                if (linkId === 'nav-' + currentPage) {
+                    link.classList.add('active');
+                }
+            });
         });
     </script>
     '''
@@ -3841,14 +3857,14 @@ def show_cookie_banner():
 
 def transcribe_with_whisper(file_path):
     """Transcribe an audio file directly using OpenAI's Whisper API"""
-    api_key = get_api_key_for_service("openai")
-    if not api_key:
-        error_msg = "OpenAI API key is not configured"
-        logger.error(error_msg)
-        st.error(f"❌ {error_msg}. Please set up your API key in the settings.")
-        return ""
-    
     try:
+        api_key = get_api_key_for_service("openai")
+        if not api_key:
+            error_msg = "OpenAI API key is not configured"
+            logger.error(error_msg)
+            st.error(f"❌ {error_msg}. Please set up your API key in the settings.")
+            return ""
+        
         logger.info(f"Starting direct transcription of file: {file_path}")
         
         # Verify file exists and is readable
@@ -4004,7 +4020,6 @@ def transcribe_with_whisper(file_path):
                 update_progress(1.0, "Transcription complete!")
                 logger.info(f"Client library transcription successful, received {len(transcript)} characters")
                 return transcript
-                
             except Exception as client_error:
                 logger.error(f"Client library transcription failed: {str(client_error)}")
                 raise Exception(f"Transcription failed: {str(client_error)}")
@@ -4019,6 +4034,221 @@ def transcribe_with_whisper(file_path):
         logger.error(error_msg, exc_info=True)
         st.error(f"❌ {error_msg}")
         return f"[Error transcribing audio: {str(e)}]"
+
+def show_user_config_page():
+    """Show user configuration page for managing profiles, knowledge base, and prompts"""
+    st.title("User Configuration")
+    
+    # Get available users and prompts
+    users, users_prompts = load_prompts()
+    
+    # Add tabs for different configuration sections
+    config_tabs = st.tabs(["User Profiles", "Knowledge Base", "Prompt Templates"])
+    
+    # Tab 1: User Profiles Management
+    with config_tabs[0]:
+        st.header("User Profiles")
+        st.write("Manage user profiles for different content generation styles and preferences.")
+        
+        # Current users list
+        st.subheader("Current Profiles")
+        user_table = {"Profile Name": [], "Knowledge Files": [], "Custom Prompts": []}
+        
+        for user in users:
+            # Count knowledge base files
+            kb_files = list_knowledge_base_files(user)
+            kb_count = len(kb_files)
+            
+            # Count custom prompts
+            if user in users_prompts:
+                prompt_count = len(users_prompts[user])
+            else:
+                prompt_count = 0
+                
+            user_table["Profile Name"].append(user)
+            user_table["Knowledge Files"].append(kb_count)
+            user_table["Custom Prompts"].append(prompt_count)
+        
+        # Display user profiles as a table
+        st.dataframe(user_table)
+        
+        # Create new profile
+        st.subheader("Create New Profile")
+        new_user = st.text_input("New Profile Name", key="new_profile_name",
+                                help="Enter a name for the new user profile. Use only letters, numbers, and underscores.")
+        
+        if st.button("Create Profile", key="create_profile_btn"):
+            if not new_user:
+                st.error("Please enter a valid profile name")
+            elif not re.match(r'^[a-zA-Z0-9_]+$', new_user):
+                st.error("Profile name can only contain letters, numbers, and underscores")
+            elif new_user in users:
+                st.error(f"Profile '{new_user}' already exists")
+            else:
+                # Create user directories
+                user_dir = os.path.join("prompts", new_user)
+                kb_dir = os.path.join(user_dir, "knowledge_base")
+                
+                try:
+                    os.makedirs(user_dir, exist_ok=True)
+                    os.makedirs(kb_dir, exist_ok=True)
+                    st.success(f"Created new profile: {new_user}")
+                    st.session_state.user_profile_sidebar = new_user
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error creating profile: {str(e)}")
+    
+    # Tab 2: Knowledge Base Management
+    with config_tabs[1]:
+        st.header("Knowledge Base")
+        st.write("Manage knowledge base files for the selected user profile. These files provide context and style guidance for AI-generated content.")
+        
+        # Select user profile
+        selected_user = st.selectbox("Select Profile", options=users, key="kb_profile_select")
+        
+        if selected_user:
+            # Knowledge base directory for selected user
+            kb_dir = os.path.join("prompts", selected_user, "knowledge_base")
+            os.makedirs(kb_dir, exist_ok=True)
+            
+            # List existing knowledge base files
+            kb_files = list_knowledge_base_files(selected_user)
+            
+            if kb_files:
+                st.subheader("Current Knowledge Base Files")
+                
+                # Create a dictionary of filenames to display names
+                file_options = {}
+                for file_path in kb_files:
+                    filename = os.path.basename(file_path)
+                    name = os.path.splitext(filename)[0].replace('_', ' ').title()
+                    file_options[name] = file_path
+                
+                # File selection
+                selected_file = st.selectbox("Select File", options=list(file_options.keys()), key="kb_file_select")
+                
+                if selected_file and selected_file in file_options:
+                    file_path = file_options[selected_file]
+                    
+                    # Read and display file content
+                    try:
+                        with open(file_path, 'r') as f:
+                            file_content = f.read()
+                        
+                        # Edit file
+                        new_content = st.text_area("Edit File Content", value=file_content, height=300, key="kb_file_edit")
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("Update File", key="update_kb_file"):
+                                try:
+                                    with open(file_path, 'w') as f:
+                                        f.write(new_content)
+                                    st.success(f"Updated knowledge base file: {selected_file}")
+                                except Exception as e:
+                                    st.error(f"Error updating file: {str(e)}")
+                        
+                        with col2:
+                            if st.button("Delete File", key="delete_kb_file"):
+                                try:
+                                    os.remove(file_path)
+                                    st.success(f"Deleted knowledge base file: {selected_file}")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error deleting file: {str(e)}")
+                    
+                    except Exception as e:
+                        st.error(f"Error reading file: {str(e)}")
+            
+            # Upload new knowledge base file
+            st.subheader("Add New Knowledge Base File")
+            
+            # Method 1: Upload file
+            uploaded_file = st.file_uploader("Upload Knowledge Base File", 
+                                           type=["txt", "md"], 
+                                           key="kb_file_upload",
+                                           help="Upload a text or markdown file to add to the knowledge base")
+            
+            if uploaded_file:
+                file_name = uploaded_file.name
+                if st.button("Add Uploaded File", key="add_uploaded_kb"):
+                    try:
+                        file_path = os.path.join(kb_dir, file_name)
+                        with open(file_path, 'wb') as f:
+                            f.write(uploaded_file.getvalue())
+                        st.success(f"Added knowledge base file: {file_name}")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error saving file: {str(e)}")
+            
+            # Method 2: Create file
+            st.subheader("Create New Knowledge Base File")
+            new_file_name = st.text_input("File Name (without extension)", key="new_kb_filename",
+                                         help="Enter a name for the new file (without extension)")
+            new_file_content = st.text_area("File Content", height=200, key="new_kb_content")
+            
+            if st.button("Create File", key="create_kb_file"):
+                if not new_file_name:
+                    st.error("Please enter a file name")
+                else:
+                    try:
+                        # Clean filename
+                        clean_name = re.sub(r'[^\w\s-]', '', new_file_name)
+                        clean_name = re.sub(r'[\s-]+', '_', clean_name).lower()
+                        
+                        # Add .md extension
+                        file_path = os.path.join(kb_dir, f"{clean_name}.md")
+                        
+                        # Check if file already exists
+                        if os.path.exists(file_path):
+                            st.error(f"File {clean_name}.md already exists")
+                        else:
+                            with open(file_path, 'w') as f:
+                                f.write(new_file_content)
+                            st.success(f"Created knowledge base file: {clean_name}.md")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Error creating file: {str(e)}")
+    
+    # Tab 3: Prompt Template Management
+    with config_tabs[2]:
+        st.header("Prompt Templates")
+        st.write("Customize prompt templates for different content generation tasks.")
+        
+        # Select user profile
+        selected_user = st.selectbox("Select Profile", options=users, key="prompt_profile_select")
+        
+        if selected_user:
+            # Use the existing configure_prompts function
+            configure_prompts(selected_user, users_prompts)
+            
+            # Add explanation of prompt variables
+            with st.expander("Prompt Template Help"):
+                st.markdown("""
+                ### Prompt Template Variables
+                
+                Your prompt templates can include the following variables which will be replaced with actual content:
+                
+                - `{transcript}` - The full transcript text
+                - `{knowledge_base}` - Any knowledge base context that's relevant
+                
+                ### Prompt Template Format
+                
+                For best results, structure your prompts as follows:
+                
+                ```
+                ## Instructions
+                Instructions for the AI on how to approach the task.
+                
+                ## Context
+                Any contextual information about your style, preferences, or requirements.
+                
+                ## Prompt
+                The actual prompt that will be sent to the AI.
+                ```
+                
+                Only the section after "## Prompt" is required, but adding instructions and context helps organize your templates.
+                """)
 
 if __name__ == "__main__":
     main() 
