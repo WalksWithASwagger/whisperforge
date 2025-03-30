@@ -6,7 +6,7 @@ pydub>=0.25.1
 numpy>=1.20.0
 ffmpeg-python>=0.2.0
 soundfile>=0.12.1
-librosa>=0.10.0
+# librosa==0.9.2 # Optional: uncomment if needed and using Python <3.10
 tqdm>=4.66.0
 notion-client>=2.0.0
 watchdog>=2.3.1

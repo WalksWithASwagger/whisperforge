@@ -2,7 +2,13 @@ import streamlit as st
 from openai import OpenAI  # Make sure this is using the OpenAI v1 API
 from dotenv import load_dotenv
 import os
-from notion_client import Client
+# Make Notion client import optional
+try:
+    from notion_client import Client
+    NOTION_AVAILABLE = True
+except ImportError:
+    NOTION_AVAILABLE = False
+    Client = None
 from datetime import datetime
 from pydub import AudioSegment
 import tempfile
@@ -181,6 +187,10 @@ def get_anthropic_client():
     return Anthropic(api_key=api_key)
 
 def get_notion_client():
+    if not NOTION_AVAILABLE:
+        st.warning("Notion integration is not available. The notion-client package could not be imported.")
+        return None
+    
     api_key = get_api_key_for_service("notion")
     if not api_key:
         st.error("Notion API key is not set. Please add your API key in the settings.")
@@ -863,6 +873,10 @@ def chunk_text_for_notion(text, chunk_size=1900):
 def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
     """Create a new entry in the Notion database with all content sections"""
     try:
+        if not NOTION_AVAILABLE:
+            st.error("Notion integration is not available. The notion-client package could not be imported.")
+            return False
+            
         # Get Notion client and database ID
         notion_client = get_notion_client()
         if not notion_client:
@@ -3769,6 +3783,10 @@ def direct_anthropic_completion(prompt, api_key=None, model="claude-3-7-sonnet-2
 def export_to_notion():
     """Export content to Notion using the create_content_notion_entry function"""
     try:
+        if not NOTION_AVAILABLE:
+            st.error("Notion integration is not available. The notion-client package could not be imported.")
+            return None
+            
         logger.debug("Starting export to Notion")
         
         # Gather content
