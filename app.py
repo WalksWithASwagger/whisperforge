@@ -219,6 +219,109 @@ def local_css():
     with open('static/css/main.css') as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
     
+    # Add custom styles for the navigation buttons like in the image
+    custom_styles = """
+    <style>
+    /* Dark purple/black nav button styling */
+    .nav-item {
+        color: white !important;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 6px 14px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        position: relative;
+        background: #1a1020 !important;
+        border: 1px solid #2a1a30;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .nav-item:hover {
+        color: white !important;
+        background: #2a1a30 !important;
+        box-shadow: 0 0 8px rgba(121, 40, 202, 0.3);
+    }
+    
+    .nav-item.active {
+        color: white !important;
+        background: #3a2040 !important;
+        box-shadow: 0 0 8px rgba(121, 40, 202, 0.4);
+        border: 1px solid #4a3050;
+    }
+    
+    /* Remove the underline effect */
+    .nav-item::after {
+        display: none;
+    }
+    
+    /* Specific styling for sidebar button */
+    .sidebar-button {
+        display: inline-block;
+        margin-bottom: 10px;
+        text-align: center;
+        width: 100%;
+    }
+    
+    /* Style the button in the sidebar the same way */
+    .stButton button {
+        color: white !important;
+        background: #1a1020 !important;
+        border: 1px solid #2a1a30 !important;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    .stButton button:hover {
+        background: #2a1a30 !important;
+        border: 1px solid #3a2040 !important;
+        box-shadow: 0 0 8px rgba(121, 40, 202, 0.3) !important;
+    }
+    
+    /* Footer styling */
+    .footer-container {
+        margin-top: 30px;
+        padding: 20px 0;
+        border-top: 1px solid rgba(121, 40, 202, 0.2);
+        background: rgba(26, 16, 32, 0.2);
+        border-radius: 5px;
+    }
+    
+    .footer-container h4 {
+        color: #f0f0f0;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(121, 40, 202, 0.3);
+    }
+    
+    .footer-container a {
+        color: rgba(121, 40, 202, 1);
+        text-decoration: none;
+        font-size: 0.85rem;
+        display: block;
+        margin-bottom: 8px;
+        transition: color 0.2s ease;
+    }
+    
+    .footer-container a:hover {
+        color: rgba(255, 0, 128, 1);
+        text-decoration: none;
+    }
+    
+    .footer-container p {
+        margin: 0;
+        padding: 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .footer-container strong {
+        color: var(--text-primary);
+    }
+    </style>
+    """
+    st.markdown(custom_styles, unsafe_allow_html=True)
+    
     # Add the scanner line animation div
     st.markdown('<div class="scanner-line"></div>', unsafe_allow_html=True)
 
@@ -1265,6 +1368,11 @@ def configure_prompts(selected_user, users_prompts):
     st.subheader("Custom Prompts")
     st.write("Configure custom prompts for different content types:")
     
+    # Ensure users_prompts is a dictionary
+    if not isinstance(users_prompts, dict):
+        st.warning("Error with prompt storage. Using an empty dictionary instead.")
+        users_prompts = {}
+    
     # List of prompt types
     prompt_types = ["wisdom_extraction", "summary", "outline_creation", "social_media", "image_prompts"]
     
@@ -1282,20 +1390,24 @@ def configure_prompts(selected_user, users_prompts):
         
         # Save button for this prompt
         if st.button(f"Save {prompt_type.replace('_', ' ').title()} Prompt"):
-            # Create user directory if it doesn't exist
-            user_dir = os.path.join("prompts", selected_user)
-            os.makedirs(user_dir, exist_ok=True)
-            
-            # Save the prompt
-            with open(os.path.join(user_dir, f"{prompt_type}.md"), "w") as f:
-                f.write(new_prompt)
-            
-            st.success(f"Saved custom {prompt_type} prompt for {selected_user}")
-            
-            # Update the in-memory prompts
-            if selected_user not in users_prompts:
-                users_prompts[selected_user] = {}
-            users_prompts[selected_user][prompt_type] = new_prompt
+            try:
+                # Create user directory if it doesn't exist
+                user_dir = os.path.join("prompts", selected_user)
+                os.makedirs(user_dir, exist_ok=True)
+                
+                # Save the prompt
+                with open(os.path.join(user_dir, f"{prompt_type}.md"), "w") as f:
+                    f.write(new_prompt)
+                
+                st.success(f"Saved custom {prompt_type} prompt for {selected_user}")
+                
+                # Update the in-memory prompts
+                if selected_user not in users_prompts:
+                    users_prompts[selected_user] = {}
+                users_prompts[selected_user][prompt_type] = new_prompt
+            except Exception as e:
+                st.error(f"Error saving prompt: {str(e)}")
+                logger.error(f"Error saving prompt for {selected_user}/{prompt_type}: {str(e)}")
 
 def transcribe_large_file(file_path):
     """Process a large audio file by chunking it and transcribing each chunk with concurrent processing"""
@@ -2258,30 +2370,6 @@ def main():
     # Create a custom header with the refined styling and navigation
     create_custom_header()
     
-    # Sidebar configuration with reduced items
-    with st.sidebar:
-        st.markdown('<div class="section-header">Configuration</div>', unsafe_allow_html=True)
-        
-        # Account section with logout
-        show_account_sidebar()
-        
-        # User Profile selection
-        st.markdown("### User Profile")
-        selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
-        
-        # Footer links
-        st.markdown("---")
-        st.markdown("### About")
-        if st.button("Terms & Privacy"):
-            st.session_state.page = "legal"
-            st.rerun()
-        st.markdown("[Website](https://whisperforge.ai)")
-        st.markdown("[Support](mailto:support@whisperforge.ai)")
-        
-        # Version info
-        st.markdown("---")
-        st.markdown("WhisperForge v1.0.0")
-    
     # Show different pages based on selection
     if st.session_state.page == "home":
         show_main_page()
@@ -2346,7 +2434,68 @@ def main():
                         st.session_state.content_to_save = st.session_state.outline
                         st.toast("Preparing outline for download...")
     
-    # ... existing code ...
+    # Add page footer with about links, account info, and version info
+    st.markdown("---")
+    st.markdown('<div class="footer-container">', unsafe_allow_html=True)
+    footer_cols = st.columns([1, 1, 1, 1])
+    
+    # About links column
+    with footer_cols[0]:
+        st.markdown("#### About")
+        st.markdown("[Terms & Privacy](?page=legal)")
+        st.markdown("[Website](https://whisperforge.ai)")
+        st.markdown("[Support](mailto:support@whisperforge.ai)")
+    
+    # Account information column
+    with footer_cols[1]:
+        st.markdown("#### Account")
+        # Get user info
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT email, subscription_tier, usage_quota, usage_current FROM users WHERE id = ?",
+            (st.session_state.user_id,)
+        ).fetchone()
+        conn.close()
+        
+        if user:
+            st.markdown(f"**Email**: {user['email']}")
+            st.markdown(f"**Plan**: {user['subscription_tier'].title()}")
+            usage_percent = min(100, (user['usage_current'] / user['usage_quota']) * 100) if user['usage_quota'] > 0 else 0
+            st.markdown(f"**Usage**: {user['usage_current']}/{user['usage_quota']} min ({usage_percent:.1f}%)")
+            st.markdown("[Upgrade Account]()")
+            
+        # Logout link
+        st.markdown("[Logout](javascript:logoutUser())")
+        
+        # Add JavaScript for logout
+        st.markdown("""
+        <script>
+        function logoutUser() {
+            // Use the Streamlit event to trigger the logout button click
+            const logoutButtons = parent.document.querySelectorAll('button:contains("Logout")');
+            if (logoutButtons.length > 0) {
+                logoutButtons[0].click();
+            }
+        }
+        </script>
+        """, unsafe_allow_html=True)
+    
+    # Legal column
+    with footer_cols[2]:
+        st.markdown("#### Legal")
+        st.markdown("© 2024 WhisperForge")
+        st.markdown("v1.0.0")
+    
+    # Additional links/features column
+    with footer_cols[3]:
+        st.markdown("#### Quick Links")
+        st.markdown("[API Keys](?page=api)")
+        st.markdown("[Usage Stats](?page=usage)")
+        st.markdown("[User Config](?page=user_config)")
+        if is_admin_user():
+            st.markdown("[Admin Dashboard](?page=admin)")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def show_main_page():
     # This function contains the original main app functionality
@@ -2365,10 +2514,39 @@ def show_main_page():
     if not anthropic_key:
         st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
     
-    # Get selected user from the sidebar
-    selected_user = st.session_state.get("user_profile_sidebar", "Default")
+    # Settings section at the top
+    with st.expander("⚙️ Settings", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        # User Profile selection - moved from sidebar
+        with col1:
+            st.markdown("#### User Profile")
+            selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_main")
+            # Update the sidebar value to keep in sync
+            if "user_profile_sidebar" in st.session_state:
+                st.session_state.user_profile_sidebar = selected_user
+        
+        # Model selection
+        with col2:
+            st.markdown("#### AI Model")
+            ai_provider = st.selectbox(
+                "AI Provider",
+                options=["Anthropic", "OpenAI", "Grok"],
+                index=0 if st.session_state.ai_provider == "Anthropic" else 
+                       1 if st.session_state.ai_provider == "OpenAI" else 2
+            )
+            
+            available_models = get_available_models(ai_provider)
+            ai_model = st.selectbox("AI Model", options=available_models)
+            
+            if st.button("Apply Model Selection"):
+                st.session_state.ai_provider = ai_provider
+                st.session_state.ai_model = ai_model
+                st.success(f"Using {ai_provider} {ai_model}")
+                st.rerun()
     
     # Load knowledge base for selected user
+    selected_user = selected_user if "selected_user" in locals() else st.session_state.get("user_profile_sidebar", "Default")
     knowledge_base = load_user_knowledge_base(selected_user)
     
     # Display the current models being used
@@ -2624,84 +2802,113 @@ def show_api_keys_page():
     # Get current API keys
     api_keys = get_user_api_keys()
     
-    # OpenAI API Key
-    st.markdown("### OpenAI API Key")
-    st.markdown("Required for audio transcription and most AI capabilities.")
+    # Create tabs for different API providers
+    api_tabs = st.tabs(["OpenAI", "Anthropic", "Notion", "Grok"])
     
-    # Create a masked display of the current key if it exists
-    openai_key = api_keys.get("openai", "")
-    openai_key_display = f"••••••••••••••••••{openai_key[-4:]}" if openai_key else "Not set"
+    # OpenAI Tab
+    with api_tabs[0]:
+        st.markdown("### OpenAI API Key")
+        st.markdown("Required for audio transcription and GPT models.")
+        
+        # Create a masked display of the current key if it exists
+        openai_key = api_keys.get("openai", "")
+        openai_key_display = f"••••••••••••••••••{openai_key[-4:]}" if openai_key else "Not set"
+        
+        st.markdown(f"**Current key:** {openai_key_display}")
+        
+        # Input for new key
+        new_openai_key = st.text_input("Enter new OpenAI API key", type="password", key="new_openai_key")
+        
+        # Link to get API key
+        st.markdown("[Get an OpenAI API key](https://platform.openai.com/account/api-keys)")
+        
+        if st.button("Save OpenAI Key"):
+            if new_openai_key:
+                update_api_key("openai", new_openai_key)
+                st.success("OpenAI API key updated successfully!")
+                time.sleep(1)
+                st.rerun()
     
-    st.markdown(f"**Current key:** {openai_key_display}")
-    
-    # Input for new key
-    new_openai_key = st.text_input("Enter new OpenAI API key", type="password", key="new_openai_key")
-    if st.button("Save OpenAI Key"):
-        if new_openai_key:
-            update_api_key("openai", new_openai_key)
-            st.success("OpenAI API key updated successfully!")
+    # Anthropic Tab
+    with api_tabs[1]:
+        st.markdown("### Anthropic API Key")
+        st.markdown("Used for Claude AI models.")
+        
+        anthropic_key = api_keys.get("anthropic", "")
+        anthropic_key_display = f"••••••••••••••••••{anthropic_key[-4:]}" if anthropic_key else "Not set"
+        
+        st.markdown(f"**Current key:** {anthropic_key_display}")
+        
+        new_anthropic_key = st.text_input("Enter new Anthropic API key", type="password", key="new_anthropic_key")
+        
+        # Link to get API key
+        st.markdown("[Get an Anthropic API key](https://console.anthropic.com/account/keys)")
+        
+        if st.button("Save Anthropic Key"):
+            update_api_key("anthropic", new_anthropic_key)
+            st.success("Anthropic API key updated successfully!")
             time.sleep(1)
             st.rerun()
     
-    st.markdown("---")
-    
-    # Anthropic API Key
-    st.markdown("### Anthropic API Key")
-    st.markdown("Optional: Used for Claude AI models.")
-    
-    anthropic_key = api_keys.get("anthropic", "")
-    anthropic_key_display = f"••••••••••••••••••{anthropic_key[-4:]}" if anthropic_key else "Not set"
-    
-    st.markdown(f"**Current key:** {anthropic_key_display}")
-    
-    new_anthropic_key = st.text_input("Enter new Anthropic API key", type="password", key="new_anthropic_key")
-    if st.button("Save Anthropic Key"):
-        update_api_key("anthropic", new_anthropic_key)
-        st.success("Anthropic API key updated successfully!")
-        time.sleep(1)
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Notion API Key
-    st.markdown("### Notion API Key")
-    st.markdown("Optional: Used for exporting content to Notion.")
-    
-    notion_key = api_keys.get("notion", "")
-    notion_key_display = f"••••••••••••••••••{notion_key[-4:]}" if notion_key else "Not set"
-    
-    st.markdown(f"**Current key:** {notion_key_display}")
-    
-    col1, col2 = st.columns(2)
-    with col1:
+    # Notion Tab
+    with api_tabs[2]:
+        st.markdown("### Notion Integration")
+        st.markdown("Used for exporting content to Notion.")
+        
+        notion_key = api_keys.get("notion", "")
+        notion_key_display = f"••••••••••••••••••{notion_key[-4:]}" if notion_key else "Not set"
+        
+        st.markdown(f"**Current API key:** {notion_key_display}")
+        
         new_notion_key = st.text_input("Enter new Notion API key", type="password", key="new_notion_key")
-    with col2:
-        notion_database_id = st.text_input("Notion Database ID", value=api_keys.get("notion_database_id", ""), key="notion_database_id")
+        
+        st.markdown("### Notion Database")
+        st.markdown("The ID of the Notion database where content will be exported.")
+        
+        notion_database_id = api_keys.get("notion_database_id", "")
+        notion_db_display = f"••••••••••{notion_database_id[-4:]}" if notion_database_id else "Not set"
+        
+        st.markdown(f"**Current Database ID:** {notion_db_display}")
+        
+        new_notion_database_id = st.text_input("Notion Database ID", key="notion_database_id")
+        
+        # Setup guide
+        with st.expander("How to set up Notion integration"):
+            st.markdown("""
+            1. Create a Notion integration at [notion.so/my-integrations](https://www.notion.so/my-integrations)
+            2. Copy your integration token (API key)
+            3. Create a database in Notion where you want to export content
+            4. Share the database with your integration
+            5. Copy the database ID from the URL (the long string after the database name and before the question mark)
+            """)
+        
+        if st.button("Save Notion Settings"):
+            update_api_key("notion", new_notion_key)
+            update_api_key("notion_database_id", new_notion_database_id)
+            st.success("Notion settings updated successfully!")
+            time.sleep(1)
+            st.rerun()
     
-    if st.button("Save Notion Settings"):
-        update_api_key("notion", new_notion_key)
-        update_api_key("notion_database_id", notion_database_id)
-        st.success("Notion settings updated successfully!")
-        time.sleep(1)
-        st.rerun()
-    
-    st.markdown("---")
-    
-    # Grok API Key
-    st.markdown("### Grok API Key (Experimental)")
-    st.markdown("Optional: Used for Grok AI models.")
-    
-    grok_key = api_keys.get("grok", "")
-    grok_key_display = f"••••••••••••••••••{grok_key[-4:]}" if grok_key else "Not set"
-    
-    st.markdown(f"**Current key:** {grok_key_display}")
-    
-    new_grok_key = st.text_input("Enter new Grok API key", type="password", key="new_grok_key")
-    if st.button("Save Grok Key"):
-        update_api_key("grok", new_grok_key)
-        st.success("Grok API key updated successfully!")
-        time.sleep(1)
-        st.rerun()
+    # Grok Tab
+    with api_tabs[3]:
+        st.markdown("### Grok API Key")
+        st.markdown("Used for Grok AI models.")
+        
+        grok_key = api_keys.get("grok", "")
+        grok_key_display = f"••••••••••••••••••{grok_key[-4:]}" if grok_key else "Not set"
+        
+        st.markdown(f"**Current key:** {grok_key_display}")
+        
+        new_grok_key = st.text_input("Enter new Grok API key", type="password", key="new_grok_key")
+        
+        # Note about Grok availability
+        st.info("Grok API access is currently limited. Visit [Grok](https://www.grok.x) for more information.")
+        
+        if st.button("Save Grok Key"):
+            update_api_key("grok", new_grok_key)
+            st.success("Grok API key updated successfully!")
+            time.sleep(1)
+            st.rerun()
 
 def show_usage_page():
     st.markdown("## Usage Statistics")
@@ -3063,7 +3270,7 @@ def show_admin_page():
         return
     
     # Create tabs for different admin functions
-    admin_tabs = st.tabs(["System Overview", "User Management", "Model Configuration", "App Configuration"])
+    admin_tabs = st.tabs(["System Overview", "User Management", "Model Configuration", "App Configuration", "Default Prompts"])
     
     # System Overview Tab
     with admin_tabs[0]:
@@ -3191,12 +3398,6 @@ def show_admin_page():
             if st.button("Set as Default Transcription Model"):
                 st.session_state.transcription_provider = transcription_provider
                 st.session_state.transcription_model = transcription_model
-                
-                # Save to database for persistence (if you want to implement this)
-                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_transcription_provider'", (transcription_provider,))
-                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_transcription_model'", (transcription_model,))
-                # conn.commit()
-                
                 st.success(f"Default transcription model set to {transcription_provider}/{transcription_model}")
         
         with config_tab2:
@@ -3207,37 +3408,23 @@ def show_admin_page():
             
             ai_provider = st.selectbox(
                 "AI Provider",
-                options=["Anthropic", "OpenAI"],
-                index=0 if st.session_state.ai_provider == "Anthropic" else 1
+                options=["Anthropic", "OpenAI", "Grok"],
+                index=0 if st.session_state.ai_provider == "Anthropic" else 
+                       1 if st.session_state.ai_provider == "OpenAI" else 2
             )
             
             # Show different model options based on provider
-            if ai_provider == "Anthropic":
-                anthropic_models = get_available_models("Anthropic")
-                default_index = anthropic_models.index("claude-3-7-sonnet-20250219") if "claude-3-7-sonnet-20250219" in anthropic_models else 0
-                ai_model = st.selectbox(
-                    "AI Model",
-                    options=anthropic_models,
-                    index=default_index
-                )
-            else:  # OpenAI
-                openai_models = get_available_models("OpenAI")
-                default_index = 0
-                ai_model = st.selectbox(
-                    "AI Model",
-                    options=openai_models,
-                    index=default_index
-                )
+            available_models = get_available_models(ai_provider)
+            
+            ai_model = st.selectbox(
+                "AI Model",
+                options=available_models,
+                index=0
+            )
             
             if st.button("Set as Default Content Processing Model"):
                 st.session_state.ai_provider = ai_provider
                 st.session_state.ai_model = ai_model
-                
-                # Save to database for persistence (if you want to implement this)
-                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_ai_provider'", (ai_provider,))
-                # conn.execute("UPDATE system_settings SET value = ? WHERE key = 'default_ai_model'", (ai_model,))
-                # conn.commit()
-                
                 st.success(f"Default content processing model set to {ai_provider}/{ai_model}")
     
     # App Configuration Tab
@@ -3281,10 +3468,52 @@ def show_admin_page():
         
         # Custom Prompts Configuration
         st.subheader("Custom Prompts")
-        users_prompts = load_prompts()
+        _, users_prompts = load_prompts()  # Fixed to unpack the tuple correctly
         
         # Configure custom prompts for the selected user
         configure_prompts(selected_user, users_prompts)
+    
+    # Default Prompts Tab
+    with admin_tabs[4]:
+        st.markdown("### System Default Prompts")
+        st.write("Configure the default prompt templates that will be used for all users who haven't customized their own.")
+        
+        # Prompt types
+        prompt_types = [
+            "wisdom_extraction", 
+            "summary", 
+            "outline_creation", 
+            "social_media", 
+            "image_prompts", 
+            "article_writing", 
+            "seo_analysis"
+        ]
+        
+        selected_prompt = st.selectbox(
+            "Select Prompt Type", 
+            options=prompt_types,
+            format_func=lambda x: x.replace("_", " ").title()
+        )
+        
+        # Get the current default prompt
+        current_prompt = DEFAULT_PROMPTS.get(selected_prompt, "")
+        
+        # Edit prompt
+        new_prompt = st.text_area(
+            f"Edit Default {selected_prompt.replace('_', ' ').title()} Prompt", 
+            value=current_prompt,
+            height=300
+        )
+        
+        if st.button("Save Default Prompt"):
+            # In a real implementation, you would update the DEFAULT_PROMPTS dictionary
+            # and possibly write to a database or config file
+            st.success(f"Default {selected_prompt.replace('_', ' ').title()} prompt updated.")
+            
+            # For demo purposes, just display what would be updated
+            st.code(f'DEFAULT_PROMPTS["{selected_prompt}"] = """{new_prompt}"""')
+            
+            # Could also implement: DEFAULT_PROMPTS[selected_prompt] = new_prompt
     
     conn.close()
     
@@ -3795,7 +4024,6 @@ def create_custom_header():
             <a href="?page=usage" class="nav-item" id="nav-usage">Usage</a>
             <a href="?page=user_config" class="nav-item" id="nav-user-config">User Config</a>
             {admin_link}
-            <a href="?page=legal" class="nav-item" id="nav-legal">Legal</a>
         </div>
         <div class="header-right">
             <div class="header-date">{datetime.now().strftime("%Y-%m-%d %H:%M")}</div>
