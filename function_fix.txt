@@ -1,0 +1,75 @@
+def transcribe_with_whisper(file_path):
+    """Transcribe audio file using OpenAI Whisper API"""
+    logger.debug(f"Starting transcription for {file_path}")
+    
+    # Get API key from environment via config
+    HARD_CODED_OPENAI_API_KEY = OPENAI_API_KEY
+    
+    try:
+        # First try to use environment variables and loaded keys
+        client = get_openai_client()
+        
+        if not client:
+            # If get_openai_client fails, create a client directly with the key from environment
+            logger.warning("Creating OpenAI client with environment API key as a fallback")
+            from openai import OpenAI
+            client = OpenAI(api_key=HARD_CODED_OPENAI_API_KEY)
+            
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return f"Error: File {file_path} not found"
+            
+        progress_placeholder = st.empty()
+        # More informative UI for progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        def update_progress(progress, message):
+            progress_placeholder.markdown(f"⏳ {message}")
+            progress_bar.progress(progress)
+            status_text.text(f"{int(progress * 100)}% complete")
+        
+        update_progress(0.1, "Starting transcription...")
+        
+        # Get file details
+        file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
+        
+        update_progress(0.3, f"Processing audio file ({file_size:.2f} MB)...")
+        
+        # Set a timeout proportional to file size
+        timeout = max(300, int(file_size * 10))  # At least 5 minutes
+        
+        try:
+            with open(file_path, "rb") as audio_file:
+                update_progress(0.5, "Sending to OpenAI Whisper API...")
+                # Use direct transcribe as a fallback if client-based approach fails
+                try:
+                    response = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        timeout=timeout
+                    )
+                    transcript = response.text
+                except Exception as e:
+                    logger.info(f"Client-based transcription failed: {str(e)}")
+                    logger.info("Trying direct_transcribe_audio as final fallback method")
+                    # If client method fails, try direct method with hardcoded key
+                    update_progress(0.6, "Using alternative transcription method...")
+                    transcript = direct_transcribe_audio(file_path, HARD_CODED_OPENAI_API_KEY)
+                
+                update_progress(1.0, "Transcription complete!")
+                # Remove the progress indicators
+                progress_placeholder.empty()
+                progress_bar.empty()
+                status_text.empty()
+    
+                # Delay to show the completion message briefly
+                time.sleep(0.5)
+                
+                return transcript
+        except Exception as e:
+            # If everything fails, try one more direct method
+            logger.error(f"Error in transcribe_with_whisper: {str(e)}")
+            try:
+                update_progress(0.7, "Using fallback transcription method...")
+                transcript = direct_transcribe_audio(file_path, HARD_CODED_OPENAI_API_KEY)

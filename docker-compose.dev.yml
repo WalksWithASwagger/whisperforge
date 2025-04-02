@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  whisperforge:
+    command: ["streamlit", "run", "app.py", "--server.port=8501", "--server.runOnSave=true"]
+    ports:
+      - "8501:8501"  # Map directly to 8501 for consistent port across environments
+    volumes:
+      # Override the volumes configuration to include code bind mount
+      - ./:/app  # Mount entire codebase for live code reloading
+      - whisperforge-data:/app/data
+      - whisperforge-uploads:/app/uploads
+      - whisperforge-temp:/app/temp
+      - whisperforge-logs:/app/logs
+      - ./.env:/app/.env
+    environment:
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_RUN_ON_SAVE=true
+      - STREAMLIT_SERVER_FILE_WATCHER_TYPE=poll
+      - PYTHONPATH=/app
+
+volumes:
+  whisperforge-data:
+    name: whisperforge-data
+  whisperforge-uploads:
+    name: whisperforge-uploads
+  whisperforge-temp:
+    name: whisperforge-temp
+  whisperforge-logs:
+    name: whisperforge-logs 

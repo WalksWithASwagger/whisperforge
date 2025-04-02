@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     build-essential \
     curl \
+    sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,6 +38,11 @@ COPY . .
 # Set database path environment variable
 ENV DATABASE_PATH=/app/data/whisperforge.db
 
+# Make entrypoint script executable
+RUN chmod +x docker-entrypoint.sh
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+
 # Expose the port Streamlit runs on
 EXPOSE 8501
 
@@ -44,8 +50,6 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8501/ || exit 1
 
-# Command to run the application
-# --server.address=0.0.0.0: Makes Streamlit listen on all network interfaces
-# --server.port=8501: Standard Streamlit port
-# --server.enableCORS=false: Disables CORS for simpler deployment
+# The CMD is not needed as it's now in the entrypoint script
+# This is left as a fallback in case the entrypoint script fails
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.enableCORS=false"] 

@@ -61,4 +61,11 @@ whisperforge.db
 # Other unnecessary files
 whisperforge.log
 spektor.log
-whisperforge2.code-workspace 
+whisperforge2.code-workspace
+
+# Legacy and backup files
+*.save
+fix.py
+fix_app.py
+update_app.py
+direct_key_update.py 

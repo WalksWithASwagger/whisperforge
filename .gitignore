@@ -34,3 +34,6 @@ uploads/
 audio_chunks/
 whisperforge.log
 *.log
+
+# Legacy code
+legacy/
