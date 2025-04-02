@@ -842,36 +842,27 @@ def generate_title(transcript):
 def generate_summary(transcript):
     """Generate a one-sentence summary of the audio content"""
     try:
-        # Use our new module for summary generation if available
-        try:
-            from content import generate_summary as content_generate_summary
-            return content_generate_summary(transcript, "transcript", "OpenAI", "gpt-3.5-turbo")
-        except Exception as e:
-            logger.warning(f"Could not use modular summary generation: {str(e)}")
+        openai_client = get_openai_client()
+        if not openai_client:
+            return "Summary of audio content"
             
-            # Fallback to built-in functionality
-            openai_client = get_openai_client()
-            if not openai_client:
-                return "Summary of audio content"
-                
-            prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
-            Transcript: {transcript[:1000]}...
-            
-            Return only the summary sentence, no additional text."""
-            
-            response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=100,
-                temperature=0.3
-            )
-            
-            return response.choices[0].message.content.strip()
+        prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
+        Transcript: {transcript[:1000]}...
+        
+        Return only the summary sentence, no additional text."""
+        
+        response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=100,
+            temperature=0.3
+        )
+        
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        logger.exception(f"Error generating summary: {str(e)}")
         return "Summary of audio content"
 
 def generate_short_title(text):
@@ -906,69 +897,10 @@ def generate_short_title(text):
         return "Untitled Audio Transcription"
 
 def chunk_text_for_notion(text, chunk_size=1900):
-    """Split text into chunks suitable for Notion API, with proper error handling"""
+    """Split text into chunks that respect Notion's character limit"""
     if not text:
-        return ["No content available"]
-        
-    try:
-        # Ensure text is a string
-        if not isinstance(text, str):
-            if text is None:
-                return ["No content available"]
-            else:
-                # Attempt to convert to string
-                text = str(text)
-                
-        # Now split into chunks
-        result = []
-        for i in range(0, len(text), chunk_size):
-            if i + chunk_size <= len(text):
-                result.append(text[i:i + chunk_size])
-            else:
-                result.append(text[i:])
-        
-        return result or ["No content available"]  # Ensure we return something
-    except Exception as e:
-        logger.error(f"Error chunking text for Notion: {str(e)}")
-        return ["Error processing content for Notion"]
-
-def create_summary_callout(transcript):
-    """Create a summary callout for Notion with proper error handling"""
-    try:
-        summary = generate_summary(transcript)
-        if not summary or len(summary) < 5:  # Basic validation
-            summary = "Summary of audio content"
-            
-        # Ensure the summary isn't too long for Notion
-        if len(summary) > 2000:
-            summary = summary[:1997] + "..."
-            
-        return {
-            "object": "block",  # This is required for Notion API
-            "type": "callout",
-            "callout": {
-                "rich_text": [{"type": "text", "text": {"content": summary}}],
-                "color": "purple_background",
-                "icon": {
-                    "type": "emoji",
-                    "emoji": "💜"
-                }
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error creating summary callout: {str(e)}")
-        return {
-            "object": "block",  # This is required for Notion API
-            "type": "callout",
-            "callout": {
-                "rich_text": [{"type": "text", "text": {"content": "Summary of audio content"}}],
-                "color": "purple_background",
-                "icon": {
-                    "type": "emoji",
-                    "emoji": "💜"
-                }
-            }
-        }
+        return []
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
     """Create a new entry in the Notion database with all content sections"""
@@ -1015,17 +947,23 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
         content = []
         
         # Add summary section with AI-generated summary
-        try:
-            # Use the new function to create the summary callout
-            summary_callout = create_summary_callout(transcript)
-            content.append(summary_callout)
-            
-            content.append({
+        content.extend([
+            {
+                "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": summary}}],
+                    "color": "purple_background",
+                    "icon": {
+                        "type": "emoji",
+                        "emoji": "💜"
+                    }
+                }
+            },
+            {
                 "type": "divider",
                 "divider": {}
-            })
-        except Exception as e:
-            logger.error(f"Error adding summary to Notion: {str(e)}")
+            }
+        ])
         
         # Add Transcript section with chunked content and color
         content.extend([
@@ -1704,6 +1642,10 @@ def transcribe_large_file(file_path, service="openai", username=None, file_name=
 
 def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create a structured outline based on transcript and wisdom with streaming output"""
+    # Ensure we have a knowledge base - use KK's if none is provided
+    if knowledge_base is None:
+        knowledge_base = load_user_knowledge_base("KK")
+        
     # Start timing for usage tracking
     start_time = time.time()
     
@@ -1833,6 +1775,10 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
     Wrapper for the new modular image prompts generation to maintain backward compatibility.
     This function delegates to the new implementation.
     """
+    # Ensure we have a knowledge base - use KK's if none is provided
+    if knowledge_base is None:
+        knowledge_base = load_user_knowledge_base("KK")
+        
     # Import the image module directly to avoid circular imports
     import content.image as image
     return image.generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt, knowledge_base)
@@ -1843,6 +1789,10 @@ def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=N
     This function delegates to the new implementation with default platforms.
     """
     try:
+        # Ensure we have a knowledge base - use KK's if none is provided
+        if knowledge_base is None:
+            knowledge_base = load_user_knowledge_base("KK")
+            
         # Validate inputs
         if not wisdom and not outline:
             logger.warning("Both wisdom and outline are empty or missing")
@@ -1880,6 +1830,10 @@ def generate_article(transcript, wisdom, outline, ai_provider, model, custom_pro
     Wrapper for generate_blog_post to maintain backward compatibility.
     This function delegates to the new modular implementation.
     """
+    # Ensure we have a knowledge base - use KK's if none is provided
+    if knowledge_base is None:
+        knowledge_base = load_user_knowledge_base("KK")
+        
     return generate_blog_post(transcript, wisdom, outline, ai_provider, model, custom_prompt, knowledge_base)
 
 def generate_seo_metadata(content, title):
@@ -1923,6 +1877,11 @@ def generate_seo_metadata(content, title):
 def process_all_content(text, ai_provider, model, knowledge_base=None):
     """Process all content stages at once with detailed streaming progress"""
     try:
+        # Ensure we have a knowledge base - use KK's if none is provided
+        if knowledge_base is None:
+            knowledge_base = load_user_knowledge_base("KK")
+            logger.info("No knowledge base provided, using KK's knowledge base")
+        
         results = {
             'wisdom': None,
             'outline': None,
@@ -1940,139 +1899,63 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
         status_text = st.empty()
         content_preview = st.empty()
         
-        # Update progress function
-        def update_progress(step, step_name, progress_value):
-            status_text.text(f"Step {step}/5: {step_name}...")
-            progress_bar.progress(progress_value)
-        
-        # STEP 1: Generate wisdom
-        update_progress(1, "Extracting wisdom", 0)
+        # Generate wisdom
+        status_text.text("Step 1/5: Extracting wisdom...")
         with st.status("Extracting key insights from your content...") as status:
-            try:
-                results['wisdom'] = extract_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
-                if results['wisdom']:
-                    progress_bar.progress(0.2)
-                    status.update(label="✅ Wisdom extracted successfully!", state="complete")
-                    # Safe preview
-                    if isinstance(results['wisdom'], str):
-                        preview = results['wisdom'][:300] + "..." if len(results['wisdom']) > 300 else results['wisdom']
-                        content_preview.markdown(f"**Wisdom Preview:**\n{preview}")
-                    else:
-                        content_preview.markdown(f"**Wisdom Preview:**\nGenerated successfully")
-                else:
-                    status.update(label="❌ Wisdom extraction failed.", state="error")
-            except Exception as e:
-                logger.exception(f"Error extracting wisdom: {str(e)}")
-                status.update(label=f"❌ Error: {str(e)}", state="error")
+            results['wisdom'] = extract_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
+            if results['wisdom']:
+                progress_bar.progress(0.2)
+                status.update(label="✅ Wisdom extracted successfully!", state="complete")
+                content_preview.markdown(f"**Wisdom Preview:**\n{results['wisdom'][:300]}...")
+            else:
+                status.update(label="❌ Wisdom extraction failed.", state="error")
         
-        # STEP 2: Generate outline - continue even if wisdom failed
-        update_progress(2, "Creating outline", 0.2)
+        # Generate outline
+        status_text.text("Step 2/5: Creating outline...")
         with st.status("Organizing content into a structured outline...") as status:
-            try:
-                results['outline'] = generate_outline(text, results['wisdom'] or "", ai_provider, model, knowledge_base=knowledge_base)
-                if results['outline']:
-                    progress_bar.progress(0.4)
-                    status.update(label="✅ Outline created successfully!", state="complete")
-                    # Safe preview
-                    if isinstance(results['outline'], str):
-                        preview = results['outline'][:300] + "..." if len(results['outline']) > 300 else results['outline']
-                        content_preview.markdown(f"**Outline Preview:**\n{preview}")
-                    else:
-                        content_preview.markdown(f"**Outline Preview:**\nGenerated successfully")
-                else:
-                    status.update(label="❌ Outline creation failed.", state="error")
-            except Exception as e:
-                logger.exception(f"Error creating outline: {str(e)}")
-                status.update(label=f"❌ Error: {str(e)}", state="error")
+            results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['outline']:
+                progress_bar.progress(0.4)
+                status.update(label="✅ Outline created successfully!", state="complete")
+                content_preview.markdown(f"**Outline Preview:**\n{results['outline'][:300]}...")
+            else:
+                status.update(label="❌ Outline creation failed.", state="error")
         
-        # STEP 3: Generate social content
-        update_progress(3, "Generating social media content", 0.4)
+        # Generate social content
+        status_text.text("Step 3/5: Generating social media content...")
         with st.status("Creating social media posts from your content...") as status:
-            try:
-                results['social_posts'] = generate_social_content(
-                    results['wisdom'] or "", 
-                    results['outline'] or "", 
-                    ai_provider, 
-                    model, 
-                    knowledge_base=knowledge_base
-                )
-                if results['social_posts']:
-                    progress_bar.progress(0.6)
-                    status.update(label="✅ Social media content generated!", state="complete")
-                    # Add a safe slicing approach to prevent errors
-                    if isinstance(results['social_posts'], str):
-                        preview = results['social_posts'][:300] + "..." if len(results['social_posts']) > 300 else results['social_posts']
-                        content_preview.markdown(f"**Social Posts Preview:**\n{preview}")
-                    else:
-                        content_preview.markdown(f"**Social Posts Preview:**\nGenerated successfully")
-                else:
-                    status.update(label="❌ Social content generation failed.", state="error")
-            except Exception as e:
-                logger.exception(f"Error generating social content: {str(e)}")
-                status.update(label=f"❌ Error: {str(e)}", state="error")
+            results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['social_posts']:
+                progress_bar.progress(0.6)
+                status.update(label="✅ Social media content generated!", state="complete")
+                content_preview.markdown(f"**Social Posts Preview:**\n{results['social_posts'][:300]}...")
+            else:
+                status.update(label="❌ Social content generation failed.", state="error")
         
-        # STEP 4: Generate image prompts
-        update_progress(4, "Creating image prompts", 0.6)
+        # Generate image prompts
+        status_text.text("Step 4/5: Creating image prompts...")
         with st.status("Generating image description prompts...") as status:
-            try:
-                results['image_prompts'] = generate_image_prompts(
-                    results['wisdom'] or "", 
-                    results['outline'] or "", 
-                    ai_provider, 
-                    model, 
-                    knowledge_base=knowledge_base
-                )
-                if results['image_prompts']:
-                    progress_bar.progress(0.8)
-                    status.update(label="✅ Image prompts created successfully!", state="complete")
-                    # Safe preview
-                    if isinstance(results['image_prompts'], str):
-                        preview = results['image_prompts'][:300] + "..." if len(results['image_prompts']) > 300 else results['image_prompts']
-                        content_preview.markdown(f"**Image Prompts Preview:**\n{preview}")
-                    else:
-                        content_preview.markdown(f"**Image Prompts Preview:**\nGenerated successfully")
-                else:
-                    status.update(label="❌ Image prompt creation failed.", state="error")
-            except Exception as e:
-                logger.exception(f"Error generating image prompts: {str(e)}")
-                status.update(label=f"❌ Error: {str(e)}", state="error")
+            results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['image_prompts']:
+                progress_bar.progress(0.8)
+                status.update(label="✅ Image prompts created successfully!", state="complete")
+                content_preview.markdown(f"**Image Prompts Preview:**\n{results['image_prompts'][:300]}...")
+            else:
+                status.update(label="❌ Image prompt creation failed.", state="error")
         
-        # STEP 5: Generate article
-        update_progress(5, "Writing full article", 0.8)
+        # Generate article
+        status_text.text("Step 5/5: Writing full article...")
         with st.status("Writing a complete article from your content...") as status:
-            try:
-                results['article'] = generate_article(
-                    text, 
-                    results['wisdom'] or "", 
-                    results['outline'] or "", 
-                    ai_provider, 
-                    model, 
-                    knowledge_base=knowledge_base
-                )
-                if results['article']:
-                    progress_bar.progress(1.0)
-                    status.update(label="✅ Article written successfully!", state="complete")
-                    # Safe preview
-                    if isinstance(results['article'], str):
-                        preview = results['article'][:300] + "..." if len(results['article']) > 300 else results['article']
-                        content_preview.markdown(f"**Article Preview:**\n{preview}")
-                    else:
-                        content_preview.markdown(f"**Article Preview:**\nGenerated successfully")
-                else:
-                    status.update(label="❌ Article generation failed.", state="error")
-            except Exception as e:
-                logger.exception(f"Error writing article: {str(e)}")
-                status.update(label=f"❌ Error: {str(e)}", state="error")
+            results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
+            if results['article']:
+                progress_bar.progress(1.0)
+                status.update(label="✅ Article written successfully!", state="complete")
+                content_preview.markdown(f"**Article Preview:**\n{results['article'][:300]}...")
+            else:
+                status.update(label="❌ Article generation failed.", state="error")
         
-        # Check overall success
-        success_count = sum(1 for value in results.values() if value)
-        if success_count == 5:
-            status_text.text("🎉 All content generated successfully!")
-            progress_container.markdown("### ✅ All content generated successfully!")
-        else:
-            status_text.text(f"✓ Completed with {success_count}/5 successful generations")
-            progress_container.markdown(f"### ⚠️ Completed with {success_count}/5 successful generations")
-        
+        status_text.text("🎉 Content generation complete!")
+        progress_container.markdown("### ✅ All content generated successfully!")
         content_preview.empty()
         
         return results
@@ -2147,8 +2030,6 @@ def main():
         show_admin_page()
     elif st.session_state.page == "legal":
         show_legal_page()
-    elif st.session_state.page == "user_config":
-        show_user_config_page()
     else:
         show_main_page()
     
@@ -2463,11 +2344,6 @@ def show_main_page():
             
             with content_tabs[1]:
                 # All-in-one generation
-                st.markdown("### Generate All Content")
-                st.markdown("This will extract wisdom, create an outline, generate social media posts, image prompts, and write a full article - all in one step.")
-                
-                generate_and_export = st.checkbox("Export to Notion after generation", value=True, help="Automatically export to Notion after all content is generated")
-                
                 if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
                     with st.spinner("Processing all content..."):
                         results = process_all_content(
@@ -2483,59 +2359,6 @@ def show_main_page():
                             st.session_state.image_prompts = results.get('image_prompts', '')
                             st.session_state.article = results.get('article', '')
                             st.success("✅ All content generated successfully!")
-                            
-                            # Auto-export to Notion if checkbox is checked
-                            if generate_and_export:
-                                with st.status("Exporting to Notion...") as status:
-                                    try:
-                                        # Get Notion API key and database ID
-                                        notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
-                                        notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
-                                        
-                                        if not notion_key or not notion_db:
-                                            status.update(label="⚠️ Notion integration is not configured.", state="error")
-                                        else:
-                                            # Generate title
-                                            title_to_use = generate_short_title(st.session_state.transcription)
-                                            status.update(label=f"Title generated: \"{title_to_use}\"")
-                                            
-                                            # First try direct Notion save
-                                            try:
-                                                result = direct_notion_save(
-                                                    title=title_to_use,
-                                                    transcript=st.session_state.transcription,
-                                                    wisdom=st.session_state.wisdom,
-                                                    outline=st.session_state.outline,
-                                                    social_content=st.session_state.social,
-                                                    image_prompts=st.session_state.image_prompts,
-                                                    article=st.session_state.article
-                                                )
-                                                
-                                                if result and 'url' in result and not 'error' in result:
-                                                    status.update(label=f"✅ Exported to Notion successfully! [View in Notion]({result['url']})", state="complete")
-                                                    st.markdown(f"[View Your Content in Notion]({result['url']})")
-                                                    return
-                                            except Exception as e:
-                                                logger.warning(f"Direct Notion save failed, trying standard method: {str(e)}")
-                                                
-                                            # Fallback to standard method
-                                            result = create_content_notion_entry(
-                                                title_to_use,
-                                                st.session_state.transcription,
-                                                wisdom=st.session_state.wisdom,
-                                                outline=st.session_state.outline,
-                                                social_content=st.session_state.social,
-                                                image_prompts=st.session_state.image_prompts,
-                                                article=st.session_state.article
-                                            )
-                                            
-                                            if result:
-                                                status.update(label="✅ Exported to Notion successfully!", state="complete")
-                                            else:
-                                                status.update(label="❌ Failed to export to Notion", state="error")
-                                    except Exception as e:
-                                        logger.exception("Error in auto-export to Notion:")
-                                        status.update(label=f"❌ Error exporting to Notion: {str(e)}", state="error")
             
             with content_tabs[2]:
                 # Custom prompt generation
@@ -3785,54 +3608,7 @@ def export_to_notion():
         image_prompts = st.session_state.get("image_prompts", None)
         article = st.session_state.get("article", None)
         
-        # Validate that we have some content to save
-        if not transcript:
-            logger.error("No transcript available for export to Notion")
-            st.error("No transcript available to export. Please transcribe audio first.")
-            return None
-            
-        # Verify API key and database ID are configured
-        notion_api_key = get_api_key_for_service("notion")
-        notion_db_id = get_notion_database_id()
-        
-        if not notion_api_key:
-            logger.error("Notion API key not configured")
-            st.error("Notion API key is not configured. Please add your API key in the settings.")
-            return None
-            
-        if not notion_db_id:
-            logger.error("Notion database ID not configured")
-            st.error("Notion database ID is not configured. Please add it in the settings.")
-            return None
-        
-        # Try to use the direct notion save method first
-        try:
-            logger.debug("Attempting direct Notion save")
-            result = direct_notion_save(
-                title=title,
-                transcript=transcript,
-                wisdom=wisdom,
-                outline=outline,
-                social_content=social_content,
-                image_prompts=image_prompts,
-                article=article
-            )
-            
-            if result and 'url' in result and not 'error' in result:
-                logger.debug(f"Successfully exported to Notion using direct method: {result}")
-                return result
-            elif result and 'error' in result:
-                logger.warning(f"Direct Notion save failed: {result['error']}")
-                # Will fall through to try the standard method
-            else:
-                logger.warning("Direct Notion save returned unexpected result")
-                # Will fall through to try the standard method
-        except Exception as direct_error:
-            logger.exception(f"Error in direct Notion save: {str(direct_error)}")
-            # Will fall through to try the standard method
-        
-        # Fallback to standard notion client method
-        logger.debug("Falling back to standard Notion client method")
+        # Create content in Notion
         result = create_content_notion_entry(
             title=title,
             transcript=transcript,
@@ -3844,10 +3620,10 @@ def export_to_notion():
         )
         
         if result:
-            logger.debug(f"Successfully exported to Notion using standard method: {result}")
+            logger.debug(f"Successfully exported to Notion: {result}")
             return result
         else:
-            logger.error("Both Notion export methods failed")
+            logger.error("Failed to export to Notion")
             st.error("Failed to export to Notion. Please check your Notion API configuration.")
             return None
     
@@ -3886,14 +3662,10 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
             title = ai_title
             logger.debug(f"Generated title: {title}")
         
-        # Generate tags for the content - safely with try/except
-        try:
-            logger.debug("Generating tags for Notion page")
-            content_tags = generate_content_tags(transcript, wisdom)
-            logger.debug(f"Generated tags: {content_tags}")
-        except Exception as e:
-            logger.error(f"Error generating tags: {str(e)}")
-            content_tags = ["audio", "transcript"]
+        # Generate tags for the content
+        logger.debug("Generating tags for Notion page")
+        content_tags = generate_content_tags(transcript, wisdom)
+        logger.debug(f"Generated tags: {content_tags}")
         
         logger.debug("Preparing API request for Notion")
         url = "https://api.notion.com/v1/pages"
@@ -3906,254 +3678,144 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
         # Initialize content blocks
         children = []
         
-        # Add summary callout at the beginning
-        try:
-            summary_callout = create_summary_callout(transcript)
-            children.append(summary_callout)
+        # Add summary if wisdom is available
+        if wisdom:
+            children.append({
+                "object": "block",
+                "type": "callout",
+                "callout": {
+                    "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}],
+                    "color": "purple_background",
+                    "icon": {"type": "emoji", "emoji": "💜"}
+                }
+            })
+        
+        # Add transcript toggle
+        if transcript:
+            # Split transcript into chunks to respect Notion's block size limit
+            transcript_chunks = [transcript[i:i+2000] for i in range(0, len(transcript), 2000)]
+            
+            # Create transcript toggle
+            transcript_blocks = [{
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                }
+            } for chunk in transcript_chunks]
             
             children.append({
-                "object": "block",  # Required for Notion API
-                "type": "divider",
-                "divider": {}
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
+                    "children": transcript_blocks
+                }
             })
-        except Exception as e:
-            logger.error(f"Error adding summary to Notion direct save: {str(e)}")
-        
-        # Add transcript toggle with safe handling
-        if transcript:
-            try:
-                # Split transcript into chunks to respect Notion's block size limit
-                transcript_chunks = chunk_text_for_notion(transcript)
-                
-                # Create transcript toggle
-                transcript_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in transcript_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
-                        "children": transcript_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding transcript to Notion: {str(e)}")
-                # Add simplified transcript block if chunking fails
-                children.append({
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": "Error processing transcript for Notion"}}]
-                    }
-                })
         
         # Add wisdom toggle
         if wisdom:
-            try:
-                wisdom_chunks = chunk_text_for_notion(wisdom)
-                wisdom_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in wisdom_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
-                        "children": wisdom_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding wisdom to Notion: {str(e)}")
+            children.append({
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}]
+                        }
+                    }]
+                }
+            })
         
         # Add outline toggle
         if outline:
-            try:
-                outline_chunks = chunk_text_for_notion(outline)
-                outline_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in outline_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
-                        "children": outline_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding outline to Notion: {str(e)}")
-        
-        # Add social content toggle
-        if social_content:
-            try:
-                social_chunks = chunk_text_for_notion(social_content)
-                social_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in social_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
-                        "children": social_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding social content to Notion: {str(e)}")
-        
-        # Add image prompts toggle
-        if image_prompts:
-            try:
-                prompt_chunks = chunk_text_for_notion(image_prompts)
-                prompt_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in prompt_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
-                        "children": prompt_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding image prompts to Notion: {str(e)}")
-        
-        # Add article toggle
-        if article:
-            try:
-                article_chunks = chunk_text_for_notion(article)
-                article_blocks = [{
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                    }
-                } for chunk in article_chunks]
-                
-                children.append({
-                    "object": "block",
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
-                        "children": article_blocks
-                    }
-                })
-            except Exception as e:
-                logger.error(f"Error adding article to Notion: {str(e)}")
-        
-        try:
-            # Add metadata section
             children.append({
-                "object": "block",  # Required for Notion API
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
+                "object": "block",
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
+                    "children": [{
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": outline[:2000]}}]
+                        }
+                    }]
                 }
             })
-            
+        
+        # Add metadata section
+        children.append({
+            "object": "block",
+            "type": "heading_2",
+            "heading_2": {
+                "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
+            }
+        })
+        
+        children.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {"type": "text", "text": {"content": "Created with "}},
+                    {"type": "text", "text": {"content": "WhisperForge"}, "annotations": {"bold": True, "color": "purple"}}
+                ]
+            }
+        })
+        
+        # Add tags to metadata
+        if content_tags:
+            tags_text = ", ".join(content_tags)
             children.append({
-                "object": "block",  # Required for Notion API
+                "object": "block",
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
-                        {"type": "text", "text": {"content": "Created with "}},
-                        {"type": "text", "text": {"content": "WhisperForge"}, "annotations": {"bold": True, "color": "purple"}}
+                        {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
+                        {"type": "text", "text": {"content": tags_text}}
                     ]
                 }
             })
-            
-            # Add tags to metadata
-            if content_tags:
-                tags_text = ", ".join(content_tags)
-                children.append({
-                    "object": "block",  # Required for Notion API
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [
-                            {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
-                            {"type": "text", "text": {"content": tags_text}}
-                        ]
-                    }
-                })
-                
-            # Prepare the payload
-            payload = {
-                "parent": {"database_id": database_id},
-                "properties": {
-                    "Name": {
-                        "title": [{"text": {"content": title}}]
-                    }
-                    # Remove the "Created" property since it's causing issues
-                    # If you need created date, check your Notion database for the exact property name
-                },
-                "children": children
-            }
-            
-            # Add tags to properties if the database has a multi-select Tags property
-            if content_tags:
-                # Try adding tags - if this fails, the database might not have a Tags property
-                try:
-                    payload["properties"]["Tags"] = {"multi_select": [{"name": tag} for tag in content_tags[:10]]}  # Limit to 10 tags
-                except Exception as e:
-                    logger.warning(f"Could not add tags to Notion page: {str(e)}")
-            
-            # Add Created/Created time property only if needed and with a proper format
-            try:
-                iso_date = datetime.now().isoformat()
-                # Check different variations of property names that might exist in the database
-                # Use the Title property as the default
-                payload["properties"]["Created at"] = {"date": {"start": iso_date}}
-            except Exception as e:
-                logger.warning(f"Could not add Created date to Notion: {str(e)}")
-            
-            logger.debug(f"Payload prepared with {len(children)} content blocks")
-            
-            # Send the request
-            logger.debug("Sending request to Notion API")
-            response = requests.post(url, headers=headers, json=payload)
-            
-            # Check for errors
-            if response.status_code != 200:
-                logger.error(f"API Error: {response.status_code} - {response.text}")
-                return {"error": f"Error: API returned status code {response.status_code}: {response.text}"}
-            
-            # Parse the response
-            result = response.json()
-            logger.debug("Successfully saved page to Notion")
-            
-            return {"url": result.get("url", ""), "id": result.get("id", "")}
         
-        except Exception as e:
-            logger.exception("Exception in direct_notion_save:")
-            return {"error": f"Error saving to Notion: {str(e)}"}
-    
+        # Prepare the payload
+        payload = {
+            "parent": {"database_id": database_id},
+            "properties": {
+                "Name": {
+                    "title": [{"text": {"content": title}}]
+                },
+                "Created": {
+                    "date": {"start": datetime.now().isoformat()}
+                }
+            },
+            "children": children
+        }
+        
+        # Add tags to properties if the database has a multi-select Tags property
+        if content_tags:
+            payload["properties"]["Tags"] = {"multi_select": [{"name": tag} for tag in content_tags]}
+        
+        logger.debug(f"Payload prepared with {len(children)} content blocks")
+        
+        # Send the request
+        logger.debug("Sending request to Notion API")
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # Check for errors
+        if response.status_code != 200:
+            logger.error(f"API Error: {response.status_code} - {response.text}")
+            return {"error": f"Error: API returned status code {response.status_code}: {response.text}"}
+        
+        # Parse the response
+        result = response.json()
+        logger.debug("Successfully saved page to Notion")
+        
+        return {"url": result.get("url", ""), "id": result.get("id", "")}
+            
     except Exception as e:
         logger.exception("Exception in direct_notion_save:")
         return {"error": f"Error saving to Notion: {str(e)}"}
@@ -4178,7 +3840,7 @@ def create_custom_header():
     if is_admin_user():
         admin_link = '<a href="?page=admin" class="nav-item" id="nav-admin">Admin</a>'
     
-    # Create the HTML and JS as separate strings
+    # Create a simplified HTML header with just essential navigation items
     header_html = f'''
     <div class="header-container">
         <div class="header-left">
@@ -4188,7 +3850,6 @@ def create_custom_header():
             <a href="?page=home" class="nav-item" id="nav-home">Home</a>
             <a href="?page=api" class="nav-item" id="nav-api">API Keys</a>
             <a href="?page=usage" class="nav-item" id="nav-usage">Usage</a>
-            <a href="?page=user_config" class="nav-item" id="nav-user-config">User Config</a>
             {admin_link}
         </div>
         <div class="header-right">
@@ -4219,9 +3880,9 @@ def create_custom_header():
     </script>
     '''
     
-    # Combine the HTML and JavaScript
-    full_header = header_html + js_code
-    st.markdown(full_header, unsafe_allow_html=True)
+    # Combine the HTML and JavaScript and render it
+    st.markdown(header_html, unsafe_allow_html=True)
+    st.markdown(js_code, unsafe_allow_html=True)
 
 def load_js():
     """Load JavaScript files"""
@@ -4617,6 +4278,19 @@ def transcribe_audio(uploaded_file):
     except Exception as e:
         logger.exception("Error in transcribe_audio:")
         return f"Error transcribing audio: {str(e)}"
+
+def extract_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
+    """
+    Wrapper for the new modular wisdom extraction to maintain backward compatibility.
+    This function delegates to the new implementation.
+    """
+    # Ensure we have a knowledge base - use KK's if none is provided
+    if knowledge_base is None:
+        knowledge_base = load_user_knowledge_base("KK")
+        
+    # Import the wisdom module directly to avoid circular imports
+    import content.wisdom as wisdom
+    return wisdom.extract_wisdom(transcript, ai_provider, model, custom_prompt, knowledge_base)
 
 if __name__ == "__main__":
     main() 
