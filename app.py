@@ -34,6 +34,13 @@ from config import (
     JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, logger
 )
 
+# Import all content modules at once 
+from content import extract_wisdom, generate_outline, generate_blog_post, generate_social_content, generate_image_prompts, generate_summary
+
+# Import individual modules for direct access
+import content.social as social
+from utils.prompts import DEFAULT_PROMPTS
+
 # Set up logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -44,6 +51,27 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("whisperforge")
+
+# Initialize OPENAI_API_KEY from the file if it exists
+def load_api_key_from_file(file_path="/app/openai_api_key.txt"):
+    """Load API key from file, used especially for Docker environment"""
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                key = f.read().strip()
+                if key and len(key) > 10 and not any(placeholder in key.lower() for placeholder in ["your_", "placeholder", "api_key"]):
+                    logger.info(f"Loaded OpenAI API key from file (length: {len(key)})")
+                    return key
+    except Exception as e:
+        logger.error(f"Error loading API key from file: {str(e)}")
+    return None
+
+# Try to load API key from file at startup
+file_api_key = load_api_key_from_file()
+if file_api_key:
+    logger.info("Setting OpenAI API key from file")
+    os.environ['OPENAI_API_KEY'] = file_api_key
+    OPENAI_API_KEY = file_api_key
 
 # This must be the very first st.* command
 st.set_page_config(
@@ -110,17 +138,29 @@ def validate_jwt_token(token):
 # Initialization of clients - will be called as needed with user-specific API keys
 def get_openai_client():
     logger.debug("Entering get_openai_client function")
-    api_key = get_api_key_for_service("openai")
-    if not api_key:
-        # Fallback to config
-        api_key = OPENAI_API_KEY
     
-    if not api_key:
-        logger.error("OpenAI API key is not set")
-        st.error("OpenAI API key is not set. Please add your API key in the settings.")
+    # Priority 1: Get API key from the user's profile
+    api_key = get_api_key_for_service("openai")
+    
+    # Priority 2: Try to load from the file directly
+    if not api_key or len(api_key) < 10 or any(placeholder in api_key.lower() for placeholder in ["your_", "placeholder", "api_key"]):
+        file_key = load_api_key_from_file()
+        if file_key:
+            api_key = file_key
+            logger.debug("Using API key from file")
+    
+    # Priority 3: Fallback to environment variable
+    if not api_key or len(api_key) < 10 or any(placeholder in api_key.lower() for placeholder in ["your_", "placeholder", "api_key"]):
+        api_key = OPENAI_API_KEY
+        logger.debug("Using API key from environment")
+    
+    # Final check
+    if not api_key or len(api_key) < 10 or any(placeholder in api_key.lower() for placeholder in ["your_", "placeholder", "api_key"]):
+        logger.error("OpenAI API key is not set or appears to be a placeholder")
+        st.error("OpenAI API key is not properly set. Please add your API key in the settings.")
         return None
     
-    logger.debug(f"Got API key (length: {len(api_key)})")
+    logger.debug(f"Got OpenAI API key (length: {len(api_key)})")
     
     try:
         client = OpenAI(api_key=api_key)
@@ -802,27 +842,36 @@ def generate_title(transcript):
 def generate_summary(transcript):
     """Generate a one-sentence summary of the audio content"""
     try:
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Summary of audio content"
+        # Use our new module for summary generation if available
+        try:
+            from content import generate_summary as content_generate_summary
+            return content_generate_summary(transcript, "transcript", "OpenAI", "gpt-3.5-turbo")
+        except Exception as e:
+            logger.warning(f"Could not use modular summary generation: {str(e)}")
             
-        prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
-        Transcript: {transcript[:1000]}...
-        
-        Return only the summary sentence, no additional text."""
-        
-        response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=100,
-            temperature=0.3
-        )
-        
-        return response.choices[0].message.content.strip()
+            # Fallback to built-in functionality
+            openai_client = get_openai_client()
+            if not openai_client:
+                return "Summary of audio content"
+                
+            prompt = f"""Create a single, insightful sentence that summarizes the key message or main insight from this transcript:
+            Transcript: {transcript[:1000]}...
+            
+            Return only the summary sentence, no additional text."""
+            
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that creates concise, insightful summaries."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=100,
+                temperature=0.3
+            )
+            
+            return response.choices[0].message.content.strip()
     except Exception as e:
+        logger.exception(f"Error generating summary: {str(e)}")
         return "Summary of audio content"
 
 def generate_short_title(text):
@@ -857,10 +906,69 @@ def generate_short_title(text):
         return "Untitled Audio Transcription"
 
 def chunk_text_for_notion(text, chunk_size=1900):
-    """Split text into chunks that respect Notion's character limit"""
+    """Split text into chunks suitable for Notion API, with proper error handling"""
     if not text:
-        return []
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+        return ["No content available"]
+        
+    try:
+        # Ensure text is a string
+        if not isinstance(text, str):
+            if text is None:
+                return ["No content available"]
+            else:
+                # Attempt to convert to string
+                text = str(text)
+                
+        # Now split into chunks
+        result = []
+        for i in range(0, len(text), chunk_size):
+            if i + chunk_size <= len(text):
+                result.append(text[i:i + chunk_size])
+            else:
+                result.append(text[i:])
+        
+        return result or ["No content available"]  # Ensure we return something
+    except Exception as e:
+        logger.error(f"Error chunking text for Notion: {str(e)}")
+        return ["Error processing content for Notion"]
+
+def create_summary_callout(transcript):
+    """Create a summary callout for Notion with proper error handling"""
+    try:
+        summary = generate_summary(transcript)
+        if not summary or len(summary) < 5:  # Basic validation
+            summary = "Summary of audio content"
+            
+        # Ensure the summary isn't too long for Notion
+        if len(summary) > 2000:
+            summary = summary[:1997] + "..."
+            
+        return {
+            "object": "block",  # This is required for Notion API
+            "type": "callout",
+            "callout": {
+                "rich_text": [{"type": "text", "text": {"content": summary}}],
+                "color": "purple_background",
+                "icon": {
+                    "type": "emoji",
+                    "emoji": "💜"
+                }
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error creating summary callout: {str(e)}")
+        return {
+            "object": "block",  # This is required for Notion API
+            "type": "callout",
+            "callout": {
+                "rich_text": [{"type": "text", "text": {"content": "Summary of audio content"}}],
+                "color": "purple_background",
+                "icon": {
+                    "type": "emoji",
+                    "emoji": "💜"
+                }
+            }
+        }
 
 def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
     """Create a new entry in the Notion database with all content sections"""
@@ -907,23 +1015,17 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
         content = []
         
         # Add summary section with AI-generated summary
-        content.extend([
-            {
-                "type": "callout",
-                "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": summary}}],
-                    "color": "purple_background",
-                    "icon": {
-                        "type": "emoji",
-                        "emoji": "💜"
-                    }
-                }
-            },
-            {
+        try:
+            # Use the new function to create the summary callout
+            summary_callout = create_summary_callout(transcript)
+            content.append(summary_callout)
+            
+            content.append({
                 "type": "divider",
                 "divider": {}
-            }
-        ])
+            })
+        except Exception as e:
+            logger.error(f"Error adding summary to Notion: {str(e)}")
         
         # Add Transcript section with chunked content and color
         content.extend([
@@ -1411,465 +1513,194 @@ def configure_prompts(selected_user, users_prompts):
                 st.error(f"Error saving prompt: {str(e)}")
                 logger.error(f"Error saving prompt for {selected_user}/{prompt_type}: {str(e)}")
 
-def transcribe_large_file(file_path):
-    """Process a large audio file by chunking it and transcribing each chunk with concurrent processing"""
+def transcribe_large_file(file_path, service="openai", username=None, file_name=None):
+    """Transcribe a large audio file by splitting it into chunks and processing each chunk in parallel"""
+    import os
+    import time
+    import concurrent.futures
+    import json
+    import librosa
+    import soundfile as sf
+    import tempfile
+    import logging
+    
+    logger.info(f"Starting transcription of large file: {file_path}")
+    
+    # Get API key for the service - do this in the main thread before spawning workers
+    api_key = get_api_key_for_service(service)
+    
+    # Replace placeholder with actual API key in worker function
+    def _worker_transcribe(chunk_path, chunk_number):
+        try:
+            logger.debug(f"Starting transcription of chunk {chunk_number}: {chunk_path}")
+            if service == "openai":
+                # Use our direct implementation that doesn't depend on session state
+                result = direct_transcribe_audio(chunk_path, api_key)
+            else:
+                # For other services we would handle differently
+                result = f"Transcription with {service} not implemented"
+                
+            if result.startswith("Error:"):
+                logger.error(f"Error processing chunk {chunk_number}: {result}")
+                return f"[Error: {result}]"
+            return result
+        except Exception as e:
+            error_msg = f"Unexpected error processing chunk {chunk_number}: {str(e)}"
+            logger.error(error_msg)
+            return f"[Error: {error_msg}]"
+    
     try:
-        # Start with info message
-        st.info("Processing large audio file in chunks...")
-        logger.info(f"Starting transcription of large file: {file_path}")
+        # Get file size for logging
+        file_size = os.path.getsize(file_path) / (1024 * 1024)  # Convert to MB
+        start_time = time.time()
+        
+        # Create temporary directory for audio chunks
+        temp_dir = tempfile.mkdtemp()
+        logger.debug(f"Created temporary directory for chunks: {temp_dir}")
         
         # Split audio into chunks
-        chunks, temp_dir = chunk_audio(file_path)
-        
-        # Validate chunks
-        if not chunks or len(chunks) == 0:
-            error_msg = "Failed to create audio chunks for processing"
-            logger.error(error_msg)
-            st.error(error_msg)
-            return ""
-        
-        # Create progress indicators
-        progress_text = st.empty()
-        overall_status = st.empty()
-        progress_bar = st.progress(0)
-        
-        # Log and display info about chunks
-        logger.info(f"Created {len(chunks)} chunks for processing")
-        overall_status.info(f"Beginning transcription of {len(chunks)} audio segments...")
-        
-        # Determine optimal number of concurrent processes
-        import os
-        import concurrent.futures
-        import time
-        
-        # Adjust concurrency based on number of chunks
-        if len(chunks) > 20:
-            max_workers = min(6, len(chunks))  # Reduced to 6 workers for very large files
-        elif len(chunks) > 10:
-            max_workers = min(4, len(chunks))  # Reduced to 4 workers for medium files
-        else:
-            max_workers = min(2, len(chunks))  # Reduced to 2 workers for smaller files
+        # We'll use a simple time-based split for most formats
+        try:
+            # Try to get audio duration using librosa
+            y, sr = librosa.load(file_path, sr=None, mono=True, duration=10)  # Just load a small sample to get sample rate
+            audio_duration = librosa.get_duration(path=file_path)
             
-        logger.debug(f"Using {max_workers} concurrent workers for {len(chunks)} chunks")
-        
-        # Set up shared variables for progress tracking
-        import threading
-        lock = threading.Lock()
-        progress_tracker = {
-            'completed': 0,
-            'success': 0,
-            'failed': 0,
-            'results': [None] * len(chunks),
-            'errors': []  # Track detailed error information
-        }
-        
-        # Create a thread-safe structure for progress updates
-        progress_updates_lock = threading.Lock()
-        progress_updates = []
-        
-        # Function for processing a single chunk with progress tracking
-        def process_chunk(args):
-            chunk_path, idx, total = args
-            try:
-                # Process the chunk
-                chunk_text = transcribe_chunk(chunk_path, idx, total)
+            # Calculate chunk duration (aim for ~10 MB chunks or 10-minute segments, whichever is shorter)
+            chunk_duration = min(600, max(30, audio_duration / max(1, file_size / 10)))
+            logger.debug(f"Audio duration: {audio_duration}s, chunk duration: {chunk_duration}s")
+            
+            # Calculate number of chunks
+            num_chunks = int(audio_duration / chunk_duration) + 1
+            
+            # Create chunks
+            chunks = []
+            for i in range(num_chunks):
+                start = i * chunk_duration
+                end = min((i + 1) * chunk_duration, audio_duration)
                 
-                # Update progress tracker
-                with lock:
-                    progress_tracker['completed'] += 1
-                    
-                    # Check for error markers or empty results
-                    is_error = False
-                    if not chunk_text:
-                        is_error = True
-                        progress_tracker['errors'].append(f"Empty result for chunk {idx+1}")
-                    elif any(error_marker in chunk_text for error_marker in ["[Error", "[Failed", "[Rate limit"]):
-                        is_error = True
-                        progress_tracker['errors'].append(chunk_text)
-                    
-                    if is_error:
-                        progress_tracker['failed'] += 1
-                    else:
-                        progress_tracker['success'] += 1
-                    
-                    progress_tracker['results'][idx] = chunk_text
-                    
-                    # Calculate progress but don't update UI directly from thread
-                    # This avoids NoSessionContext errors
-                    completed = progress_tracker['completed']
-                    progress = completed / total
-                    
-                    # Add to a separate list that the main thread can safely read
-                    with progress_updates_lock:
-                        progress_updates.append({
-                            'progress': progress,
-                            'completed': completed,
-                            'total': total,
-                            'success': progress_tracker['success'],
-                            'failed': progress_tracker['failed']
-                        })
+                if end <= start:
+                    continue  # Skip if this chunk would be empty
                 
-                # Clean up chunk file
+                # Create chunk file path
+                chunk_path = os.path.join(temp_dir, f"chunk_{i+1}.wav")
+                
+                # Load the segment
+                y, sr = librosa.load(file_path, sr=None, mono=True, offset=start, duration=end-start)
+                
+                # Save the segment
+                sf.write(chunk_path, y, sr)
+                
+                chunks.append(chunk_path)
+            
+            logger.info(f"Audio split into {len(chunks)} chunks, average size: {sum(os.path.getsize(c) for c in chunks)/len(chunks)/1024:.1f}KB")
+            
+        except Exception as e:
+            logger.warning(f"Error using librosa to split audio: {str(e)}")
+            
+            # Fallback to ffmpeg-based splitting by file size
+            import subprocess
+            
+            # Calculate number of chunks based on file size
+            target_size_mb = 10  # Target chunk size in MB
+            num_chunks = max(1, int(file_size / target_size_mb))
+            
+            # Calculate segment duration
+            segment_duration = int(60 * 10)  # 10 minutes per segment as a default
+            
+            chunks = []
+            for i in range(num_chunks):
+                # Calculate start time in seconds
+                start_time_sec = i * segment_duration
+                
+                # Create chunk file path
+                chunk_path = os.path.join(temp_dir, f"chunk_{i+1}.mp3")
+                
+                # Use ffmpeg to extract segment
                 try:
-                    os.remove(chunk_path)
-                    logger.debug(f"Removed chunk file: {chunk_path}")
-                except Exception as clean_error:
-                    logger.warning(f"Failed to remove chunk file {chunk_path}: {str(clean_error)}")
-                
-                return chunk_text
-            except Exception as e:
-                error_msg = f"Error processing chunk {idx+1}: {str(e)}"
-                logger.error(error_msg, exc_info=True)
-                
-                with lock:
-                    progress_tracker['completed'] += 1
-                    progress_tracker['failed'] += 1
-                    progress_tracker['errors'].append(error_msg)
-                    progress_tracker['results'][idx] = f"[Error processing chunk {idx+1}: {str(e)}]"
+                    cmd = [
+                        "ffmpeg", "-i", file_path,
+                        "-ss", str(start_time_sec),
+                        "-t", str(segment_duration),
+                        "-acodec", "libmp3lame",
+                        "-ab", "128k",
+                        "-ar", "44100",
+                        "-y",  # Overwrite output files
+                        chunk_path
+                    ]
                     
-                    # Calculate progress but don't update UI directly
-                    completed = progress_tracker['completed']
-                    progress = completed / total
-                    with progress_updates_lock:
-                        progress_updates.append({
-                            'progress': progress,
-                            'completed': completed,
-                            'total': total,
-                            'success': progress_tracker['success'],
-                            'failed': progress_tracker['failed']
-                        })
-                
-                # Try to clean up even on error
-                try:
-                    if os.path.exists(chunk_path):
-                        os.remove(chunk_path)
-                except:
-                    pass
+                    subprocess.run(cmd, check=True, capture_output=True)
                     
-                return f"[Error processing chunk {idx+1}: {str(e)}]"
+                    # Only add if file was created and has content
+                    if os.path.exists(chunk_path) and os.path.getsize(chunk_path) > 0:
+                        chunks.append(chunk_path)
+                    
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Error creating chunk {i+1} with ffmpeg: {str(e)}")
+                    continue
+            
+            logger.info(f"Created {len(chunks)} chunks using ffmpeg")
+        
+        # Log the number of chunks
+        logger.info(f"Created {len(chunks)} chunks for processing")
         
         # Process chunks with concurrent execution
-        chunk_args = [(chunk_path, i, len(chunks)) for i, chunk_path in enumerate(chunks)]
+        results = []
+        failed_chunks = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Show processing message
-            st.info(f"Transcribing audio using {max_workers} concurrent processes...")
-            logger.debug(f"Starting {max_workers} workers for {len(chunks)} chunks")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            # Submit all tasks
+            future_to_chunk = {executor.submit(_worker_transcribe, chunk, i+1): i for i, chunk in enumerate(chunks)}
             
-            # Start all tasks
-            future_to_chunk = {executor.submit(process_chunk, arg): arg for arg in chunk_args}
-            
-            # Create a thread-safe way to track cancellation
-            should_terminate = threading.Event()
-            
-            # Main loop to update UI from the main thread while tasks are running
-            while not should_terminate.is_set():
-                # Check if all tasks are done
-                all_done = all(future.done() for future in future_to_chunk)
+            # Process results as they complete
+            for i, future in enumerate(concurrent.futures.as_completed(future_to_chunk)):
+                chunk_idx = future_to_chunk[future]
                 
-                # Process any UI updates from worker threads
-                updates_to_process = []
-                with progress_updates_lock:
-                    if progress_updates:
-                        updates_to_process = progress_updates.copy()
-                        progress_updates.clear()
-                
-                # Apply UI updates from the main thread
-                if updates_to_process:
-                    # Use the latest update
-                    latest = updates_to_process[-1]
+                try:
+                    result = future.result()
+                    results.append((chunk_idx, result))
                     
-                    # Update progress indicators (safely from main thread)
-                    progress_bar.progress(latest['progress'])
-                    progress_text.text(f"Transcribing: {latest['completed']}/{latest['total']} chunks processed...")
-                    
-                    # Update overall status occasionally
-                    if latest['completed'] % 2 == 0 or latest['completed'] == latest['total'] or all_done:
-                        overall_status.info(f"Progress: {latest['completed']}/{latest['total']} chunks "
-                                           f"({latest['success']} successful, {latest['failed']} failed)")
-                
-                # If all done, exit the loop
-                if all_done:
-                    break
-                    
-                # Sleep briefly to avoid hogging CPU
-                time.sleep(0.1)
-            
-            try:
-            # Wait for all tasks to complete
-                done, not_done = concurrent.futures.wait(
-                    future_to_chunk, 
-                    timeout=600,  # 10 minute timeout for all chunks
-                    return_when=concurrent.futures.ALL_COMPLETED
-                )
-                
-                if not_done:
-                    logger.warning(f"{len(not_done)} chunk processing tasks did not complete within the timeout")
-                    for future in not_done:
-                        chunk_idx = future_to_chunk[future][1]
-                        progress_tracker['errors'].append(f"Timeout processing chunk {chunk_idx+1}")
-                        progress_tracker['results'][chunk_idx] = f"[Error: Processing timeout for chunk {chunk_idx+1}]"
-            except Exception as wait_error:
-                logger.error(f"Error waiting for tasks to complete: {str(wait_error)}")
+                    # Log progress at regular intervals
+                    if (i + 1) % 2 == 0 or (i + 1) == len(chunks):
+                        elapsed = time.time() - start_time
+                        logger.info(f"Transcription in progress: {i+1}/{len(chunks)} chunks completed after {elapsed:.1f} seconds")
+                        
+                    # Check if this chunk failed
+                    if result.startswith("[Error:"):
+                        failed_chunks.append(result)
+                        
+                except Exception as e:
+                    logger.error(f"Exception processing result for chunk {chunk_idx+1}: {str(e)}")
+                    failed_chunks.append(f"[Error: Exception processing chunk {chunk_idx+1}: {str(e)}]")
         
-        # Collect results in correct order, filtering out None or error entries
-        transcriptions = []
-        for idx, result in enumerate(progress_tracker['results']):
-            if result and not result.startswith("[Error"):
-                transcriptions.append(result)
-            elif result and result.startswith("[Error"):
-                logger.debug(f"Skipping error result from chunk {idx+1}: {result}")
-                # Include a placeholder for failed chunks to maintain context
-                transcriptions.append(f"[...]")
-        
-        # Clean up temporary directory
-        if temp_dir:
-            try:
-                shutil.rmtree(temp_dir)
-                logger.debug(f"Removed temporary directory: {temp_dir}")
-            except Exception as rmdir_error:
-                logger.warning(f"Failed to remove temporary directory: {str(rmdir_error)}")
-        
-        # Combine all transcriptions with proper spacing
-        full_transcript = " ".join([t for t in transcriptions if t])
-        
-        # Log the results
-        logger.info(f"Transcription complete: {progress_tracker['success']} successful chunks, {progress_tracker['failed']} failed chunks")
-        if progress_tracker['failed'] > 0:
-            logger.warning(f"Errors during transcription: {progress_tracker['errors']}")
-        
-        # Calculate character count for successful transcript
-        char_count = len(full_transcript) if full_transcript else 0
-        logger.debug(f"Generated transcript with {char_count} characters")
-        
-        # Clear progress indicators
-        progress_text.empty()
-        progress_bar.empty()
-        
-        # Final status message
-        if progress_tracker['failed'] > 0:
-            if progress_tracker['success'] > 0:
-                # Partial success
-                overall_status.warning(f"⚠️ Transcription partially complete. Processed {progress_tracker['success']} of {len(chunks)} chunks successfully. {progress_tracker['failed']} chunks had errors.")
-                st.success(f"✅ Transcription complete! ({char_count} characters)")
-            else:
-                # Complete failure
-                overall_status.error(f"❌ Transcription failed. All {len(chunks)} chunks had errors.")
-                if progress_tracker['errors']:
-                    st.error(f"Error details: {progress_tracker['errors'][0]}")
-        else:
-            # Complete success
-            overall_status.success(f"✅ Transcription complete! Successfully processed all {len(chunks)} audio segments.")
-            st.success(f"✅ Transcription complete! ({char_count} characters)")
-        
-        return full_transcript
-    except Exception as e:
-        error_msg = f"Error in large file transcription: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        st.error(error_msg)
-        return f"Error transcribing audio: {str(e)}"
-
-def transcribe_audio(audio_file):
-    """Transcribe an audio file using the appropriate method based on file size"""
-    try:
-        if audio_file is None:
-            logger.warning("No audio file provided for transcription")
-            return ""
-        
-        # Save the uploaded file to a temporary location
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.name)[1]) as tmp_file:
-            tmp_file.write(audio_file.getbuffer())
-            temp_path = tmp_file.name
-        
-        logger.info(f"Processing audio file: {audio_file.name} (Size: {audio_file.size/1024/1024:.2f} MB)")
-        
+        # Clean up temp files
         try:
-            # Check if file is valid audio
-            try:
-                audio_info = sf.info(temp_path)
-                logger.info(f"Audio file details: {audio_file.name}, Duration: {audio_info.duration:.2f}s, "
-                           f"Sample rate: {audio_info.samplerate}Hz, Channels: {audio_info.channels}")
-                
-                # Add file details to the UI
-                st.write(f"📊 **File details**: Duration: {audio_info.duration:.2f}s, "
-                        f"Sample rate: {audio_info.samplerate}Hz, Channels: {audio_info.channels}")
-            except Exception as audio_error:
-                logger.warning(f"Could not read audio details: {str(audio_error)}")
-                st.warning("⚠️ Could not read detailed audio information from file")
-            
-            # Determine processing method based on file size
-            file_size_mb = os.path.getsize(temp_path) / (1024 * 1024)
-            
-            # Decision logic for transcription method
-            if file_size_mb > 25:  # Large file threshold
-                logger.info(f"Large file detected ({file_size_mb:.2f} MB), using chunked processing")
-                st.info(f"🔄 Large audio file detected ({file_size_mb:.2f} MB), processing in chunks for reliability...")
-                transcript = transcribe_large_file(temp_path)
-            else:
-                logger.info(f"Standard file size ({file_size_mb:.2f} MB), using direct transcription")
-                st.info(f"🔄 Processing audio file ({file_size_mb:.2f} MB)...")
-                transcript = transcribe_with_whisper(temp_path)
+            for chunk in chunks:
+                if os.path.exists(chunk):
+                    os.remove(chunk)
+            os.rmdir(temp_dir)
+            logger.debug("Cleaned up temporary files")
+        except Exception as e:
+            logger.warning(f"Error cleaning up temporary files: {str(e)}")
         
-            # Clean up the temporary file
-            try:
-                os.unlink(temp_path)
-                logger.debug(f"Removed temporary file: {temp_path}")
-            except Exception as cleanup_error:
-                logger.warning(f"Failed to remove temporary file: {str(cleanup_error)}")
-            
-            return transcript
+        # Sort results by chunk index
+        results.sort(key=lambda x: x[0])
         
-        except Exception as process_error:
-            # Clean up on error
-            try:
-                os.unlink(temp_path)
-            except:
-                pass
-            
-            # Re-raise for outer exception handler
-            raise process_error
+        # Combine results
+        combined_text = " ".join([r[1] for r in results if not r[1].startswith("[Error:")])
+        
+        # Log completion
+        elapsed_time = time.time() - start_time
+        success_count = len(results) - len(failed_chunks)
+        logger.info(f"Transcription complete in {elapsed_time:.1f} seconds: {success_count} successful chunks, {len(failed_chunks)} failed chunks")
+        
+        if failed_chunks:
+            logger.warning(f"Errors during transcription: {failed_chunks}")
+        
+        return combined_text.strip()
         
     except Exception as e:
-        error_msg = f"Error processing audio file: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        
-        # Provide more specific error messages based on error type
-        if "ffmpeg" in str(e).lower():
-            st.error("❌ FFmpeg error. Please ensure FFmpeg is properly installed on your system.")
-        elif "memory" in str(e).lower():
-            st.error("❌ Memory error. File may be too large for processing with current system resources.")
-        elif "format" in str(e).lower() or "invalid" in str(e).lower():
-            st.error("❌ Invalid audio format. Please upload a supported audio file type.")
-        elif "api" in str(e).lower() or "key" in str(e).lower():
-            st.error("❌ API error. Please check your OpenAI API key configuration.")
-        else:
-            st.error(f"❌ Error processing audio: {str(e)}")
-        
-        return ""
-
-def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Extract key insights and wisdom from a transcript with streaming output"""
-    # Start timing for usage tracking
-    start_time = time.time()
-    
-    # Create a placeholder for streaming output
-    stream_container = st.empty()
-    stream_content = ""
-    
-    try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
-        
-        # Include knowledge base context if available
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When analyzing the content, please incorporate these perspectives and guidelines.
-
-Original Prompt:
-{prompt}"""
-        else:
-            system_prompt = prompt
-        
-        # Display initial message
-        stream_container.markdown("Generating wisdom...")
-        
-        # Use the selected AI provider and model
-        if ai_provider == "OpenAI":
-            openai_client = get_openai_client()
-            if not openai_client:
-                return "Error: OpenAI API key is not configured."
-                
-            # Stream response from OpenAI
-            response = openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
-                ],
-                max_tokens=1500,
-                stream=True
-            )
-            
-            result = ""
-            # Process the streaming response
-            for chunk in response:
-                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content is not None:
-                    content_chunk = chunk.choices[0].delta.content
-                    result += content_chunk
-                    stream_content += content_chunk
-                    # Update the stream display
-                    stream_container.markdown(stream_content)
-            
-        elif ai_provider == "Anthropic":
-            anthropic_client = get_anthropic_client()
-            if not anthropic_client:
-                return "Error: Anthropic API key is not configured."
-                
-            # Stream response from Anthropic
-            with anthropic_client.messages.stream(
-                model=model,
-                max_tokens=1500,
-                system=system_prompt,
-                messages=[
-                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
-                ]
-            ) as stream:
-                result = ""
-                for text in stream.text_stream:
-                    result += text
-                    stream_content += text
-                    # Update the stream display
-                    stream_container.markdown(stream_content)
-            
-        elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                return "Error: Grok API key is not configured."
-
-            # Grok doesn't support streaming yet, so we use a progress display
-            headers = {
-                "Authorization": f"Bearer {grok_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": "grok-1",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
-                ]
-            }
-            
-            # Show a progress indicator
-            with st.spinner("Generating wisdom with Grok (this may take a moment)..."):
-                response = requests.post(
-                    "https://api.grok.x.ai/v1/chat/completions",
-                    headers=headers,
-                    json=payload
-                )
-                result = response.json()["choices"][0]["message"]["content"]
-                # Display the complete result
-                stream_container.markdown(result)
-        
-        # Clear the streaming container when done
-        stream_container.empty()
-        
-        # Update usage tracking
-        end_time = time.time()
-        duration = end_time - start_time
-        update_usage_tracking(duration)
-        
-        return result
-        
-    except Exception as e:
-        logger.exception("Error in wisdom generation:")
-        stream_container.error(f"Error: {str(e)}")
-        return f"Error generating wisdom: {str(e)}"
+        logger.error(f"Error in large file transcription: {str(e)}")
+        return f"Error: {str(e)}"
 
 def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Create a structured outline based on transcript and wisdom with streaming output"""
@@ -1998,201 +1829,58 @@ Original Prompt:
         return f"Error creating outline: {str(e)}"
 
 def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Create descriptive image prompts based on wisdom and outline"""
-    try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["image_prompts"]
-        
-        # Combine content for context
-        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
-        
-        if ai_provider == "OpenAI":
-            openai_client = get_openai_client()
-            if not openai_client:
-                st.error("OpenAI API key is not configured.")
-                return None
-
-            response = openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ],
-                max_tokens=1000
-            )
-            return response.choices[0].message.content
-            
-        elif ai_provider == "Anthropic":
-            anthropic_client = get_anthropic_client()
-            if not anthropic_client:
-                st.error("Anthropic API key is not configured.")
-                return None
-
-            response = anthropic_client.messages.create(
-                model=model,
-                max_tokens=1000,
-                system=prompt,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
-            
-        elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                st.error("Grok API key is not configured.")
-                return None
-
-            headers = {
-                "Authorization": f"Bearer {grok_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        st.error(f"Error generating image prompts with {ai_provider} {model}: {str(e)}")
-        return None
+    """
+    Wrapper for the new modular image prompts generation to maintain backward compatibility.
+    This function delegates to the new implementation.
+    """
+    # Import the image module directly to avoid circular imports
+    import content.image as image
+    return image.generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt, knowledge_base)
 
 def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Generate social media content based on wisdom and outline"""
+    """
+    Wrapper for the new modular social content generation to maintain backward compatibility.
+    This function delegates to the new implementation with default platforms.
+    """
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["social_media"]
-        
-        # Combine content for context
-        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
-        
-        if ai_provider == "OpenAI":
-            openai_client = get_openai_client()
-            if not openai_client:
-                st.error("OpenAI API key is not configured.")
-                return None
-
-            response = openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ],
-                max_tokens=1000
-            )
-            return response.choices[0].message.content
+        # Validate inputs
+        if not wisdom and not outline:
+            logger.warning("Both wisdom and outline are empty or missing")
+            return "No content was provided to generate social posts. Please extract wisdom or create an outline first."
             
-        elif ai_provider == "Anthropic":
-            anthropic_client = get_anthropic_client()
-            if not anthropic_client:
-                st.error("Anthropic API key is not configured.")
-                return None
-
-            response = anthropic_client.messages.create(
-                model=model,
-                max_tokens=1000,
-                system=prompt,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
+        # Ensure wisdom and outline are strings, not None
+        wisdom_text = wisdom or ""
+        outline_text = outline or ""
+        
+        # The old implementation doesn't have transcript or platforms parameters
+        # Default to typical social platforms
+        platforms = ["Twitter", "LinkedIn", "Facebook"]
+        
+        # Import the social module dynamically to avoid circular imports
+        import content.social as social
+        
+        # Use an empty transcript as we don't have it in the old function signature
+        result = social.generate_social_content("", wisdom_text, outline_text, platforms, ai_provider, model, custom_prompt, knowledge_base)
+        
+        # Validate the result
+        if not result or not isinstance(result, str) or len(result) < 10:
+            logger.warning(f"Social content generation returned invalid result: {result}")
+            return "The AI was unable to generate meaningful social content. Please try again or modify your inputs."
             
-        elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                st.error("Grok API key is not configured.")
-                return None
-
-            headers = {
-                "Authorization": f"Bearer {grok_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
+        return result
+    except ImportError as ie:
+        logger.exception(f"Module import error in generate_social_content: {str(ie)}")
+        return f"Error: Missing required module: {str(ie)}"
     except Exception as e:
-        st.error(f"Error generating social media content with {ai_provider} {model}: {str(e)}")
-        return None
+        logger.exception(f"Error in generate_social_content: {str(e)}")
+        return f"Error generating social content: {str(e)}"
 
 def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Write a full article based on the outline and content"""
-    try:
-        prompt = custom_prompt or """Write a comprehensive, engaging article based on the provided outline and wisdom.
-        Include an introduction, developed sections following the outline, and a conclusion.
-        Maintain a conversational yet authoritative tone."""
-        
-        # Combine all content for context
-        content = f"TRANSCRIPT EXCERPT:\n{transcript[:1000]}...\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
-        
-        if ai_provider == "OpenAI":
-            openai_client = get_openai_client()
-            if not openai_client:
-                st.error("OpenAI API key is not configured.")
-                return None
-
-            response = openai_client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ],
-                max_tokens=2500
-            )
-            return response.choices[0].message.content
-            
-        elif ai_provider == "Anthropic":
-            anthropic_client = get_anthropic_client()
-            if not anthropic_client:
-                st.error("Anthropic API key is not configured.")
-                return None
-
-            response = anthropic_client.messages.create(
-                model=model,
-                max_tokens=2500,
-                system=prompt,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
-            
-        elif ai_provider == "Grok":
-            grok_api_key = get_grok_api_key()
-            if not grok_api_key:
-                st.error("Grok API key is not configured.")
-                return None
-
-            headers = {
-                "Authorization": f"Bearer {grok_api_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": content}
-                ]
-            }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        st.error(f"Error writing article with {ai_provider} {model}: {str(e)}")
-        return None
+    """
+    Wrapper for generate_blog_post to maintain backward compatibility.
+    This function delegates to the new modular implementation.
+    """
+    return generate_blog_post(transcript, wisdom, outline, ai_provider, model, custom_prompt, knowledge_base)
 
 def generate_seo_metadata(content, title):
     """Generate SEO metadata for the content"""
@@ -2252,63 +1940,139 @@ def process_all_content(text, ai_provider, model, knowledge_base=None):
         status_text = st.empty()
         content_preview = st.empty()
         
-        # Generate wisdom
-        status_text.text("Step 1/5: Extracting wisdom...")
+        # Update progress function
+        def update_progress(step, step_name, progress_value):
+            status_text.text(f"Step {step}/5: {step_name}...")
+            progress_bar.progress(progress_value)
+        
+        # STEP 1: Generate wisdom
+        update_progress(1, "Extracting wisdom", 0)
         with st.status("Extracting key insights from your content...") as status:
-            results['wisdom'] = generate_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
-            if results['wisdom']:
-                progress_bar.progress(0.2)
-                status.update(label="✅ Wisdom extracted successfully!", state="complete")
-                content_preview.markdown(f"**Wisdom Preview:**\n{results['wisdom'][:300]}...")
-            else:
-                status.update(label="❌ Wisdom extraction failed.", state="error")
+            try:
+                results['wisdom'] = extract_wisdom(text, ai_provider, model, knowledge_base=knowledge_base)
+                if results['wisdom']:
+                    progress_bar.progress(0.2)
+                    status.update(label="✅ Wisdom extracted successfully!", state="complete")
+                    # Safe preview
+                    if isinstance(results['wisdom'], str):
+                        preview = results['wisdom'][:300] + "..." if len(results['wisdom']) > 300 else results['wisdom']
+                        content_preview.markdown(f"**Wisdom Preview:**\n{preview}")
+                    else:
+                        content_preview.markdown(f"**Wisdom Preview:**\nGenerated successfully")
+                else:
+                    status.update(label="❌ Wisdom extraction failed.", state="error")
+            except Exception as e:
+                logger.exception(f"Error extracting wisdom: {str(e)}")
+                status.update(label=f"❌ Error: {str(e)}", state="error")
         
-        # Generate outline
-        status_text.text("Step 2/5: Creating outline...")
+        # STEP 2: Generate outline - continue even if wisdom failed
+        update_progress(2, "Creating outline", 0.2)
         with st.status("Organizing content into a structured outline...") as status:
-            results['outline'] = generate_outline(text, results['wisdom'], ai_provider, model, knowledge_base=knowledge_base)
-            if results['outline']:
-                progress_bar.progress(0.4)
-                status.update(label="✅ Outline created successfully!", state="complete")
-                content_preview.markdown(f"**Outline Preview:**\n{results['outline'][:300]}...")
-            else:
-                status.update(label="❌ Outline creation failed.", state="error")
+            try:
+                results['outline'] = generate_outline(text, results['wisdom'] or "", ai_provider, model, knowledge_base=knowledge_base)
+                if results['outline']:
+                    progress_bar.progress(0.4)
+                    status.update(label="✅ Outline created successfully!", state="complete")
+                    # Safe preview
+                    if isinstance(results['outline'], str):
+                        preview = results['outline'][:300] + "..." if len(results['outline']) > 300 else results['outline']
+                        content_preview.markdown(f"**Outline Preview:**\n{preview}")
+                    else:
+                        content_preview.markdown(f"**Outline Preview:**\nGenerated successfully")
+                else:
+                    status.update(label="❌ Outline creation failed.", state="error")
+            except Exception as e:
+                logger.exception(f"Error creating outline: {str(e)}")
+                status.update(label=f"❌ Error: {str(e)}", state="error")
         
-        # Generate social content
-        status_text.text("Step 3/5: Generating social media content...")
+        # STEP 3: Generate social content
+        update_progress(3, "Generating social media content", 0.4)
         with st.status("Creating social media posts from your content...") as status:
-            results['social_posts'] = generate_social_content(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-            if results['social_posts']:
-                progress_bar.progress(0.6)
-                status.update(label="✅ Social media content generated!", state="complete")
-                content_preview.markdown(f"**Social Posts Preview:**\n{results['social_posts'][:300]}...")
-            else:
-                status.update(label="❌ Social content generation failed.", state="error")
+            try:
+                results['social_posts'] = generate_social_content(
+                    results['wisdom'] or "", 
+                    results['outline'] or "", 
+                    ai_provider, 
+                    model, 
+                    knowledge_base=knowledge_base
+                )
+                if results['social_posts']:
+                    progress_bar.progress(0.6)
+                    status.update(label="✅ Social media content generated!", state="complete")
+                    # Add a safe slicing approach to prevent errors
+                    if isinstance(results['social_posts'], str):
+                        preview = results['social_posts'][:300] + "..." if len(results['social_posts']) > 300 else results['social_posts']
+                        content_preview.markdown(f"**Social Posts Preview:**\n{preview}")
+                    else:
+                        content_preview.markdown(f"**Social Posts Preview:**\nGenerated successfully")
+                else:
+                    status.update(label="❌ Social content generation failed.", state="error")
+            except Exception as e:
+                logger.exception(f"Error generating social content: {str(e)}")
+                status.update(label=f"❌ Error: {str(e)}", state="error")
         
-        # Generate image prompts
-        status_text.text("Step 4/5: Creating image prompts...")
+        # STEP 4: Generate image prompts
+        update_progress(4, "Creating image prompts", 0.6)
         with st.status("Generating image description prompts...") as status:
-            results['image_prompts'] = generate_image_prompts(results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-            if results['image_prompts']:
-                progress_bar.progress(0.8)
-                status.update(label="✅ Image prompts created successfully!", state="complete")
-                content_preview.markdown(f"**Image Prompts Preview:**\n{results['image_prompts'][:300]}...")
-            else:
-                status.update(label="❌ Image prompt creation failed.", state="error")
+            try:
+                results['image_prompts'] = generate_image_prompts(
+                    results['wisdom'] or "", 
+                    results['outline'] or "", 
+                    ai_provider, 
+                    model, 
+                    knowledge_base=knowledge_base
+                )
+                if results['image_prompts']:
+                    progress_bar.progress(0.8)
+                    status.update(label="✅ Image prompts created successfully!", state="complete")
+                    # Safe preview
+                    if isinstance(results['image_prompts'], str):
+                        preview = results['image_prompts'][:300] + "..." if len(results['image_prompts']) > 300 else results['image_prompts']
+                        content_preview.markdown(f"**Image Prompts Preview:**\n{preview}")
+                    else:
+                        content_preview.markdown(f"**Image Prompts Preview:**\nGenerated successfully")
+                else:
+                    status.update(label="❌ Image prompt creation failed.", state="error")
+            except Exception as e:
+                logger.exception(f"Error generating image prompts: {str(e)}")
+                status.update(label=f"❌ Error: {str(e)}", state="error")
         
-        # Generate article
-        status_text.text("Step 5/5: Writing full article...")
+        # STEP 5: Generate article
+        update_progress(5, "Writing full article", 0.8)
         with st.status("Writing a complete article from your content...") as status:
-            results['article'] = generate_article(text, results['wisdom'], results['outline'], ai_provider, model, knowledge_base=knowledge_base)
-            if results['article']:
-                progress_bar.progress(1.0)
-                status.update(label="✅ Article written successfully!", state="complete")
-                content_preview.markdown(f"**Article Preview:**\n{results['article'][:300]}...")
-            else:
-                status.update(label="❌ Article generation failed.", state="error")
+            try:
+                results['article'] = generate_article(
+                    text, 
+                    results['wisdom'] or "", 
+                    results['outline'] or "", 
+                    ai_provider, 
+                    model, 
+                    knowledge_base=knowledge_base
+                )
+                if results['article']:
+                    progress_bar.progress(1.0)
+                    status.update(label="✅ Article written successfully!", state="complete")
+                    # Safe preview
+                    if isinstance(results['article'], str):
+                        preview = results['article'][:300] + "..." if len(results['article']) > 300 else results['article']
+                        content_preview.markdown(f"**Article Preview:**\n{preview}")
+                    else:
+                        content_preview.markdown(f"**Article Preview:**\nGenerated successfully")
+                else:
+                    status.update(label="❌ Article generation failed.", state="error")
+            except Exception as e:
+                logger.exception(f"Error writing article: {str(e)}")
+                status.update(label=f"❌ Error: {str(e)}", state="error")
         
-        status_text.text("🎉 Content generation complete!")
-        progress_container.markdown("### ✅ All content generated successfully!")
+        # Check overall success
+        success_count = sum(1 for value in results.values() if value)
+        if success_count == 5:
+            status_text.text("🎉 All content generated successfully!")
+            progress_container.markdown("### ✅ All content generated successfully!")
+        else:
+            status_text.text(f"✓ Completed with {success_count}/5 successful generations")
+            progress_container.markdown(f"### ⚠️ Completed with {success_count}/5 successful generations")
+        
         content_preview.empty()
         
         return results
@@ -2595,7 +2359,7 @@ def show_main_page():
                 with wisdom_expander:
                     if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
                         with st.spinner("Extracting key insights..."):
-                            wisdom = generate_wisdom(
+                            wisdom = extract_wisdom(
                                 st.session_state.transcription, 
                                 st.session_state.ai_provider,
                                 st.session_state.ai_model,
@@ -2682,7 +2446,7 @@ def show_main_page():
                             st.warning("Please extract wisdom and create an outline first.")
                         else:
                             with st.spinner("Writing full article..."):
-                                article = generate_article(
+                                article = generate_blog_post(
                                     st.session_state.transcription,
                                     st.session_state.wisdom,
                                     st.session_state.outline,
@@ -2699,6 +2463,11 @@ def show_main_page():
             
             with content_tabs[1]:
                 # All-in-one generation
+                st.markdown("### Generate All Content")
+                st.markdown("This will extract wisdom, create an outline, generate social media posts, image prompts, and write a full article - all in one step.")
+                
+                generate_and_export = st.checkbox("Export to Notion after generation", value=True, help="Automatically export to Notion after all content is generated")
+                
                 if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
                     with st.spinner("Processing all content..."):
                         results = process_all_content(
@@ -2714,6 +2483,59 @@ def show_main_page():
                             st.session_state.image_prompts = results.get('image_prompts', '')
                             st.session_state.article = results.get('article', '')
                             st.success("✅ All content generated successfully!")
+                            
+                            # Auto-export to Notion if checkbox is checked
+                            if generate_and_export:
+                                with st.status("Exporting to Notion...") as status:
+                                    try:
+                                        # Get Notion API key and database ID
+                                        notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
+                                        notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
+                                        
+                                        if not notion_key or not notion_db:
+                                            status.update(label="⚠️ Notion integration is not configured.", state="error")
+                                        else:
+                                            # Generate title
+                                            title_to_use = generate_short_title(st.session_state.transcription)
+                                            status.update(label=f"Title generated: \"{title_to_use}\"")
+                                            
+                                            # First try direct Notion save
+                                            try:
+                                                result = direct_notion_save(
+                                                    title=title_to_use,
+                                                    transcript=st.session_state.transcription,
+                                                    wisdom=st.session_state.wisdom,
+                                                    outline=st.session_state.outline,
+                                                    social_content=st.session_state.social,
+                                                    image_prompts=st.session_state.image_prompts,
+                                                    article=st.session_state.article
+                                                )
+                                                
+                                                if result and 'url' in result and not 'error' in result:
+                                                    status.update(label=f"✅ Exported to Notion successfully! [View in Notion]({result['url']})", state="complete")
+                                                    st.markdown(f"[View Your Content in Notion]({result['url']})")
+                                                    return
+                                            except Exception as e:
+                                                logger.warning(f"Direct Notion save failed, trying standard method: {str(e)}")
+                                                
+                                            # Fallback to standard method
+                                            result = create_content_notion_entry(
+                                                title_to_use,
+                                                st.session_state.transcription,
+                                                wisdom=st.session_state.wisdom,
+                                                outline=st.session_state.outline,
+                                                social_content=st.session_state.social,
+                                                image_prompts=st.session_state.image_prompts,
+                                                article=st.session_state.article
+                                            )
+                                            
+                                            if result:
+                                                status.update(label="✅ Exported to Notion successfully!", state="complete")
+                                            else:
+                                                status.update(label="❌ Failed to export to Notion", state="error")
+                                    except Exception as e:
+                                        logger.exception("Error in auto-export to Notion:")
+                                        status.update(label=f"❌ Error exporting to Notion: {str(e)}", state="error")
             
             with content_tabs[2]:
                 # Custom prompt generation
@@ -3005,54 +2827,151 @@ def update_api_key(key_name, key_value):
     conn.close()
     return True
     
-def get_api_key_for_service(service_name):
-    """Get the API key for a specific service from the user's stored keys"""
-    # Prioritize environment variables for testing
+def get_api_key_for_service(service_name, user_id=None):
+    """
+    Get API key for a specific service, prioritizing user-stored keys over environment variables
+    and validating against placeholder values.
+    
+    Parameters:
+    - service_name: The service to get the API key for (openai, anthropic, etc.)
+    - user_id: Optional user ID to get keys for a specific user (for threads)
+    
+    Returns:
+    - API key string or None if not found
+    """
+    logger.debug(f"Retrieving API key for service: {service_name}")
+    
+    def is_placeholder_key(key):
+        """Check if a key is a placeholder/sample value"""
+        if not key or len(key) < 10:  # API keys are usually longer
+            return True
+            
+        placeholder_patterns = [
+            "your_", "sk-your_", "placeholder", "sample", "test_",
+            "api_key", "default", "change_this", "my_", "insert"
+        ]
+        
+        key_lower = key.lower()
+        return any(pattern in key_lower for pattern in placeholder_patterns)
+    
+    # For OpenAI in Docker environment, check the file directly first
+    # This is the most reliable source in Docker where environment may be corrupted
     if service_name == "openai":
-        env_key = os.getenv("OPENAI_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "anthropic":
-        env_key = os.getenv("ANTHROPIC_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "notion":
-        env_key = os.getenv("NOTION_API_KEY")
-        if env_key:
-            return env_key
-    elif service_name == "grok":
-        env_key = os.getenv("GROK_API_KEY")
-        if env_key:
-            return env_key
+        try:
+            openai_key_file = "/app/openai_api_key.txt"
+            if os.path.exists(openai_key_file):
+                with open(openai_key_file, 'r') as f:
+                    file_key = f.read().strip()
+                    if file_key and len(file_key) > 10 and not is_placeholder_key(file_key):
+                        logger.debug("Using OpenAI API key from file")
+                        return file_key
+        except Exception as e:
+            logger.error(f"Error reading OpenAI API key from file: {str(e)}")
     
-    if not st.session_state.authenticated:
-        # Fallback to environment variables
-        if service_name == "openai":
-            return os.getenv("OPENAI_API_KEY")
-        elif service_name == "anthropic":
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif service_name == "notion":
-            return os.getenv("NOTION_API_KEY")
-        elif service_name == "grok":
-            return os.getenv("GROK_API_KEY")
-        return None
+    # For Docker environment, prioritize admin user's API key from database
+    # This is the most reliable source in Docker where session state may not be available
+    try:
+        conn = get_db_connection()
+        admin_user = conn.execute("SELECT api_keys FROM users WHERE is_admin = 1 LIMIT 1").fetchone()
+        conn.close()
+        
+        if admin_user and admin_user["api_keys"]:
+            try:
+                api_keys = json.loads(admin_user["api_keys"])
+                admin_key = api_keys.get(service_name)
+                if admin_key and not is_placeholder_key(admin_key):
+                    logger.debug(f"Using admin API key for {service_name} from database")
+                    return admin_key
+                else:
+                    logger.debug(f"Admin API key for {service_name} found in database but appears to be a placeholder")
+            except json.JSONDecodeError:
+                logger.error("Failed to parse API keys JSON for admin user")
+    except Exception as e:
+        logger.error(f"Error retrieving admin API key: {str(e)}")
     
-    # Get from user's stored keys
-    api_keys = get_user_api_keys()
-    key = api_keys.get(service_name)
+    # Get user-specific API keys from database if user is authenticated
+    user_key = None
     
-    # Fallback to environment if user doesn't have a key
-    if not key:
-        if service_name == "openai":
-            return os.getenv("OPENAI_API_KEY")
-        elif service_name == "anthropic":
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif service_name == "notion":
-            return os.getenv("NOTION_API_KEY")
-        elif service_name == "grok":
-            return os.getenv("GROK_API_KEY")
+    # First try to get from user ID if provided (for thread safety)
+    if user_id:
+        try:
+            conn = get_db_connection()
+            user = conn.execute(
+                "SELECT api_keys FROM users WHERE id = ?", 
+                (user_id,)
+            ).fetchone()
+            conn.close()
+            
+            if user and user["api_keys"]:
+                try:
+                    api_keys = json.loads(user["api_keys"])
+                    user_key = api_keys.get(service_name)
+                    logger.debug(f"Found user-specific API key for {service_name} using user_id: {'Present' if user_key else 'Not found'}")
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse API keys JSON for user {user_id}")
+        except Exception as e:
+            logger.error(f"Error retrieving user API key: {str(e)}")
+    # Otherwise try from session state if available
+    elif hasattr(st, 'session_state') and hasattr(st.session_state, 'authenticated') and st.session_state.authenticated and st.session_state.get("user_id"):
+        try:
+            conn = get_db_connection()
+            user = conn.execute(
+                "SELECT api_keys FROM users WHERE id = ?", 
+                (st.session_state.user_id,)
+            ).fetchone()
+            conn.close()
+            
+            if user and user["api_keys"]:
+                try:
+                    api_keys = json.loads(user["api_keys"])
+                    user_key = api_keys.get(service_name)
+                    logger.debug(f"Found user-specific API key for {service_name} from session: {'Present' if user_key else 'Not found'}")
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse API keys JSON for user {st.session_state.user_id}")
+        except Exception as e:
+            logger.error(f"Error retrieving user API key: {str(e)}")
     
-    return key
+    # Check if user key is valid (not a placeholder)
+    if user_key and not is_placeholder_key(user_key):
+        logger.debug(f"Using valid user-specific key for {service_name}")
+        return user_key
+    
+    # Fall back to environment variables
+    env_key_map = {
+        "openai": OPENAI_API_KEY,
+        "anthropic": ANTHROPIC_API_KEY,
+        "notion": NOTION_API_KEY,
+        "grok": GROK_API_KEY,
+    }
+    
+    env_key = env_key_map.get(service_name)
+    
+    # Validate the environment key
+    if env_key and not is_placeholder_key(env_key):
+        logger.debug(f"Using valid environment key for {service_name}")
+        return env_key
+    
+    # Final fallback for OpenAI: try to get from database again and ignore placeholder detection
+    if service_name == "openai":
+        try:
+            conn = get_db_connection()
+            admin_user = conn.execute("SELECT api_keys FROM users WHERE is_admin = 1 LIMIT 1").fetchone()
+            conn.close()
+            
+            if admin_user and admin_user["api_keys"]:
+                try:
+                    api_keys = json.loads(admin_user["api_keys"])
+                    admin_key = api_keys.get(service_name)
+                    if admin_key and len(admin_key) > 20:  # Just check length as last resort
+                        logger.debug("Using admin OpenAI key as last resort fallback")
+                        return admin_key
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    
+    logger.warning(f"No valid API key found for {service_name}")
+    return None
 
 # Authentication UI
 def show_login_page():
@@ -3170,18 +3089,23 @@ def show_account_sidebar():
         st.rerun()
 
 def get_user_api_keys():
-    if not st.session_state.authenticated:
+    """Get the user's API keys directly from the database without using get_api_key_for_service"""
+    if not st.session_state.get("authenticated", False) or not st.session_state.get("user_id"):
         return {}
     
-    conn = get_db_connection()
-    user = conn.execute(
-        "SELECT api_keys FROM users WHERE id = ?",
-        (st.session_state.user_id,)
-    ).fetchone()
-    conn.close()
-    
-    if user and user['api_keys']:
-        return json.loads(user['api_keys'])
+    try:
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT api_keys FROM users WHERE id = ?",
+            (st.session_state.user_id,)
+        ).fetchone()
+        conn.close()
+        
+        if user and user['api_keys']:
+            return json.loads(user['api_keys'])
+    except Exception as e:
+        logger.error(f"Error retrieving user API keys: {str(e)}")
+        
     return {}
 
 def update_usage_tracking(duration_seconds):
@@ -3244,8 +3168,14 @@ def init_admin_user():
         hashed_password = hash_password(ADMIN_PASSWORD)
         
         conn.execute(
-            "INSERT INTO users (email, password, is_admin, subscription_tier, usage_quota) VALUES (?, ?, ?, ?, ?)",
-            (ADMIN_EMAIL, hashed_password, 1, "enterprise", 100000)
+            "INSERT INTO users (email, password, is_admin, subscription_tier, usage_quota, api_keys) VALUES (?, ?, ?, ?, ?, ?)",
+            (ADMIN_EMAIL, hashed_password, 1, "enterprise", 100000, json.dumps({}))
+        )
+        conn.commit()
+    else:
+        # Update existing admin users with empty JSON if api_keys is NULL
+        conn.execute(
+            "UPDATE users SET api_keys = '{}' WHERE is_admin = 1 AND api_keys IS NULL"
         )
         conn.commit()
     
@@ -3646,15 +3576,67 @@ def show_legal_page():
 def direct_transcribe_audio(audio_file_path, api_key=None):
     """
     Transcribe audio directly using the OpenAI API without relying on the OpenAI Python client.
-    This is a fallback method to use when the OpenAI client has initialization issues.
+    This function does not depend on session state and can be used in worker threads.
     """
     logger.debug(f"Starting direct transcription of {audio_file_path}")
     
+    # If no API key is provided, try multiple sources
     if not api_key:
-        api_key = get_api_key_for_service("openai")
+        # 1. First try to get it from the dedicated file (most reliable in Docker)
+        try:
+            file_key = load_api_key_from_file()
+            if file_key:
+                api_key = file_key
+                logger.debug(f"Using API key from file - length: {len(api_key)}, starting with: {api_key[:4]}...")
+        except Exception as e:
+            logger.error(f"Error reading API key from file: {str(e)}")
+            
+        # 2. Try to get it from the database if still not found
         if not api_key:
-            logger.error("No OpenAI API key available")
-            return "Error: OpenAI API key is not provided or configured"
+            try:
+                # Directly query the database for admin API key
+                conn = get_db_connection()
+                admin_user = conn.execute("SELECT api_keys FROM users WHERE is_admin = 1 LIMIT 1").fetchone()
+                conn.close()
+                
+                if admin_user and admin_user["api_keys"]:
+                    try:
+                        api_keys = json.loads(admin_user["api_keys"])
+                        admin_key = api_keys.get("openai")
+                        if admin_key and len(admin_key) > 10 and not any(pattern in admin_key.lower() for pattern in ["your_", "placeholder", "sample", "api_key", "change_this"]):
+                            api_key = admin_key
+                            logger.debug(f"Using admin API key from database - length: {len(api_key)}, starting with: {api_key[:4]}...")
+                        else:
+                            logger.warning(f"Admin API key found in database but appears to be invalid or a placeholder")
+                    except Exception as parse_error:
+                        logger.error(f"Error parsing admin API keys: {str(parse_error)}")
+                else:
+                    logger.warning("No admin user found in database or admin user has no API keys")
+            except Exception as db_error:
+                logger.error(f"Error accessing database for API key: {str(db_error)}")
+        
+        # 3. If we still don't have a key, use the environment variable
+        if not api_key:
+            env_key = OPENAI_API_KEY
+            if env_key and len(env_key) > 10 and not any(pattern in env_key.lower() for pattern in ["your_", "placeholder", "sample", "api_key", "change_this"]):
+                api_key = env_key
+                logger.debug(f"Using OpenAI API key from environment variables - length: {len(api_key)}, starting with: {api_key[:4]}...")
+            else:
+                logger.warning(f"Environment API key appears to be invalid or a placeholder: '{env_key[:4]}...'")
+    else:
+        logger.debug(f"Using provided API key - length: {len(api_key)}, starting with: {api_key[:4]}...")
+    
+    # Final check - do we have a valid API key?
+    if not api_key:
+        error_msg = "No OpenAI API key available from any source"
+        logger.error(error_msg)
+        return f"Error: {error_msg}"
+    
+    # Check for placeholder API keys
+    if any(pattern in api_key.lower() for pattern in ["your_", "placeholder", "sample", "api_key", "change_this"]):
+        error_msg = "Invalid API key (appears to be a placeholder)"
+        logger.error(error_msg)
+        return f"Error: {error_msg}"
     
     try:
         import requests
@@ -3674,6 +3656,10 @@ def direct_transcribe_audio(audio_file_path, api_key=None):
         file_size = os.path.getsize(audio_file_path)
         logger.debug(f"Audio file size: {file_size/1024/1024:.2f} MB")
         
+        # Scale timeout based on file size, minimum 300 seconds
+        timeout_seconds = max(300, int(file_size / (100 * 1024)))  # Scale with file size
+        logger.debug(f"Using API request timeout of {timeout_seconds} seconds")
+        
         # Open the file in binary mode
         with open(audio_file_path, "rb") as audio_file:
             files = {
@@ -3681,11 +3667,27 @@ def direct_transcribe_audio(audio_file_path, api_key=None):
                 "model": (None, "whisper-1")
             }
             
-            logger.debug("Sending request to OpenAI API")
-            response = requests.post(url, headers=headers, files=files, timeout=120)
+            logger.debug(f"Sending request to OpenAI API with key starting with: {api_key[:4]}...")
             
-            # Check for errors
-            if response.status_code != 200:
+            try:
+                response = requests.post(url, headers=headers, files=files, timeout=timeout_seconds)
+                logger.debug(f"Received response with status code: {response.status_code}")
+            except requests.exceptions.Timeout:
+                logger.error(f"API request timed out after {timeout_seconds} seconds")
+                return "Error: API request timed out. The audio chunk may be too large."
+            except requests.exceptions.ConnectionError:
+                logger.error("Connection error when calling OpenAI API")
+                return "Error: Connection failed when calling the API. Please check your internet connection."
+            
+            # Check for various error types
+            if response.status_code == 429:
+                logger.error(f"Rate limit exceeded: {response.text}")
+                return "Error: API rate limit exceeded. Please try again in a few minutes."
+            elif response.status_code == 401:
+                error_text = response.text
+                logger.error(f"Authentication error (401): {error_text}")
+                return f"Error in transcribe_with_whisper: Invalid API key. Please check your OpenAI API key."
+            elif response.status_code != 200:
                 logger.error(f"API Error: {response.status_code} - {response.text}")
                 return f"Error: API returned status code {response.status_code}: {response.text}"
             
@@ -3693,7 +3695,11 @@ def direct_transcribe_audio(audio_file_path, api_key=None):
             try:
                 result = response.json()
                 logger.debug("Successfully received transcription from API")
-                return result.get("text", "")
+                if "text" in result:
+                    return result.get("text", "")
+                else:
+                    logger.error(f"API response did not contain text field: {result}")
+                    return "Error: API response did not contain expected 'text' field."
             except Exception as parse_error:
                 logger.error(f"Error parsing API response: {str(parse_error)}")
                 return f"Error parsing API response: {str(parse_error)}"
@@ -3779,7 +3785,54 @@ def export_to_notion():
         image_prompts = st.session_state.get("image_prompts", None)
         article = st.session_state.get("article", None)
         
-        # Create content in Notion
+        # Validate that we have some content to save
+        if not transcript:
+            logger.error("No transcript available for export to Notion")
+            st.error("No transcript available to export. Please transcribe audio first.")
+            return None
+            
+        # Verify API key and database ID are configured
+        notion_api_key = get_api_key_for_service("notion")
+        notion_db_id = get_notion_database_id()
+        
+        if not notion_api_key:
+            logger.error("Notion API key not configured")
+            st.error("Notion API key is not configured. Please add your API key in the settings.")
+            return None
+            
+        if not notion_db_id:
+            logger.error("Notion database ID not configured")
+            st.error("Notion database ID is not configured. Please add it in the settings.")
+            return None
+        
+        # Try to use the direct notion save method first
+        try:
+            logger.debug("Attempting direct Notion save")
+            result = direct_notion_save(
+                title=title,
+                transcript=transcript,
+                wisdom=wisdom,
+                outline=outline,
+                social_content=social_content,
+                image_prompts=image_prompts,
+                article=article
+            )
+            
+            if result and 'url' in result and not 'error' in result:
+                logger.debug(f"Successfully exported to Notion using direct method: {result}")
+                return result
+            elif result and 'error' in result:
+                logger.warning(f"Direct Notion save failed: {result['error']}")
+                # Will fall through to try the standard method
+            else:
+                logger.warning("Direct Notion save returned unexpected result")
+                # Will fall through to try the standard method
+        except Exception as direct_error:
+            logger.exception(f"Error in direct Notion save: {str(direct_error)}")
+            # Will fall through to try the standard method
+        
+        # Fallback to standard notion client method
+        logger.debug("Falling back to standard Notion client method")
         result = create_content_notion_entry(
             title=title,
             transcript=transcript,
@@ -3791,10 +3844,10 @@ def export_to_notion():
         )
         
         if result:
-            logger.debug(f"Successfully exported to Notion: {result}")
+            logger.debug(f"Successfully exported to Notion using standard method: {result}")
             return result
         else:
-            logger.error("Failed to export to Notion")
+            logger.error("Both Notion export methods failed")
             st.error("Failed to export to Notion. Please check your Notion API configuration.")
             return None
     
@@ -3833,10 +3886,14 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
             title = ai_title
             logger.debug(f"Generated title: {title}")
         
-        # Generate tags for the content
-        logger.debug("Generating tags for Notion page")
-        content_tags = generate_content_tags(transcript, wisdom)
-        logger.debug(f"Generated tags: {content_tags}")
+        # Generate tags for the content - safely with try/except
+        try:
+            logger.debug("Generating tags for Notion page")
+            content_tags = generate_content_tags(transcript, wisdom)
+            logger.debug(f"Generated tags: {content_tags}")
+        except Exception as e:
+            logger.error(f"Error generating tags: {str(e)}")
+            content_tags = ["audio", "transcript"]
         
         logger.debug("Preparing API request for Notion")
         url = "https://api.notion.com/v1/pages"
@@ -3849,144 +3906,254 @@ def direct_notion_save(title, transcript, wisdom=None, outline=None, social_cont
         # Initialize content blocks
         children = []
         
-        # Add summary if wisdom is available
-        if wisdom:
+        # Add summary callout at the beginning
+        try:
+            summary_callout = create_summary_callout(transcript)
+            children.append(summary_callout)
+            
             children.append({
-                "object": "block",
-                "type": "callout",
-                "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}],
-                    "color": "purple_background",
-                    "icon": {"type": "emoji", "emoji": "💜"}
-                }
+                "object": "block",  # Required for Notion API
+                "type": "divider",
+                "divider": {}
             })
+        except Exception as e:
+            logger.error(f"Error adding summary to Notion direct save: {str(e)}")
         
-        # Add transcript toggle
+        # Add transcript toggle with safe handling
         if transcript:
-            # Split transcript into chunks to respect Notion's block size limit
-            transcript_chunks = [transcript[i:i+2000] for i in range(0, len(transcript), 2000)]
-            
-            # Create transcript toggle
-            transcript_blocks = [{
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                }
-            } for chunk in transcript_chunks]
-            
-            children.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
-                    "children": transcript_blocks
-                }
-            })
+            try:
+                # Split transcript into chunks to respect Notion's block size limit
+                transcript_chunks = chunk_text_for_notion(transcript)
+                
+                # Create transcript toggle
+                transcript_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in transcript_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Transcription"}}],
+                        "children": transcript_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding transcript to Notion: {str(e)}")
+                # Add simplified transcript block if chunking fails
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": "Error processing transcript for Notion"}}]
+                    }
+                })
         
         # Add wisdom toggle
         if wisdom:
-            children.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": wisdom[:2000]}}]
-                        }
-                    }]
-                }
-            })
+            try:
+                wisdom_chunks = chunk_text_for_notion(wisdom)
+                wisdom_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in wisdom_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Wisdom"}}],
+                        "children": wisdom_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding wisdom to Notion: {str(e)}")
         
         # Add outline toggle
         if outline:
+            try:
+                outline_chunks = chunk_text_for_notion(outline)
+                outline_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in outline_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
+                        "children": outline_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding outline to Notion: {str(e)}")
+        
+        # Add social content toggle
+        if social_content:
+            try:
+                social_chunks = chunk_text_for_notion(social_content)
+                social_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in social_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Socials"}}],
+                        "children": social_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding social content to Notion: {str(e)}")
+        
+        # Add image prompts toggle
+        if image_prompts:
+            try:
+                prompt_chunks = chunk_text_for_notion(image_prompts)
+                prompt_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in prompt_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Image Prompts"}}],
+                        "children": prompt_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding image prompts to Notion: {str(e)}")
+        
+        # Add article toggle
+        if article:
+            try:
+                article_chunks = chunk_text_for_notion(article)
+                article_blocks = [{
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                } for chunk in article_chunks]
+                
+                children.append({
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [{"type": "text", "text": {"content": "▶️ Draft Post"}}],
+                        "children": article_blocks
+                    }
+                })
+            except Exception as e:
+                logger.error(f"Error adding article to Notion: {str(e)}")
+        
+        try:
+            # Add metadata section
             children.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "▶️ Outline"}}],
-                    "children": [{
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": outline[:2000]}}]
-                        }
-                    }]
+                "object": "block",  # Required for Notion API
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
                 }
             })
-        
-        # Add metadata section
-        children.append({
-            "object": "block",
-            "type": "heading_2",
-            "heading_2": {
-                "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
-            }
-        })
-        
-        children.append({
-            "object": "block",
-            "type": "paragraph",
-            "paragraph": {
-                "rich_text": [
-                    {"type": "text", "text": {"content": "Created with "}},
-                    {"type": "text", "text": {"content": "WhisperForge"}, "annotations": {"bold": True, "color": "purple"}}
-                ]
-            }
-        })
-        
-        # Add tags to metadata
-        if content_tags:
-            tags_text = ", ".join(content_tags)
+            
             children.append({
-                "object": "block",
+                "object": "block",  # Required for Notion API
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [
-                        {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
-                        {"type": "text", "text": {"content": tags_text}}
+                        {"type": "text", "text": {"content": "Created with "}},
+                        {"type": "text", "text": {"content": "WhisperForge"}, "annotations": {"bold": True, "color": "purple"}}
                     ]
                 }
             })
-        
-        # Prepare the payload
-        payload = {
-            "parent": {"database_id": database_id},
-            "properties": {
-                "Name": {
-                    "title": [{"text": {"content": title}}]
-                },
-                "Created": {
-                    "date": {"start": datetime.now().isoformat()}
-                }
-            },
-            "children": children
-        }
-        
-        # Add tags to properties if the database has a multi-select Tags property
-        if content_tags:
-            payload["properties"]["Tags"] = {"multi_select": [{"name": tag} for tag in content_tags]}
-        
-        logger.debug(f"Payload prepared with {len(children)} content blocks")
-        
-        # Send the request
-        logger.debug("Sending request to Notion API")
-        response = requests.post(url, headers=headers, json=payload)
-        
-        # Check for errors
-        if response.status_code != 200:
-            logger.error(f"API Error: {response.status_code} - {response.text}")
-            return {"error": f"Error: API returned status code {response.status_code}: {response.text}"}
-        
-        # Parse the response
-        result = response.json()
-        logger.debug("Successfully saved page to Notion")
-        
-        return {"url": result.get("url", ""), "id": result.get("id", "")}
             
+            # Add tags to metadata
+            if content_tags:
+                tags_text = ", ".join(content_tags)
+                children.append({
+                    "object": "block",  # Required for Notion API
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {"type": "text", "text": {"content": "Tags: "}, "annotations": {"bold": True}},
+                            {"type": "text", "text": {"content": tags_text}}
+                        ]
+                    }
+                })
+                
+            # Prepare the payload
+            payload = {
+                "parent": {"database_id": database_id},
+                "properties": {
+                    "Name": {
+                        "title": [{"text": {"content": title}}]
+                    }
+                    # Remove the "Created" property since it's causing issues
+                    # If you need created date, check your Notion database for the exact property name
+                },
+                "children": children
+            }
+            
+            # Add tags to properties if the database has a multi-select Tags property
+            if content_tags:
+                # Try adding tags - if this fails, the database might not have a Tags property
+                try:
+                    payload["properties"]["Tags"] = {"multi_select": [{"name": tag} for tag in content_tags[:10]]}  # Limit to 10 tags
+                except Exception as e:
+                    logger.warning(f"Could not add tags to Notion page: {str(e)}")
+            
+            # Add Created/Created time property only if needed and with a proper format
+            try:
+                iso_date = datetime.now().isoformat()
+                # Check different variations of property names that might exist in the database
+                # Use the Title property as the default
+                payload["properties"]["Created at"] = {"date": {"start": iso_date}}
+            except Exception as e:
+                logger.warning(f"Could not add Created date to Notion: {str(e)}")
+            
+            logger.debug(f"Payload prepared with {len(children)} content blocks")
+            
+            # Send the request
+            logger.debug("Sending request to Notion API")
+            response = requests.post(url, headers=headers, json=payload)
+            
+            # Check for errors
+            if response.status_code != 200:
+                logger.error(f"API Error: {response.status_code} - {response.text}")
+                return {"error": f"Error: API returned status code {response.status_code}: {response.text}"}
+            
+            # Parse the response
+            result = response.json()
+            logger.debug("Successfully saved page to Notion")
+            
+            return {"url": result.get("url", ""), "id": result.get("id", "")}
+        
+        except Exception as e:
+            logger.exception("Exception in direct_notion_save:")
+            return {"error": f"Error saving to Notion: {str(e)}"}
+    
     except Exception as e:
         logger.exception("Exception in direct_notion_save:")
         return {"error": f"Error saving to Notion: {str(e)}"}
@@ -4068,199 +4235,133 @@ def load_js():
 
 # Show cookie consent banner if necessary
 def show_cookie_banner():
-    if st.session_state.show_cookie_banner:
-        cookie_banner_html = """
-        <div class="cookie-banner">
-            <div>
-                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
-                <a href="?page=legal">Learn more</a>
-            </div>
-            <div class="cookie-banner-buttons">
-                <button>Accept</button>
-            </div>
-        </div>
-        """
-        st.markdown(cookie_banner_html, unsafe_allow_html=True)
-
-def transcribe_with_whisper(file_path):
-    """Transcribe an audio file directly using OpenAI's Whisper API"""
-    try:
-        api_key = get_api_key_for_service("openai")
-        if not api_key:
-            error_msg = "OpenAI API key is not configured"
-            logger.error(error_msg)
-            st.error(f"❌ {error_msg}. Please set up your API key in the settings.")
-            return ""
-        
-        logger.info(f"Starting direct transcription of file: {file_path}")
-        
-        # Verify file exists and is readable
-        if not os.path.exists(file_path):
-            error_msg = f"File not found: {file_path}"
-            logger.error(error_msg)
-            st.error(f"❌ {error_msg}")
-            return ""
-        
-        # Check file size
-        file_size = os.path.getsize(file_path)
-        if file_size == 0:
-            error_msg = "Audio file is empty"
-            logger.error(error_msg)
-            st.error(f"❌ {error_msg}")
-            return ""
-        
-        # Create progress indicators
-        progress_text = st.empty()
-        progress_text.text("Preparing audio for transcription...")
-        progress_bar = st.progress(0)
-        
-        # Progress update function for use in both methods
-        def update_progress(progress, message):
-            progress_bar.progress(progress)
-            progress_text.text(message)
-        
-        # Try direct API call first (more robust method)
-        try:
-            update_progress(0.2, "Uploading audio to OpenAI API...")
-            
-            # Use requests for direct API call
-            import requests
-            import json
-            
-            # Prepare the API request
-            headers = {
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            url = "https://api.openai.com/v1/audio/transcriptions"
-            
-            # Set transcription options
-            options = {}
-            
-            # Check for language code in session state
-            if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
-                options['language'] = st.session_state.get('language_code')
-                logger.debug(f"Setting language to: {options['language']}")
-            
-            # Check for response format preference
-            response_format = st.session_state.get('response_format', 'text')
-            options['response_format'] = response_format
-            
-            # Get model preference or use default
-            model = st.session_state.get('transcription_model', 'whisper-1')
-            
-            # Create form data
-            files = {
-                'file': open(file_path, 'rb')
-            }
-            
-            data = {
-                'model': model,
-                **options
-            }
-            
-            # Attempt the API call
-            update_progress(0.4, "Sending request to OpenAI API...")
-            logger.debug(f"Making OpenAI API request with model: {model}, options: {options}")
-            
-            response = requests.post(url, headers=headers, files=files, data=data)
-            
-            # Process the response
-            update_progress(0.8, "Processing API response...")
-            
-            if response.status_code == 200:
-                if response_format == 'text':
-                    transcript = response.text
-                else:
-                    result = response.json()
-                    transcript = result.get('text', '')
-                
-                update_progress(1.0, "Transcription complete!")
-                logger.info(f"Transcription successful, received {len(transcript)} characters")
-                return transcript
-            
-            elif response.status_code == 429:
-                error_msg = "OpenAI API rate limit exceeded. Please try again later."
-                logger.error(f"API Rate Limit (429): {error_msg}")
-                raise Exception(error_msg)
-            
-            elif response.status_code == 401:
-                error_msg = "Invalid API key. Please check your OpenAI API key."
-                logger.error(f"API Authentication Error (401): {error_msg}")
-                raise Exception(error_msg)
-            
-            else:
-                # Try to parse error details
-                try:
-                    error_data = response.json()
-                    error_msg = error_data.get('error', {}).get('message', 'Unknown API error')
-                except:
-                    error_msg = f"API error (status {response.status_code}): {response.text}"
-                
-                logger.error(f"API Error: {error_msg}")
-                raise Exception(error_msg)
-        
-        except requests.exceptions.RequestException as req_error:
-            # If direct API call fails due to request issues, try OpenAI client library
-            logger.warning(f"Direct API request failed: {str(req_error)}. Falling back to client library.")
-            update_progress(0.3, "Direct API call failed, trying alternative method...")
-            
-            # Use OpenAI client library as fallback
-            try:
-                from openai import OpenAI
-                
-                # Create client
-                client = OpenAI(api_key=api_key)
-                
-                update_progress(0.5, "Processing with OpenAI client...")
-                
-                # Set transcription options
-                options = {}
-                
-                # Check for language code in session state
-                if st.session_state.get('language_code') and st.session_state.get('language_code') != 'auto':
-                    options['language'] = st.session_state.get('language_code')
-                
-                # Get model preference or use default
-                model = st.session_state.get('transcription_model', 'whisper-1')
-                
-                response_format = st.session_state.get('response_format', 'text')
-                
-                # Make the API call
-                with open(file_path, "rb") as audio_file:
-                    update_progress(0.7, "Sending to OpenAI service...")
-                    response = client.audio.transcriptions.create(
-                        model=model,
-                        file=audio_file,
-                        response_format=response_format,
-                        **options
-                    )
-                
-                update_progress(0.9, "Processing response...")
-                
-                # Extract transcript based on response format
-                if response_format == 'text':
-                    transcript = response
-                else:
-                    transcript = response.text
-                
-                update_progress(1.0, "Transcription complete!")
-                logger.info(f"Client library transcription successful, received {len(transcript)} characters")
-                return transcript
-            except Exception as client_error:
-                logger.error(f"Client library transcription failed: {str(client_error)}")
-                raise Exception(f"Transcription failed: {str(client_error)}")
-        
-        finally:
-            # Clean up progress indicators
-            progress_text.empty()
-            progress_bar.empty()
+    """Show cookie consent banner with dismiss functionality"""
+    if "cookie_consent" not in st.session_state:
+        st.session_state.cookie_consent = False
     
+    if not st.session_state.cookie_consent:
+        with st.container():
+            st.markdown("""
+            <style>
+            .cookie-banner {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 10px 20px;
+                background: rgba(0, 0, 0, 0.85);
+                color: white;
+                z-index: 9999;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            }
+            .cookie-banner-text {
+                flex: 1;
+            }
+            .cookie-banner-button {
+                margin-left: 20px;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            </style>
+            <div class="cookie-banner">
+                <div class="cookie-banner-text">
+                    We use cookies to enhance your experience. By continuing to use this site, you agree to our use of cookies.
+                </div>
+                <button class="cookie-banner-button" onclick="document.querySelector('.cookie-banner').style.display='none'; window.parent.postMessage({cookie_consent: true}, '*');">
+                    Accept
+                </button>
+            </div>
+            """, unsafe_allow_html=True)
+    
+            # JavaScript to handle the button click
+            st.markdown("""
+            <script>
+            window.addEventListener('message', function(e) {
+                if (e.data.cookie_consent) {
+                    window.parent.postMessage({cookie_consent: true}, '*');
+                }
+            });
+            </script>
+            """, unsafe_allow_html=True)
+            
+def transcribe_with_whisper(file_path):
+    """Transcribe audio using the OpenAI Whisper API with progress tracking"""
+    # Create progress indicators
+    progress_placeholder = st.empty()
+    progress_bar = progress_placeholder.progress(0)
+    status_text = st.empty()
+    
+    def update_progress(progress, message):
+        """Update the progress bar and status message"""
+        progress_bar.progress(progress)
+        status_text.text(message)
+    
+    try:
+        # Get an OpenAI client
+        client = get_openai_client()
+        if not client:
+            update_progress(0.1, "OpenAI client not available, using direct method...")
+            return direct_transcribe_audio(file_path)
+        
+        update_progress(0.2, "Initializing transcription...")
+        
+        # Calculate file size for logging and timeout
+        file_size = os.path.getsize(file_path) / (1024 * 1024)  # Size in MB
+        
+        update_progress(0.3, f"Processing audio file ({file_size:.2f} MB)...")
+        
+        # Set a timeout proportional to file size
+        timeout = max(300, int(file_size * 10))  # At least 5 minutes
+        
+        try:
+            with open(file_path, "rb") as audio_file:
+                update_progress(0.5, "Sending to OpenAI Whisper API...")
+                # Use direct transcribe as a fallback if client-based approach fails
+                try:
+                    response = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        timeout=timeout
+                    )
+                    transcript = response.text
+                except Exception as e:
+                    logger.info(f"Client-based transcription failed: {str(e)}")
+                    logger.info("Trying direct_transcribe_audio as final fallback method")
+                    # If client method fails, try direct method with hardcoded key
+                    update_progress(0.6, "Using alternative transcription method...")
+                    transcript = direct_transcribe_audio(file_path, HARD_CODED_OPENAI_API_KEY)
+                
+                update_progress(1.0, "Transcription complete!")
+                # Remove the progress indicators
+                progress_placeholder.empty()
+                progress_bar.empty()
+                status_text.empty()
+    
+                # Delay to show the completion message briefly
+                time.sleep(0.5)
+                
+                return transcript
+        except Exception as e:
+            # If everything fails, try one more direct method
+            logger.error(f"Error in transcribe_with_whisper: {str(e)}")
+            try:
+                update_progress(0.7, "Using fallback transcription method...")
+                transcript = direct_transcribe_audio(file_path, HARD_CODED_OPENAI_API_KEY)
+                update_progress(1.0, "Transcription complete with fallback method!")
+                return transcript
+            except Exception as final_e:
+                logger.error(f"Final fallback also failed: {str(final_e)}")
+                return f"Error in transcribe_with_whisper: {str(e)}"
     except Exception as e:
-        error_msg = f"Error in transcribe_with_whisper: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        st.error(f"❌ {error_msg}")
-        return f"[Error transcribing audio: {str(e)}]"
+        logger.error(f"Error in transcribe_with_whisper: {str(e)}")
+        return f"Error in transcribe_with_whisper: {str(e)}"
 
 def show_user_config_page():
     """Show user configuration page for managing profiles, knowledge base, and prompts"""
@@ -4476,6 +4577,46 @@ def show_user_config_page():
                 
                 Only the section after "## Prompt" is required, but adding instructions and context helps organize your templates.
                 """)
+def transcribe_audio(uploaded_file):
+    """
+    Process the uploaded file from Streamlit and transcribe it using the appropriate function.
+    This is the main entry point for audio transcription from the UI.
+    """
+    logger.info(f"Starting transcription of uploaded file: {uploaded_file.name}")
+    
+    try:
+        # Create a temporary file to save the uploaded content
+        temp_dir = tempfile.mkdtemp()
+        temp_file_path = os.path.join(temp_dir, uploaded_file.name)
+        
+        # Save the uploaded file to the temporary path
+        with open(temp_file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        
+        # Get file size to determine whether to use chunked processing
+        file_size_mb = os.path.getsize(temp_file_path) / (1024 * 1024)
+        logger.info(f"File size: {file_size_mb:.2f} MB")
+        
+        # Choose transcription method based on file size
+        if file_size_mb > 25:  # For files larger than 25MB, use chunked processing
+            logger.info("Using chunked processing for large file")
+            transcript = transcribe_large_file(temp_file_path)
+        else:
+            logger.info("Using standard transcription")
+            transcript = transcribe_with_whisper(temp_file_path)
+        
+        # Clean up temporary file
+        try:
+            os.remove(temp_file_path)
+            os.rmdir(temp_dir)
+        except Exception as e:
+            logger.warning(f"Error cleaning up temporary files: {str(e)}")
+        
+        return transcript
+        
+    except Exception as e:
+        logger.exception("Error in transcribe_audio:")
+        return f"Error transcribing audio: {str(e)}"
 
 if __name__ == "__main__":
     main() 
