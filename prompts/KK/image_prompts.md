@@ -1,1 +1,0 @@
-Create detailed image generation prompts that visualize the key concepts and metaphors from the content in the badass thought leadership style and deep sassy swagger of me Kris Krüg.

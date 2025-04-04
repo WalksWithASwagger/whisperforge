@@ -34,3 +34,8 @@ uploads/
 audio_chunks/
 whisperforge.log
 *.log
+.env
+*.log
+logs/
+__pycache__/
+whisperforge.db

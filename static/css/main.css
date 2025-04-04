@@ -1,4 +1,7 @@
-/* Refined Cyberpunk Theme - WhisperForge Command Center */
+/* 
+ * WhisperForge - Consolidated CSS
+ * Merges main.css and production.css with consistent style hierarchy
+ */
 
 /* Base variables for limited color palette */
 :root {
@@ -19,6 +22,15 @@
     --glow-intensity: 4px;
     --terminal-font: 'JetBrains Mono', 'Courier New', monospace;
     --system-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    
+    /* Z-index hierarchy - fixed values */
+    --z-base: 1;
+    --z-ui-elements: 50;
+    --z-floating: 100;
+    --z-overlay: 500;
+    --z-modal: 1000;
+    --z-toast: 1500;
+    --z-critical: 2000;
 }
 
 /* Global styles */
@@ -50,6 +62,7 @@
     -webkit-backdrop-filter: blur(10px);
     position: relative;
     overflow: hidden;
+    z-index: var(--z-ui-elements);
 }
 
 .header-container::before {
@@ -120,12 +133,6 @@
     left: 0;
     right: 0;
     opacity: 1;
-}
-
-@keyframes header-shine {
-    0% { transform: translateX(-100%); }
-    50% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
 }
 
 .header-title {
@@ -281,13 +288,15 @@
     border: 1px solid rgba(121, 40, 202, 0.25) !important;
 }
 
-/* File uploader styling */
+/* File uploader styling - updated with higher z-index */
 [data-testid="stFileUploader"] {
     background: linear-gradient(120deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
     border: 1px dashed rgba(121, 40, 202, 0.3);
     border-radius: var(--card-radius);
     padding: 15px;
     transition: all 0.2s ease;
+    position: relative;
+    z-index: var(--z-ui-elements);
 }
 
 [data-testid="stFileUploader"]:hover {
@@ -295,7 +304,7 @@
     box-shadow: 0 0 15px rgba(121, 40, 202, 0.15);
 }
 
-/* Button styling */
+/* Button styling - updated with higher z-index */
 .stButton > button {
     background: linear-gradient(110deg, rgba(121, 40, 202, 0.08) 0%, rgba(255, 0, 128, 0.05) 100%);
     border: 1px solid rgba(121, 40, 202, 0.25);
@@ -306,6 +315,8 @@
     transition: all 0.2s ease;
     font-weight: 500;
     font-size: 0.85rem;
+    position: relative;
+    z-index: var(--z-ui-elements);
 }
 
 .stButton > button:hover {
@@ -339,7 +350,7 @@ audio {
     height: 32px;
 }
 
-/* Text area styling */
+/* Text area styling - updated with higher z-index */
 .stTextArea > div > div > textarea {
     background-color: var(--bg-secondary);
     color: var(--text-primary);
@@ -347,6 +358,8 @@ audio {
     border-radius: var(--border-radius);
     padding: 10px;
     font-family: var(--system-font);
+    position: relative;
+    z-index: var(--z-ui-elements);
 }
 
 .stTextArea > div > div > textarea:focus {
@@ -354,7 +367,7 @@ audio {
     box-shadow: 0 0 0 1px rgba(121, 40, 202, 0.2);
 }
 
-/* Text input styling */
+/* Text input styling - updated with higher z-index */
 .stTextInput > div > div > input {
     background-color: var(--bg-secondary);
     color: var(--text-primary);
@@ -363,6 +376,8 @@ audio {
     padding: 8px 12px;
     font-family: var(--system-font);
     height: 36px;
+    position: relative;
+    z-index: var(--z-ui-elements);
 }
 
 .stTextInput > div > div > input:focus {
@@ -370,9 +385,11 @@ audio {
     box-shadow: 0 0 0 1px rgba(121, 40, 202, 0.2);
 }
 
-/* Selectbox styling */
+/* Selectbox styling - updated with higher z-index */
 .stSelectbox > div {
     background-color: var(--bg-secondary);
+    position: relative;
+    z-index: var(--z-ui-elements);
 }
 
 .stSelectbox > div > div {
@@ -466,12 +483,6 @@ audio {
     animation: pulse 1.5s infinite;
 }
 
-@keyframes pulse {
-    0% { opacity: 0.4; }
-    50% { opacity: 1; }
-    100% { opacity: 0.4; }
-}
-
 .process-status {
     flex-grow: 1;
     font-size: 0.85rem;
@@ -551,7 +562,112 @@ audio {
     box-shadow: 0 0 5px var(--info);
 }
 
-/* Animations and effects */
+/* ---- From production.css ---- */
+
+/* Pricing table styling */
+.pricing-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.pricing-table th, .pricing-table td {
+    padding: 12px 15px;
+    border: 1px solid rgba(121, 40, 202, 0.2);
+}
+
+.pricing-table th {
+    background: rgba(121, 40, 202, 0.1);
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.pricing-table tr:nth-child(even) {
+    background: rgba(121, 40, 202, 0.03);
+}
+
+.pricing-table tr:hover {
+    background: rgba(121, 40, 202, 0.05);
+}
+
+.highlight-plan {
+    background: rgba(121, 40, 202, 0.08) !important;
+    border-left: 3px solid var(--accent-primary);
+}
+
+/* Badge styles */
+.badge {
+    display: inline-block;
+    padding: 3px 7px;
+    font-size: 0.75rem;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.badge-pro {
+    background: linear-gradient(135deg, #7928CA 0%, #FF0080 100%);
+    color: white;
+}
+
+.badge-free {
+    background: rgba(121, 40, 202, 0.1);
+    color: var(--text-primary);
+}
+
+.badge-new {
+    background: linear-gradient(135deg, #36D399 0%, #3ABFF8 100%);
+    color: white;
+}
+
+/* Admin dashboard styling */
+.admin-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.admin-card {
+    background: var(--bg-secondary);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    border: 1px solid rgba(121, 40, 202, 0.2);
+}
+
+.admin-card h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(121, 40, 202, 0.1);
+    padding-bottom: 10px;
+}
+
+/* ---- Animations and UI Elements ---- */
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 0.4; }
+    50% { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+@keyframes header-shine {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+@keyframes scanner-move {
+    0% { top: 0; }
+    100% { top: 100%; }
+}
+
+@keyframes toast-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Scanner line - fixed z-index and pointer-events */
 .scanner-line {
     position: fixed;
     top: 0;
@@ -560,19 +676,15 @@ audio {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
     opacity: 0.4;
-    z-index: 1000;
+    z-index: var(--z-base);
     animation: scanner-move 8s linear infinite;
+    pointer-events: none; /* Ensure it doesn't block interactions */
 }
 
-@keyframes scanner-move {
-    0% { top: 0; }
-    100% { top: 100%; }
-}
-
-/* Toast notifications */
+/* Toast notifications - updated z-index and position */
 .toast-notification {
     position: fixed;
-    bottom: 20px;
+    top: 20px;
     right: 20px;
     background: var(--bg-secondary);
     border-radius: var(--border-radius);
@@ -580,12 +692,84 @@ audio {
     border-left: 3px solid var(--success);
     color: var(--text-primary);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
+    z-index: var(--z-toast);
     font-size: 0.85rem;
     animation: toast-in 0.3s ease forwards;
+    max-width: 300px;
 }
 
-@keyframes toast-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+/* Cookie consent banner - fixed z-index and positioning */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(121, 40, 202, 0.2);
+    z-index: var(--z-critical);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+    max-height: 80px;
+}
+
+.cookie-banner-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Ensure all Streamlit interactive components are clickable */
+.stButton button,
+.stCheckbox input,
+.stSelectbox select,
+.stFileUploader input,
+.stFileUploader label,
+.stTextInput input,
+.stTextArea textarea,
+.stMultiselect,
+[data-testid="stForm"],
+[data-testid="baseButton-headerNoPadding"] {
+    position: relative !important;
+    z-index: var(--z-ui-elements) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .pricing-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .cookie-banner {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .footer-status {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .header-container {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Preference queries for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .scanner-line,
+    .header-container::before,
+    .process-indicator .dot {
+        animation: none !important;
+    }
+    
+    .stButton > button:hover,
+    .quick-button:hover,
+    .notion-button:hover {
+        transform: none !important;
+    }
 } 
