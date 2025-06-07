@@ -1,36 +1,83 @@
-# Environment variables and secrets
-.env
-*.pem
-*.key
-
-# Database files
-*.db
-*.sqlite
-whisperforge.db
-
-# Python cache files
+# Python
 __pycache__/
 *.py[cod]
-*.class
-.pytest_cache/
-.coverage
-.coverage.*
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Virtual environment
+# Virtual Environment
 venv/
-whisperforge-env/
 env/
 ENV/
+.venv/
 
-# Temporary files
-*.tmp
-tmp/
-temp/
-.DS_Store
-ODDSNENDS/
+# Environment Variables
+.env
+.env.local
+.env.production
+.env.development
 
-# User uploads and generated content
-uploads/
-audio_chunks/
-whisperforge.log
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
 *.log
+logs/
+whisperforge.log
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Streamlit
+.streamlit/
+
+# Cache
+cache/
+.cache/
+temp/
+uploads/
+generated_images/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
