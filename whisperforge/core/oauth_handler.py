@@ -87,11 +87,16 @@ class GoogleOAuthHandler:
             code = url_params.get('code')
             if not code:
                 logger.error("No authorization code found in callback")
+                logger.error(f"Available URL params: {list(url_params.keys())}")
                 return None
+            
+            # Handle both list and string formats
+            auth_code = code[0] if isinstance(code, list) else code
+            logger.info(f"Processing OAuth callback with auth code: {auth_code[:10]}...")
             
             # Exchange code for session using Supabase
             response = self.supabase.auth.exchange_code_for_session({
-                "auth_code": code[0] if isinstance(code, list) else code
+                "auth_code": auth_code
             })
             
             if response.user:
@@ -277,7 +282,9 @@ def handle_oauth_redirect():
     if 'code' in query_params:
         # We have an OAuth callback
         st.session_state.oauth_callback = True
-        st.session_state.oauth_params = query_params
+        # Convert query_params to dict for compatibility
+        st.session_state.oauth_params = dict(query_params)
+        logger.info(f"OAuth redirect detected with code: {query_params.get('code', 'Not found')[:10]}...")
         return True
     
     return False 
