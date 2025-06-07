@@ -358,24 +358,42 @@ def show_auth_page():
                 redirect_url = os.getenv("OAUTH_REDIRECT_URL")
                 
                 if not redirect_url:
-                    # Auto-detect environment
-                    if os.getenv("STREAMLIT_SHARING") or os.getenv("STREAMLIT_SERVER_PORT"):
-                        # Running on Streamlit Cloud - you'll need to set this in secrets
-                        redirect_url = os.getenv("STREAMLIT_APP_URL", "https://your-app-name.streamlit.app")
+                    # Better environment detection
+                    streamlit_app_url = os.getenv("STREAMLIT_APP_URL")
+                    
+                    # Check multiple indicators for Streamlit Cloud
+                    is_streamlit_cloud = (
+                        os.getenv("STREAMLIT_SHARING") or 
+                        os.getenv("STREAMLIT_SERVER_PORT") or
+                        os.getenv("STREAMLIT_RUNTIME_CREDENTIALS") or
+                        "streamlit.app" in os.getenv("HOSTNAME", "") or
+                        streamlit_app_url
+                    )
+                    
+                    if is_streamlit_cloud and streamlit_app_url:
+                        redirect_url = streamlit_app_url
+                    elif is_streamlit_cloud:
+                        # If on Streamlit Cloud but no URL set, show error
+                        st.error("⚠️ STREAMLIT_APP_URL not set in secrets! Add it to your app settings.")
+                        st.code("STREAMLIT_APP_URL = \"https://your-app-name.streamlit.app\"")
+                        redirect_url = None
                     else:
                         # Local development
                         redirect_url = "http://localhost:8501"
                 
-                # Use Supabase's built-in OAuth - simple and clean!
-                auth_response = db.client.auth.sign_in_with_oauth({
-                    "provider": "google",
-                    "options": {
-                        "redirect_to": redirect_url
-                    }
-                })
-                
-                if hasattr(auth_response, 'url') and auth_response.url:
-                    st.session_state.oauth_url = auth_response.url
+                if redirect_url:
+                    # Use Supabase's built-in OAuth - simple and clean!
+                    auth_response = db.client.auth.sign_in_with_oauth({
+                        "provider": "google",
+                        "options": {
+                            "redirect_to": redirect_url
+                        }
+                    })
+                    
+                    if hasattr(auth_response, 'url') and auth_response.url:
+                        st.session_state.oauth_url = auth_response.url
+                    else:
+                        st.session_state.oauth_url = None
                 else:
                     st.session_state.oauth_url = None
         except Exception as e:
