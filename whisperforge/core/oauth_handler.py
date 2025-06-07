@@ -32,18 +32,27 @@ class GoogleOAuthHandler:
         """Detect and return appropriate redirect URL based on environment"""
         try:
             import streamlit as st
+            
+            # Check environment variables
+            hostname = os.getenv('HOSTNAME', '')
+            sharing_mode = os.getenv('STREAMLIT_SHARING_MODE', '')
+            
+            logger.info(f"Environment detection - HOSTNAME: {hostname}, STREAMLIT_SHARING_MODE: {sharing_mode}")
+            
             # Check if we're running on Streamlit Cloud
             if hasattr(st, 'config') and hasattr(st.config, 'get_option'):
                 # Try to detect Streamlit Cloud environment
-                if os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', ''):
+                if sharing_mode or 'streamlit.app' in hostname:
+                    logger.info("Detected Streamlit Cloud environment")
                     return "https://whisperforge.streamlit.app"
             
             # Check for common Streamlit Cloud environment indicators
-            hostname = os.getenv('HOSTNAME', '')
             if 'streamlit' in hostname or 'share' in hostname:
+                logger.info("Detected Streamlit Cloud via hostname")
                 return "https://whisperforge.streamlit.app"
             
             # Default to localhost for development
+            logger.info("Using localhost for development")
             return "http://localhost:8507"
             
         except Exception as e:

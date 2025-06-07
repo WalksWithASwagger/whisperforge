@@ -40,6 +40,19 @@ from core.styling import local_css, add_production_css, create_custom_header, lo
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Get app version
+def get_app_version() -> str:
+    """Get the current app version"""
+    try:
+        version_file = Path(__file__).parent / "VERSION"
+        if version_file.exists():
+            return version_file.read_text().strip()
+        return "1.0"
+    except Exception:
+        return "1.0"
+
+APP_VERSION = get_app_version()
+
 def _get_current_app_url() -> str:
     """Detect current app URL based on environment"""
     try:
@@ -317,7 +330,7 @@ def log_pipeline_execution_supabase(pipeline_data: dict) -> bool:
 # Authentication UI
 def show_auth_page():
     """Show authentication page"""
-    st.title("🔐 WhisperForge - Sign In")
+    st.title(f"🔐 WhisperForge v{APP_VERSION} - Sign In")
     
     # Handle OAuth callback first
     if handle_oauth_redirect():
@@ -472,7 +485,9 @@ def show_main_app():
     
     # Sidebar
     with st.sidebar:
-        st.markdown("### 👤 Account")
+        st.markdown(f"### 👤 Account")
+        st.caption(f"WhisperForge v{APP_VERSION}")
+        st.markdown("---")
         db, _ = init_supabase()
         if db:
             user = db.get_user(st.session_state.user_id)
@@ -491,6 +506,15 @@ def show_main_app():
             st.session_state.authenticated = False
             st.session_state.user_id = None
             st.rerun()
+        
+        st.markdown("---")
+        
+        # Debug info (expandable)
+        with st.expander("🔍 Debug Info"):
+            st.write(f"**Version:** {APP_VERSION}")
+            st.write(f"**Environment:** {'Production' if 'streamlit.app' in _get_current_app_url() else 'Development'}")
+            st.write(f"**App URL:** {_get_current_app_url()}")
+            st.write(f"**User ID:** {st.session_state.get('user_id', 'Not logged in')}")
         
         st.markdown("---")
         
@@ -514,7 +538,7 @@ def show_main_app():
 
 def show_home_page():
     """Show main content generation page"""
-    st.title("⚡ WhisperForge Content Pipeline")
+    st.title(f"⚡ WhisperForge Content Pipeline v{APP_VERSION}")
     
     # Audio upload
     uploaded_file = st.file_uploader(
