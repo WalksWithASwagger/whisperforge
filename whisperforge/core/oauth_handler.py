@@ -24,12 +24,9 @@ class GoogleOAuthHandler:
     
     def __init__(self, supabase_client: Client):
         self.supabase = supabase_client
-        self.google_client_id = os.getenv("GOOGLE_CLIENT_ID")
-        self.google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
         self.redirect_url = "http://localhost:8507"  # Default for local development
         
-        if not self.google_client_id or not self.google_client_secret:
-            raise ValueError("Google OAuth credentials not found in environment variables")
+        # Note: Google OAuth credentials are configured in Supabase dashboard, not as env vars
     
     def generate_oauth_url(self, redirect_to: str = None) -> str:
         """Generate Google OAuth URL using Supabase"""
