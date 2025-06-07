@@ -14,8 +14,7 @@ pydub>=0.25.0
 supabase>=2.0.0
 python-dotenv>=1.0.0
 
-# Authentication & OAuth
-streamlit-oauth>=0.1.0
+# HTTP & Authentication
 httpx>=0.24.0
 urllib3>=2.0.0
 
