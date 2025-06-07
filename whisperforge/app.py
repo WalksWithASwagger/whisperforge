@@ -346,7 +346,8 @@ def show_auth_page():
     # Google OAuth Sign-In (Clean Supabase Implementation)
     st.markdown("### 🚀 Quick Sign-In")
     
-    if st.button("🔵 Sign in with Google", type="primary", use_container_width=True):
+    # Generate OAuth URL once and store it
+    if 'oauth_url' not in st.session_state:
         try:
             db, _ = init_supabase()
             if db:
@@ -374,18 +375,24 @@ def show_auth_page():
                 })
                 
                 if hasattr(auth_response, 'url') and auth_response.url:
-                    st.markdown(f"""
-                    <script>
-                    window.open('{auth_response.url}', '_self');
-                    </script>
-                    """, unsafe_allow_html=True)
-                    st.info("🔄 Redirecting to Google...")
+                    st.session_state.oauth_url = auth_response.url
                 else:
-                    st.error("Failed to generate Google sign-in URL")
-            else:
-                st.error("Database connection failed")
+                    st.session_state.oauth_url = None
         except Exception as e:
-            st.error(f"Google sign-in error: {e}")
+            st.error(f"Google sign-in setup error: {e}")
+            st.session_state.oauth_url = None
+    
+    # Show the OAuth button
+    if st.session_state.get('oauth_url'):
+        st.link_button(
+            "🔵 Sign in with Google", 
+            st.session_state.oauth_url, 
+            type="primary", 
+            use_container_width=True
+        )
+    else:
+        if st.button("🔵 Sign in with Google", type="primary", use_container_width=True):
+            st.error("Failed to generate Google sign-in URL. Please check your configuration.")
     
     st.markdown("---")
     st.markdown("### 📧 Or sign in with email")
