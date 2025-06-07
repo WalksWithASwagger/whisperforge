@@ -71,55 +71,45 @@
 
 .header-nav {
     display: flex;
-    gap: 16px;
+    gap: 10px;
     align-items: center;
     justify-content: center;
 }
 
 .nav-item {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 4px 12px;
-    border-radius: 4px;
+    background: linear-gradient(110deg, rgba(121, 40, 202, 0.08) 0%, rgba(66, 151, 233, 0.05) 100%);
+    border: 1px solid rgba(121, 40, 202, 0.25);
+    color: var(--text-primary);
+    border-radius: var(--border-radius);
+    padding: 8px 16px;
+    font-family: var(--system-font);
     transition: all 0.2s ease;
-    position: relative;
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-decoration: none;
 }
 
 .nav-item:hover {
+    background: linear-gradient(110deg, rgba(121, 40, 202, 0.15) 0%, rgba(66, 151, 233, 0.08) 100%);
+    border-color: rgba(121, 40, 202, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
     color: var(--text-primary);
-    background: rgba(121, 40, 202, 0.1);
+}
+
+.nav-item:active {
+    transform: translateY(0px);
 }
 
 .nav-item::after {
-    content: "";
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    right: 50%;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-    opacity: 0;
-    transition: all 0.3s ease;
-}
-
-.nav-item:hover::after {
-    left: 0;
-    right: 0;
-    opacity: 1;
+    display: none;
 }
 
 .nav-item.active {
+    background: linear-gradient(110deg, rgba(121, 40, 202, 0.2) 0%, rgba(66, 151, 233, 0.1) 100%);
+    border-color: rgba(121, 40, 202, 0.5);
     color: var(--text-primary);
-    background: rgba(121, 40, 202, 0.15);
     box-shadow: 0 0 8px rgba(121, 40, 202, 0.2);
-}
-
-.nav-item.active::after {
-    left: 0;
-    right: 0;
-    opacity: 1;
 }
 
 @keyframes header-shine {

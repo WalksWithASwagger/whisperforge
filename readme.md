@@ -1,3 +1,90 @@
+# GPT Image Generator v1.0
+
+A set of tools to generate images using OpenAI's GPT Image 1 API.
+
+## Components
+
+### 1. Streamlit Web Application (`diagram.py`)
+
+An interactive web application that allows you to:
+- Generate images from single prompts or batches of prompts
+- Upload text files containing multiple prompts
+- Apply style guides to all generated images
+- Customize image parameters (size, quality, format, background)
+- Test your API key before generating images
+
+**Features:**
+- Handles both URL-based and base64-encoded responses from the API
+- Automatically saves generated images to a local directory
+- Provides detailed error logging and status updates
+- Displays generated images in a gallery view
+
+### 2. Command-Line Tool (`simple_diagram_generator.py`)
+
+A command-line script for batch processing prompts from a text file:
+- Process multiple prompts from a text file
+- Apply an optional style guide
+- Customize image size and quality
+- Save generated images to a specified output directory
+
+**Features:**
+- Handles both URL and base64 response formats
+- Includes prompt cleaning to avoid request size issues
+- Provides detailed console output for monitoring progress
+
+## How to Use
+
+### Streamlit Web App
+
+1. Run the Streamlit app:
+```
+streamlit run diagram.py
+```
+
+2. Enter your OpenAI API key in the web interface
+3. Choose between single prompt or batch processing
+4. Configure image parameters
+5. Click "Generate Images"
+
+### Command-Line Tool
+
+```
+python simple_diagram_generator.py --prompts your_prompts.txt --style style_guide.txt --api-key YOUR_API_KEY
+```
+
+Options:
+- `--prompts`: Path to text file containing prompts (required)
+- `--style`: Path to style guide file (optional)
+- `--size`: Image size (1024x1024, 1536x1024, or 1024x1536)
+- `--quality`: Image quality (low, medium, high, or auto)
+- `--output`: Output directory for images
+- `--api-key`: Your OpenAI API key (can also be set as OPENAI_API_KEY environment variable)
+
+## Requirements
+
+- Python 3.7+
+- OpenAI API key with access to GPT Image 1 API
+- Required Python packages:
+  - streamlit
+  - pillow
+  - requests
+
+## Troubleshooting
+
+- If you encounter "Request Header Too Large" errors, try shortening your prompts
+- For encoding issues, ensure your prompts use ASCII characters or use the built-in prompt cleaning
+- If images aren't generating, check the console/logs for detailed error messages
+
+## Limitations
+
+- The OpenAI GPT Image 1 API has rate limits that may affect batch processing
+- Very large or complex prompts may be truncated to avoid request size issues
+- Response formats may vary between URL and base64 depending on the API's behavior
+
+## Version History
+
+- v1.0: Initial release with support for both URL and base64 response formats
+
 # WhisperForge
 
 Transform spoken ideas into comprehensive content with AI assistance. WhisperForge transcribes audio, extracts insights, and creates structured Notion pages with multiple content formats.

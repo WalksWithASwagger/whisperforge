@@ -41,8 +41,8 @@ logger = logging.getLogger("whisperforge")
 
 # This must be the very first st.* command
 st.set_page_config(
-    page_title="WhisperForge | Audio to Content Platform",
-    page_icon="🎙️",
+    page_title="WhisperForge",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -188,14 +188,57 @@ def get_notion_client():
     return Client(auth=api_key)
 
 def get_notion_database_id():
-    api_keys = get_user_api_keys()
-    db_id = api_keys.get("notion_database_id")
-    if not db_id:
-        db_id = os.getenv("NOTION_DATABASE_ID")
-    return db_id
+    # Try to get from user's stored keys first, but handle session state errors
+    try:
+        api_keys = get_user_api_keys()
+        db_id = api_keys.get("notion_database_id")
+        if db_id:
+            return db_id
+    except:
+        # If session state fails, fall back to environment variable
+        pass
+    
+    # Fallback to environment variable
+    return os.getenv("NOTION_DATABASE_ID")
 
 def get_grok_api_key():
     return get_api_key_for_service("grok")
+
+def test_notion_connection():
+    """Test the Notion API connection and database access"""
+    try:
+        # Get API key and database ID
+        api_key = get_api_key_for_service("notion")
+        database_id = get_notion_database_id()
+        
+        if not api_key:
+            return {"success": False, "error": "No Notion API key configured"}
+        
+        if not database_id:
+            return {"success": False, "error": "No Notion database ID configured"}
+        
+        # Test client creation
+        try:
+            notion_client = Client(auth=api_key)
+        except Exception as client_error:
+            return {"success": False, "error": f"Failed to create Notion client: {str(client_error)}"}
+        
+        # Test database access
+        try:
+            database = notion_client.databases.retrieve(database_id=database_id)
+            database_title = database.get("title", [{}])[0].get("plain_text", "Unknown")
+            
+            return {
+                "success": True, 
+                "database_title": database_title,
+                "database_id": database_id,
+                "api_key_length": len(api_key)
+            }
+        except Exception as db_error:
+            return {"success": False, "error": f"Failed to access database: {str(db_error)}"}
+            
+    except Exception as e:
+        return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 # Available LLM models grouped by provider
 LLM_MODELS = {
@@ -216,8 +259,15 @@ LLM_MODELS = {
 
 def local_css():
     """Apply refined cyberpunk styling inspired by Luma's interface"""
-    with open('static/css/main.css') as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    css_path = os.path.join(script_dir, 'static', 'css', 'main.css')
+    
+    try:
+        with open(css_path) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning("CSS file not found, using default styling")
     
     # Add the scanner line animation div
     st.markdown('<div class="scanner-line"></div>', unsafe_allow_html=True)
@@ -238,48 +288,48 @@ def load_user_knowledge_base(user):
 
 def load_prompts():
     """Load prompt templates from the prompts directory"""
-    users = []
-    users_prompts = {}  # Initialize as dictionary
+    prompts = {}  # Just one dict for all prompts
     
     # Check if prompts directory exists
     if not os.path.exists("prompts"):
         os.makedirs("prompts")
         st.info("Created prompts directory. Please add prompt templates.")
-        return users, users_prompts
+        return prompts
     
-    # Get list of user directories
-    user_dirs = [d for d in os.listdir("prompts") if os.path.isdir(os.path.join("prompts", d))]
-    
-    # If no user directories, create a default one
-    if not user_dirs:
-        default_dir = os.path.join("prompts", "default_user")
-        os.makedirs(default_dir, exist_ok=True)
-        user_dirs = ["default_user"]
-        
-    # Add users to the list
-    for user in user_dirs:
-        users.append(user)
-        users_prompts[user] = {}  # Initialize each user with an empty dictionary
-        
-        # Get prompt files for each user
-        user_dir = os.path.join("prompts", user)
-        prompt_files = []
-        try:
-            prompt_files = [f for f in os.listdir(user_dir) if f.endswith('.md')]
-        except Exception as e:
-            st.warning(f"Error accessing prompts for {user}: {str(e)}")
+    # First try to load prompts from the main prompts directory
+    try:
+        prompt_files = [f for f in os.listdir("prompts") if f.endswith('.md') and os.path.isfile(os.path.join("prompts", f))]
         
         # Load each prompt file
         for prompt_file in prompt_files:
             prompt_name = os.path.splitext(prompt_file)[0]
             try:
-                with open(os.path.join(user_dir, prompt_file), 'r') as f:
+                with open(os.path.join("prompts", prompt_file), 'r') as f:
                     prompt_content = f.read()
-                users_prompts[user][prompt_name] = prompt_content
+                prompts[prompt_name] = prompt_content
             except Exception as e:
                 st.warning(f"Error loading prompt {prompt_file}: {str(e)}")
+    except Exception as e:
+        st.warning(f"Error accessing prompts directory: {str(e)}")
     
-    return users, users_prompts
+    # If no prompts found in the main directory, try loading from default directory
+    if not prompts and os.path.exists("prompts/default"):
+        try:
+            prompt_files = [f for f in os.listdir("prompts/default") if f.endswith('.md')]
+            
+            # Load each default prompt file
+            for prompt_file in prompt_files:
+                prompt_name = os.path.splitext(prompt_file)[0]
+                try:
+                    with open(os.path.join("prompts/default", prompt_file), 'r') as f:
+                        prompt_content = f.read()
+                    prompts[prompt_name] = prompt_content
+                except Exception as e:
+                    st.warning(f"Error loading default prompt {prompt_file}: {str(e)}")
+        except Exception as e:
+            st.warning(f"Error accessing default prompts: {str(e)}")
+    
+    return prompts
 
 def apply_prompt(text, prompt_content, provider, model, user_knowledge=None):
     """Apply a specific prompt using the selected model and provider, incorporating user knowledge"""
@@ -536,14 +586,16 @@ def chunk_audio(audio_path, target_size_mb=25):
         st.error(f"Error chunking audio: {str(e)}")
         return [], None
 
-def transcribe_chunk(chunk_path, i, total_chunks):
+def transcribe_chunk(chunk_path, i, total_chunks, api_key=None):
     """Transcribe a single audio chunk using OpenAI's API"""
     try:
         # Log the processing of this chunk
         logger.debug(f"Processing chunk {i+1}/{total_chunks} ({os.path.getsize(chunk_path)/1024:.1f}KB): {chunk_path}")
         
-        # Get API key
-        api_key = get_api_key_for_service("openai")
+        # Use provided API key or get one if not provided
+        if not api_key:
+            api_key = get_api_key_for_service("openai")
+            
         if not api_key:
             error_msg = "OpenAI API key is not configured"
             logger.error(error_msg)
@@ -751,41 +803,79 @@ def generate_short_title(text):
         logger.exception("Error generating title:")
         return "Untitled Audio Transcription"
 
-def chunk_text_for_notion(text, chunk_size=1900):
+def chunk_text_for_notion(text, chunk_size=1500):
     """Split text into chunks that respect Notion's character limit"""
     if not text:
         return []
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+    
+    # Add extra safety by verifying each chunk is under the limit
+    chunks = []
+    for i in range(0, len(text), chunk_size):
+        chunk = text[i:i + chunk_size]
+        
+        # If a chunk is still somehow too long, split it further
+        if len(chunk) > 1900:  # Conservative 1900 limit
+            sub_chunks = [chunk[j:j+1400] for j in range(0, len(chunk), 1400)]
+            chunks.extend(sub_chunks)
+        else:
+            chunks.append(chunk)
+            
+    return chunks
 
 def create_content_notion_entry(title, transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
     """Create a new entry in the Notion database with all content sections"""
     try:
-        # Get Notion client and database ID
-        notion_client = get_notion_client()
-        if not notion_client:
-            st.error("Notion API key is not configured. Please add your API key in the settings.")
+        # Get Notion client and database ID with better error handling
+        api_key = get_api_key_for_service("notion")
+        if not api_key:
+            st.error("❌ Notion API key is not configured. Please add your API key in the API Keys settings.")
             return False
             
-        NOTION_DATABASE_ID = get_notion_database_id()
-        if not NOTION_DATABASE_ID:
-            st.error("Notion Database ID is not configured. Please add it in the settings.")
+        database_id = get_notion_database_id()
+        if not database_id:
+            st.error("❌ Notion Database ID is not configured. Please add it in the API Keys settings.")
             return False
         
-        # Initialize audio_filename at the beginning of the function
+        # Log the configuration for debugging
+        logger.debug(f"Notion API key length: {len(api_key) if api_key else 0}")
+        logger.debug(f"Database ID: {database_id}")
+        
+        # Try to create the Notion client
+        try:
+            notion_client = Client(auth=api_key)
+            logger.debug("Notion client created successfully")
+        except Exception as client_error:
+            logger.error(f"Failed to create Notion client: {str(client_error)}")
+            st.error(f"❌ Failed to create Notion client: {str(client_error)}")
+            return False
+        
+        # Initialize audio_filename
         audio_filename = "None"
         if hasattr(st.session_state, 'audio_file') and st.session_state.audio_file:
             audio_filename = st.session_state.audio_file.name
         
         # Generate AI title if none provided
         if not title or title.startswith("Transcription -") or title.startswith("Content -"):
-            ai_title = generate_short_title(transcript)
-            title = f"WHISPER: {ai_title}"
+            try:
+                ai_title = generate_short_title(transcript)
+                title = f"WHISPER: {ai_title}"
+            except Exception as title_error:
+                logger.warning(f"Failed to generate AI title: {str(title_error)}")
+                title = f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         
-        # Generate tags for the content
-        content_tags = generate_content_tags(transcript, wisdom)
+        # Generate tags with error handling
+        try:
+            content_tags = generate_content_tags(transcript, wisdom)
+        except Exception as tags_error:
+            logger.warning(f"Failed to generate tags: {str(tags_error)}")
+            content_tags = ["whisperforge", "audio", "transcription"]
         
-        # Generate summary
-        summary = generate_summary(transcript)
+        # Generate summary with error handling
+        try:
+            summary = generate_summary(transcript)
+        except Exception as summary_error:
+            logger.warning(f"Failed to generate summary: {str(summary_error)}")
+            summary = "AI-generated content from WhisperForge"
         
         # Track model usage for metadata
         used_models = []
@@ -796,231 +886,237 @@ def create_content_notion_entry(title, transcript, wisdom=None, outline=None, so
             used_models.append("OpenAI Whisper-1")
             
         # Estimate token usage
-        total_tokens = estimate_token_usage(transcript, wisdom, outline, social_content, image_prompts, article)
+        try:
+            total_tokens = estimate_token_usage(transcript, wisdom, outline, social_content, image_prompts, article)
+        except Exception:
+            total_tokens = 0
         
-        # Format content with toggles
+        # Get current date for the Created Date property
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # Build content blocks with size limits to avoid API issues
         content = []
         
         # Add summary section with AI-generated summary
-        content.extend([
-            {
+        if summary:
+            content.append({
                 "type": "callout",
                 "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": summary}}],
-                    "color": "purple_background",
-                    "icon": {
-                        "type": "emoji",
-                        "emoji": "💜"
-                    }
+                    "rich_text": [{"type": "text", "text": {"content": summary[:2000]}}],  # Limit size
+                    "color": "gray_background",
+                    "icon": {"type": "emoji", "emoji": "✨"}
                 }
-            },
-            {
-                "type": "divider",
-                "divider": {}
-            }
-        ])
+            })
+            content.append({"type": "divider", "divider": {}})
         
-        # Add Transcript section with chunked content and color
-        content.extend([
-            {
+        # Add Transcript section with chunked content
+        if transcript:
+            transcript_chunks = chunk_text_for_notion(transcript, chunk_size=1800)  # Smaller chunks
+            content.append({
                 "type": "toggle",
                 "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": "Transcription"}}],
-                    "color": "default", # dark gray/black
+                    "rich_text": [{"type": "text", "text": {"content": "📝 Transcription"}}],
+                    "color": "red_background",
                     "children": [
                         {
                             "type": "paragraph",
                             "paragraph": {
                                 "rich_text": [{"type": "text", "text": {"content": chunk}}]
                             }
-                        } for chunk in chunk_text_for_notion(transcript)
+                        } for chunk in transcript_chunks[:10]  # Limit to 10 chunks max
                     ]
                 }
-            }
-        ])
+            })
 
-        # Add Wisdom section if available
+        # Add other sections with size limits
         if wisdom:
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Wisdom"}}],
-                        "color": "brown_background",
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                                }
-                            } for chunk in chunk_text_for_notion(wisdom)
-                        ]
-                    }
-                }
-            ])
-
-        # Add Socials section with golden brown background
-        if social_content:
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Socials"}}],
-                        "color": "orange_background", # closest to golden brown
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                                }
-                            } for chunk in chunk_text_for_notion(social_content)
-                        ]
-                    }
-                }
-            ])
-
-        # Add Image Prompts with green background
-        if image_prompts:
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Image Prompts"}}],
-                        "color": "green_background",
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                                }
-                            } for chunk in chunk_text_for_notion(image_prompts)
-                        ]
-                    }
-                }
-            ])
-
-        # Add Outline with blue background
-        if outline:
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Outline"}}],
-                        "color": "blue_background",
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                                }
-                            } for chunk in chunk_text_for_notion(outline)
-                        ]
-                    }
-                }
-            ])
-
-        # Add Draft Post with purple background
-        if article:
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Draft Post"}}],
-                        "color": "purple_background",
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
-                                }
-                            } for chunk in chunk_text_for_notion(article)
-                        ]
-                    }
-                }
-            ])
-
-        # Add Original Audio section with maroon/red background if audio file exists
-        if audio_filename != "None":
-            content.extend([
-                {
-                    "type": "toggle",
-                    "toggle": {
-                        "rich_text": [{"type": "text", "text": {"content": "Original Audio"}}],
-                        "color": "red_background",
-                        "children": [
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": audio_filename}}]
-                                }
+            wisdom_chunks = chunk_text_for_notion(wisdom, chunk_size=1800)
+            content.append({
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "💡 Wisdom"}}],
+                    "color": "brown_background",
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
                             }
-                        ]
-                    }
+                        } for chunk in wisdom_chunks[:5]  # Limit chunks
+                    ]
                 }
-            ])
+            })
+
+        if outline:
+            outline_chunks = chunk_text_for_notion(outline, chunk_size=1800)
+            content.append({
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "📋 Outline"}}],
+                    "color": "blue_background",
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        } for chunk in outline_chunks[:5]
+                    ]
+                }
+            })
+
+        if social_content:
+            social_chunks = chunk_text_for_notion(social_content, chunk_size=1800)
+            content.append({
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "📱 Social Content"}}],
+                    "color": "orange_background",
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        } for chunk in social_chunks[:3]
+                    ]
+                }
+            })
+
+        if image_prompts:
+            image_chunks = chunk_text_for_notion(image_prompts, chunk_size=1800)
+            content.append({
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "🎨 Image Prompts"}}],
+                    "color": "yellow_background",
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        } for chunk in image_chunks[:3]
+                    ]
+                }
+            })
+
+        if article:
+            article_chunks = chunk_text_for_notion(article, chunk_size=1800)
+            content.append({
+                "type": "toggle",
+                "toggle": {
+                    "rich_text": [{"type": "text", "text": {"content": "📄 Article"}}],
+                    "color": "purple_background",
+                    "children": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                            }
+                        } for chunk in article_chunks[:8]
+                    ]
+                }
+            })
 
         # Add metadata section
-            content.extend([
-                {
-                    "type": "divider",
-                    "divider": {}
-                },
-                {
-                    "type": "heading_2",
-                    "heading_2": {
+        content.extend([
+            {"type": "divider", "divider": {}},
+            {
+                "type": "heading_2",
+                "heading_2": {
                     "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
                 }
             },
             {
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": f"**Original Audio:** {audio_filename}"}}]
-                }
-            },
-                            {
-                                "type": "paragraph",
-                                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": f"**Created:** {datetime.now().strftime('%Y-%m-%d %H:%M')}"}}]
+                    "rich_text": [{"type": "text", "text": {"content": f"Original Audio: {audio_filename}"}}]
                 }
             },
             {
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": f"**Models Used:** {', '.join(used_models) if used_models else 'None'}"}}]
+                    "rich_text": [{"type": "text", "text": {"content": f"Created: {datetime.now().strftime('%Y-%m-%d %H:%M')}"}}]
                 }
             },
             {
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": f"**Estimated Tokens:** {total_tokens:,}"}}]
-                    }
+                    "rich_text": [{"type": "text", "text": {"content": f"Models Used: {', '.join(used_models) if used_models else 'None'}"}}]
                 }
-            ])
+            },
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": f"Estimated Tokens: {total_tokens:,}"}}]
+                }
+            }
+        ])
 
-        # Create the page in Notion
-        response = notion_client.pages.create(
-            parent={"database_id": NOTION_DATABASE_ID},
-            properties={
-                "Name": {"title": [{"text": {"content": title}}]},
-                "Tags": {"multi_select": [{"name": tag} for tag in content_tags]},
-            },
-            children=content
-        )
+        # Create the page with simplified property handling
+        logger.debug(f"Creating Notion page with {len(content)} content blocks")
         
-        # Make the Notion link clickable in the UI
+        # Start with just the required Name property
+        base_properties = {
+            "Name": {"title": [{"text": {"content": title[:100]}}]}  # Limit title length
+        }
+        
+        try:
+            # Try with minimal properties first
+            response = notion_client.pages.create(
+                parent={"database_id": database_id},
+                icon={"type": "emoji", "emoji": "✨"},
+                properties=base_properties,
+                children=content[:50]  # Limit total blocks to avoid API limits
+            )
+            
+            logger.debug("Successfully created Notion page with minimal properties")
+            
+        except Exception as create_error:
+            logger.error(f"Failed to create Notion page: {str(create_error)}")
+            
+            # Try with even simpler content if the first attempt fails
+            try:
+                simple_content = [
+                    {
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [{"type": "text", "text": {"content": f"Transcript: {transcript[:1000]}..."}}]
+                        }
+                    }
+                ]
+                
+                response = notion_client.pages.create(
+                    parent={"database_id": database_id},
+                    properties=base_properties,
+                    children=simple_content
+                )
+                
+                logger.debug("Successfully created Notion page with simplified content")
+                
+            except Exception as simple_error:
+                logger.error(f"Failed to create even simplified Notion page: {str(simple_error)}")
+                st.error(f"❌ Failed to create Notion page: {str(simple_error)}")
+                return False
+        
+        # Handle successful response
         if response and isinstance(response, dict) and 'id' in response:
             page_id = response['id']
             page_url = f"https://notion.so/{page_id.replace('-', '')}"
-            st.success(f"Successfully saved to Notion!")
-            st.markdown(f"[Open in Notion]({page_url})")
+            st.success("✅ Successfully saved to Notion!")
+            st.markdown(f"🔗 [Open in Notion]({page_url})")
+            logger.debug(f"Notion page created successfully: {page_url}")
             return page_url
         else:
-            st.error("Notion API returned an invalid response")
-            st.write("Response:", response)  # Debug info
+            st.error("❌ Notion API returned an invalid response")
+            logger.error(f"Invalid Notion API response: {response}")
             return False
             
     except Exception as e:
-        st.error(f"Detailed error creating Notion entry: {str(e)}")
+        error_msg = f"Error creating Notion entry: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        st.error(f"❌ {error_msg}")
         return False
 
 def estimate_token_usage(transcript, wisdom=None, outline=None, social_content=None, image_prompts=None, article=None):
@@ -1136,25 +1232,8 @@ def get_current_models():
 
 # Add this function to get available users
 def get_available_users():
-    """Get a list of available users by scanning the prompts directory"""
-    users = []
-    prompts_dir = 'prompts'
-    
-    if not os.path.exists(prompts_dir):
-        os.makedirs(prompts_dir)
-        return ["Default"]
-    
-    # Get all user directories
-    for user_dir in os.listdir(prompts_dir):
-        user_path = os.path.join(prompts_dir, user_dir)
-        if os.path.isdir(user_path) and not user_dir.startswith('.'):
-            users.append(user_dir)
-    
-    # If no users found, return a default user
-    if not users:
-        users = ["Default"]
-    
-    return users
+    """Simple function returning a default user for backward compatibility"""
+    return ["Default"]
 
 # Make sure this function exists and works properly
 def get_custom_prompt(user, prompt_type, users_prompts, default_prompts):
@@ -1260,17 +1339,17 @@ def get_available_models(provider):
             return default_models[provider]
         return []
 
-def configure_prompts(selected_user, users_prompts):
-    """Configure custom prompts for the selected user"""
-    st.subheader("Custom Prompts")
-    st.write("Configure custom prompts for different content types:")
+def configure_prompts(prompts):
+    """Configure prompts"""
+    st.subheader("Prompt Configuration")
+    st.write("Configure prompts for different content types:")
     
     # List of prompt types
     prompt_types = ["wisdom_extraction", "summary", "outline_creation", "social_media", "image_prompts"]
     
     for prompt_type in prompt_types:
-        # Get current prompt for the user and type
-        current_prompt = get_custom_prompt(selected_user, prompt_type, users_prompts, DEFAULT_PROMPTS)
+        # Get current prompt
+        current_prompt = get_prompt(prompt_type, prompts, DEFAULT_PROMPTS)
         
         # Display text area for editing
         new_prompt = st.text_area(
@@ -1282,24 +1361,23 @@ def configure_prompts(selected_user, users_prompts):
         
         # Save button for this prompt
         if st.button(f"Save {prompt_type.replace('_', ' ').title()} Prompt"):
-            # Create user directory if it doesn't exist
-            user_dir = os.path.join("prompts", selected_user)
-            os.makedirs(user_dir, exist_ok=True)
-            
             # Save the prompt
-            with open(os.path.join(user_dir, f"{prompt_type}.md"), "w") as f:
-                f.write(new_prompt)
-            
-            st.success(f"Saved custom {prompt_type} prompt for {selected_user}")
-            
-            # Update the in-memory prompts
-            if selected_user not in users_prompts:
-                users_prompts[selected_user] = {}
-            users_prompts[selected_user][prompt_type] = new_prompt
+            if save_prompt(prompt_type, new_prompt):
+                st.success(f"Saved {prompt_type} prompt")
+                # Update the in-memory prompts
+                prompts[prompt_type] = new_prompt
+            else:
+                st.error(f"Failed to save {prompt_type} prompt")
 
 def transcribe_large_file(file_path):
     """Process a large audio file by chunking it and transcribing each chunk with concurrent processing"""
     try:
+        # Get the API key ONCE before starting parallel processing
+        openai_api_key = get_api_key_for_service("openai")
+        if not openai_api_key:
+            st.error("OpenAI API key is required for transcription but is not configured.")
+            return ""
+            
         # Start with info message
         st.info("Processing large audio file in chunks...")
         logger.info(f"Starting transcription of large file: {file_path}")
@@ -1357,8 +1435,8 @@ def transcribe_large_file(file_path):
         def process_chunk(args):
             chunk_path, idx, total = args
             try:
-                # Process the chunk
-                chunk_text = transcribe_chunk(chunk_path, idx, total)
+                # Pass the API key directly to transcribe_chunk
+                chunk_text = transcribe_chunk(chunk_path, idx, total, openai_api_key)
                 
                 # Update progress tracker
                 with lock:
@@ -1643,7 +1721,8 @@ def generate_wisdom(transcript, ai_provider, model, custom_prompt=None, knowledg
     stream_content = ""
     
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["wisdom_extraction"]
+        # Use the custom prompt if provided, otherwise get from prompts
+        prompt = custom_prompt or get_prompt("wisdom_extraction", st.session_state.prompts, DEFAULT_PROMPTS)
         
         # Include knowledge base context if available
         if knowledge_base:
@@ -1767,7 +1846,8 @@ def generate_outline(transcript, wisdom, ai_provider, model, custom_prompt=None,
     stream_content = ""
     
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["outline_creation"]
+        # Use the custom prompt if provided, otherwise get from prompts
+        prompt = custom_prompt or get_prompt("outline_creation", st.session_state.prompts, DEFAULT_PROMPTS)
         
         # Include knowledge base context if available
         if knowledge_base:
@@ -1884,49 +1964,78 @@ Original Prompt:
         return f"Error creating outline: {str(e)}"
 
 def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
-    """Create descriptive image prompts based on wisdom and outline"""
+    """Create descriptive image prompts based on wisdom and outline with streaming output"""
+    # Start timing for usage tracking
+    start_time = time.time()
+    
+    # Create a placeholder for streaming output
+    stream_container = st.empty()
+    stream_content = ""
+    
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["image_prompts"]
+        # Use the custom prompt if provided, otherwise get from prompts
+        prompt = custom_prompt or get_prompt("image_prompts", st.session_state.prompts, DEFAULT_PROMPTS)
         
         # Combine content for context
         content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
         
+        # Display initial message
+        stream_container.markdown("Creating image prompts...")
+        
         if ai_provider == "OpenAI":
             openai_client = get_openai_client()
             if not openai_client:
-                st.error("OpenAI API key is not configured.")
+                stream_container.error("OpenAI API key is not configured.")
                 return None
-
+                
+            # Stream response from OpenAI
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": prompt},
                     {"role": "user", "content": content}
                 ],
-                max_tokens=1000
+                max_tokens=1000,
+                stream=True
             )
-            return response.choices[0].message.content
+            
+            result = ""
+            # Process the streaming response
+            for chunk in response:
+                if hasattr(chunk.choices[0].delta, "content") and chunk.choices[0].delta.content is not None:
+                    content_chunk = chunk.choices[0].delta.content
+                    result += content_chunk
+                    stream_content += content_chunk
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Anthropic":
             anthropic_client = get_anthropic_client()
             if not anthropic_client:
-                st.error("Anthropic API key is not configured.")
+                stream_container.error("Anthropic API key is not configured.")
                 return None
-
-            response = anthropic_client.messages.create(
+                
+            # Stream response from Anthropic
+            with anthropic_client.messages.stream(
                 model=model,
                 max_tokens=1000,
                 system=prompt,
                 messages=[{"role": "user", "content": content}]
-            )
-            return response.content[0].text
+            ) as stream:
+                result = ""
+                for text in stream.text_stream:
+                    result += text
+                    stream_content += text
+                    # Update the stream display
+                    stream_container.markdown(stream_content)
             
         elif ai_provider == "Grok":
             grok_api_key = get_grok_api_key()
             if not grok_api_key:
-                st.error("Grok API key is not configured.")
+                stream_container.error("Grok API key is not configured.")
                 return None
 
+            # Grok doesn't support streaming
             headers = {
                 "Authorization": f"Bearer {grok_api_key}",
                 "Content-Type": "application/json"
@@ -1938,20 +2047,38 @@ def generate_image_prompts(wisdom, outline, ai_provider, model, custom_prompt=No
                     {"role": "user", "content": content}
                 ]
             }
-            response = requests.post(
-                "https://api.grok.x.ai/v1/chat/completions",
-                headers=headers,
-                json=payload
-            )
-            return response.json()["choices"][0]["message"]["content"]
+            
+            # Show a progress indicator
+            with st.spinner("Generating image prompts with Grok (this may take a moment)..."):
+                response = requests.post(
+                    "https://api.grok.x.ai/v1/chat/completions",
+                    headers=headers,
+                    json=payload
+                )
+                result = response.json()["choices"][0]["message"]["content"]
+                # Display the complete result
+                stream_container.markdown(result)
+        
+        # Clear the streaming container when done
+        stream_container.empty()
+        
+        # Update usage tracking
+        end_time = time.time()
+        duration = end_time - start_time
+        update_usage_tracking(duration)
+        
+        return result
+        
     except Exception as e:
-        st.error(f"Error generating image prompts with {ai_provider} {model}: {str(e)}")
+        logger.exception("Error generating image prompts:")
+        stream_container.error(f"Error: {str(e)}")
         return None
 
 def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Generate social media content based on wisdom and outline"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS["social_media"]
+        # Use the custom prompt if provided, otherwise get from prompts
+        prompt = custom_prompt or get_prompt("social_media", st.session_state.prompts, DEFAULT_PROMPTS)
         
         # Combine content for context
         content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
@@ -2016,9 +2143,8 @@ def generate_social_content(wisdom, outline, ai_provider, model, custom_prompt=N
 def generate_article(transcript, wisdom, outline, ai_provider, model, custom_prompt=None, knowledge_base=None):
     """Write a full article based on the outline and content"""
     try:
-        prompt = custom_prompt or """Write a comprehensive, engaging article based on the provided outline and wisdom.
-        Include an introduction, developed sections following the outline, and a conclusion.
-        Maintain a conversational yet authoritative tone."""
+        # Use the custom prompt if provided, otherwise get from prompts
+        prompt = custom_prompt or get_prompt("article_writing", st.session_state.prompts, DEFAULT_PROMPTS)
         
         # Combine all content for context
         content = f"TRANSCRIPT EXCERPT:\n{transcript[:1000]}...\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
@@ -2212,8 +2338,6 @@ def main():
         st.session_state.authenticated = True  # Auto-authenticate for testing
     if 'page' not in st.session_state:
         st.session_state.page = "home"
-    if 'show_cookie_banner' not in st.session_state:
-        st.session_state.show_cookie_banner = True
     if 'transcription' not in st.session_state:
         st.session_state.transcription = ""
     if 'wisdom' not in st.session_state:
@@ -2232,6 +2356,12 @@ def main():
     if 'content_title_value' not in st.session_state:
         st.session_state.content_title_value = ""
     
+    # Load prompts (new simplified version)
+    st.session_state.prompts = load_prompts()
+    
+    # Load knowledge base
+    st.session_state.knowledge_base = load_knowledge_base()
+    
     # Check for URL query parameters
     if "page" in st.query_params:
         st.session_state.page = st.query_params["page"]
@@ -2249,67 +2379,30 @@ def main():
     # Load JavaScript files
     load_js()
     
-    # Skip authentication for testing purposes
-    # Authentication handling
-    # if not st.session_state.authenticated:
-    #     show_login_page()
-    #     return
-    
     # Create a custom header with the refined styling and navigation
     create_custom_header()
-    
-    # Sidebar configuration with reduced items
-    with st.sidebar:
-        st.markdown('<div class="section-header">Configuration</div>', unsafe_allow_html=True)
-        
-        # Account section with logout
-        show_account_sidebar()
-        
-        # User Profile selection
-        st.markdown("### User Profile")
-        selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
-        
-        # Footer links
-        st.markdown("---")
-        st.markdown("### About")
-        if st.button("Terms & Privacy"):
-            st.session_state.page = "legal"
-            st.rerun()
-        st.markdown("[Website](https://whisperforge.ai)")
-        st.markdown("[Support](mailto:support@whisperforge.ai)")
-        
-        # Version info
-        st.markdown("---")
-        st.markdown("WhisperForge v1.0.0")
     
     # Show different pages based on selection
     if st.session_state.page == "home":
         show_main_page()
     elif st.session_state.page == "api":
         show_api_keys_page()
-    elif st.session_state.page == "usage":
-        show_usage_page()
     elif st.session_state.page == "admin":
         show_admin_page()
-    elif st.session_state.page == "legal":
-        show_legal_page()
     elif st.session_state.page == "user_config":
         show_user_config_page()
     else:
         show_main_page()
     
-    # Show cookie consent banner
-    show_cookie_banner()
-    
     # Display tool area if transcript is available
     if st.session_state.get("transcript"):
-        with st.expander("🛠️ Tools", expanded=True):
+        with st.expander("⚙ Tools", expanded=True):
             col1, col2, col3 = st.columns(3)
             
             # First column - transcript actions
             with col1:
                 st.subheader("Transcript")
-                if st.button("📝 Copy Transcript"):
+                if st.button("✧ Copy Transcript"):
                     st.session_state.clipboard = st.session_state.transcript
                     st.toast("Transcript copied to clipboard")
                 
@@ -2323,7 +2416,7 @@ def main():
                 st.subheader("Wisdom")
                 
                 if st.session_state.get("wisdom"):
-                    if st.button("📝 Copy Wisdom"):
+                    if st.button("✧ Copy Wisdom"):
                         st.session_state.clipboard = st.session_state.wisdom
                         st.toast("Wisdom copied to clipboard")
                     
@@ -2337,7 +2430,7 @@ def main():
                 st.subheader("Outline")
                 
                 if st.session_state.get("outline"):
-                    if st.button("📝 Copy Outline"):
+                    if st.button("✧ Copy Outline"):
                         st.session_state.clipboard = st.session_state.outline
                         st.toast("Outline copied to clipboard")
                     
@@ -2354,25 +2447,8 @@ def show_main_page():
     # Get user's API keys
     api_keys = get_user_api_keys()
     
-    # Check if API keys are set up
-    openai_key = api_keys.get("openai")
-    anthropic_key = api_keys.get("anthropic")
-    notion_key = api_keys.get("notion")
-    
-    if not openai_key:
-        st.warning("⚠️ Your OpenAI API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
-    
-    if not anthropic_key:
-        st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
-    
-    # Get selected user from the sidebar
-    selected_user = st.session_state.get("user_profile_sidebar", "Default")
-    
-    # Load knowledge base for selected user
-    knowledge_base = load_user_knowledge_base(selected_user)
-    
-    # Display the current models being used
-    st.info(f"Using {st.session_state.transcription_provider} {st.session_state.transcription_model} for transcription and {st.session_state.ai_provider} {st.session_state.ai_model} for content processing. Model settings can be changed in the Admin panel.")
+    # Use the global knowledge base
+    knowledge_base = st.session_state.knowledge_base
     
     # Add tabs for input selection
     input_tabs = st.tabs(["Audio Upload", "Text Input"])
@@ -2391,7 +2467,7 @@ def show_main_page():
         
         # Transcribe Button
         if uploaded_file is not None:
-            if st.button("🎙️ Transcribe Audio", key="transcribe_button", use_container_width=True):
+            if st.button("⚡ Transcribe Audio", key="transcribe_button", use_container_width=True):
                 with st.spinner("Transcribing your audio..."):
                     transcription = transcribe_audio(uploaded_file)
                     if transcription:
@@ -2406,159 +2482,134 @@ def show_main_page():
             # Content generation section
             st.markdown('<div class="section-header">Content Generation</div>', unsafe_allow_html=True)
             
-            # Show content generation options
-            content_tabs = st.tabs(["Step-by-Step", "All-in-One", "Custom"])
-            
-            with content_tabs[0]:
-                # Wisdom extraction
-                wisdom_expander = st.expander("📝 Extract Wisdom", expanded=True)
-                with wisdom_expander:
-                    if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
-                        with st.spinner("Extracting key insights..."):
-                            wisdom = generate_wisdom(
-                                st.session_state.transcription, 
-                                st.session_state.ai_provider,
-                                st.session_state.ai_model,
-                                knowledge_base=knowledge_base
-                            )
-                            if wisdom:
-                                st.session_state.wisdom = wisdom
-                    
-                    if st.session_state.get("wisdom"):
-                        st.markdown("### Extracted Wisdom")
-                        st.markdown(st.session_state.wisdom)
+            # Add a prominent "Generate Everything" button at the top
+            if st.button("⟁ Generate Complete Pipeline", key="generate_everything", use_container_width=True):
+                # Check if Notion API is configured
+                notion_key = api_keys.get("notion") or os.getenv("NOTION_API_KEY")
+                notion_db = api_keys.get("notion_database_id") or os.getenv("NOTION_DATABASE_ID")
                 
-                # Outline creation
-                outline_expander = st.expander("📋 Create Outline", expanded=False)
-                with outline_expander:
-                    if st.button("Generate Outline", key="outline_button", use_container_width=True):
-                        if not st.session_state.get("wisdom"):
-                            st.warning("Please extract wisdom first.")
-                        else:
-                            with st.spinner("Creating outline..."):
-                                outline = generate_outline(
-                                    st.session_state.transcription,
-                                    st.session_state.wisdom,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if outline:
-                                    st.session_state.outline = outline
+                if not notion_key or not notion_db:
+                    st.warning("⚠️ Notion integration is not configured. The pipeline will run but won't save to Notion.")
                     
-                    if st.session_state.get("outline"):
-                        st.markdown("### Content Outline")
-                        st.markdown(st.session_state.outline)
+                # Run the full pipeline
+                success = run_full_pipeline(
+                    st.session_state.transcription,
+                    st.session_state.ai_provider,
+                    st.session_state.ai_model,
+                    knowledge_base=knowledge_base
+                )
                 
-                # Social media content
-                social_expander = st.expander("📱 Social Media Content", expanded=False)
-                with social_expander:
-                    if st.button("Generate Social Posts", key="social_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Creating social media content..."):
-                                social = generate_social_content(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if social:
-                                    st.session_state.social = social
-                    
-                    if st.session_state.get("social"):
-                        st.markdown("### Social Media Content")
-                        st.markdown(st.session_state.social)
-                
-                # Image prompts
-                image_expander = st.expander("🖼️ Image Prompts", expanded=False)
-                with image_expander:
-                    if st.button("Generate Image Prompts", key="image_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Creating image prompts..."):
-                                prompts = generate_image_prompts(
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if prompts:
-                                    st.session_state.image_prompts = prompts
-                    
-                    if st.session_state.get("image_prompts"):
-                        st.markdown("### Image Prompts")
-                        st.markdown(st.session_state.image_prompts)
-                
-                # Full article
-                article_expander = st.expander("📄 Full Article", expanded=False)
-                with article_expander:
-                    if st.button("Generate Article", key="article_button", use_container_width=True):
-                        if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
-                            st.warning("Please extract wisdom and create an outline first.")
-                        else:
-                            with st.spinner("Writing full article..."):
-                                article = generate_article(
-                                    st.session_state.transcription,
-                                    st.session_state.wisdom,
-                                    st.session_state.outline,
-                                    st.session_state.ai_provider,
-                                    st.session_state.ai_model,
-                                    knowledge_base=knowledge_base
-                                )
-                                if article:
-                                    st.session_state.article = article
-                    
-                    if st.session_state.get("article"):
-                        st.markdown("### Generated Article")
-                        st.markdown(st.session_state.article)
-            
-            with content_tabs[1]:
-                # All-in-one generation
-                if st.button("🚀 Generate All Content", key="generate_all", use_container_width=True):
-                    with st.spinner("Processing all content..."):
-                        results = process_all_content(
-                            st.session_state.transcription,
+                if success:
+                    st.success("✅ Content pipeline completed successfully!")
+
+            # Wisdom extraction
+            wisdom_expander = st.expander("✧ Extract Wisdom", expanded=True)
+            with wisdom_expander:
+                if st.button("Generate Wisdom", key="wisdom_button", use_container_width=True):
+                    with st.spinner("Extracting key insights..."):
+                        wisdom = generate_wisdom(
+                            st.session_state.transcription, 
                             st.session_state.ai_provider,
                             st.session_state.ai_model,
                             knowledge_base=knowledge_base
                         )
-                        if results:
-                            st.session_state.wisdom = results.get('wisdom', '')
-                            st.session_state.outline = results.get('outline', '')
-                            st.session_state.social = results.get('social_posts', '')
-                            st.session_state.image_prompts = results.get('image_prompts', '')
-                            st.session_state.article = results.get('article', '')
-                            st.success("✅ All content generated successfully!")
-            
-            with content_tabs[2]:
-                # Custom prompt generation
-                st.markdown("### Custom Prompt")
-                custom_prompt = st.text_area(
-                    "Enter your custom prompt",
-                    placeholder="Ask anything about the transcription...",
-                    height=100
-                )
+                        if wisdom:
+                            st.session_state.wisdom = wisdom
                 
-                if st.button("Send Custom Prompt", key="custom_prompt_button", use_container_width=True):
-                    if custom_prompt:
-                        with st.spinner("Processing custom prompt..."):
-                            result = apply_prompt(
-                                st.session_state.transcription, 
-                                custom_prompt,
+                if st.session_state.get("wisdom"):
+                    st.markdown("### Extracted Wisdom")
+                    st.markdown(st.session_state.wisdom)
+            
+            # Outline creation
+            outline_expander = st.expander("⌬ Create Outline", expanded=False)
+            with outline_expander:
+                if st.button("Generate Outline", key="outline_button", use_container_width=True):
+                    if not st.session_state.get("wisdom"):
+                        st.warning("Please extract wisdom first.")
+                    else:
+                        with st.spinner("Creating outline..."):
+                            outline = generate_outline(
+                                st.session_state.transcription,
+                                st.session_state.wisdom,
                                 st.session_state.ai_provider,
                                 st.session_state.ai_model,
-                                user_knowledge=knowledge_base
+                                knowledge_base=knowledge_base
                             )
-                            if result:
-                                st.markdown("### Result")
-                                st.markdown(result)
+                            if outline:
+                                st.session_state.outline = outline
+                
+                if st.session_state.get("outline"):
+                    st.markdown("### Content Outline")
+                    st.markdown(st.session_state.outline)
             
-            # Notion export
+            # Social media content
+            social_expander = st.expander("⧗ Social Media Content", expanded=False)
+            with social_expander:
+                if st.button("Generate Social Posts", key="social_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        with st.spinner("Creating social media content..."):
+                            social = generate_social_content(
+                                st.session_state.wisdom,
+                                st.session_state.outline,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                knowledge_base=knowledge_base
+                            )
+                            if social:
+                                st.session_state.social = social
+                
+                if st.session_state.get("social"):
+                    st.markdown("### Social Media Content")
+                    st.markdown(st.session_state.social)
+            
+            # Image prompts
+            image_expander = st.expander("⟰ Image Prompts", expanded=False)
+            with image_expander:
+                if st.button("Generate Image Prompts", key="image_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        with st.spinner("Creating image prompts..."):
+                            prompts = generate_image_prompts(
+                                st.session_state.wisdom,
+                                st.session_state.outline,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                knowledge_base=knowledge_base
+                            )
+                            if prompts:
+                                st.session_state.image_prompts = prompts
+                
+                if st.session_state.get("image_prompts"):
+                    st.markdown("### Image Prompts")
+                    st.markdown(st.session_state.image_prompts)
+            
+            # Full article
+            article_expander = st.expander("📄 Full Article", expanded=False)
+            with article_expander:
+                if st.button("Generate Article", key="article_button", use_container_width=True):
+                    if not st.session_state.get("wisdom") or not st.session_state.get("outline"):
+                        st.warning("Please extract wisdom and create an outline first.")
+                    else:
+                        with st.spinner("Writing full article..."):
+                            article = generate_article(
+                                st.session_state.transcription,
+                                st.session_state.wisdom,
+                                st.session_state.outline,
+                                st.session_state.ai_provider,
+                                st.session_state.ai_model,
+                                knowledge_base=knowledge_base
+                            )
+                            if article:
+                                st.session_state.article = article
+                
+                if st.session_state.get("article"):
+                    st.markdown("### Generated Article")
+                    st.markdown(st.session_state.article)
+            
+            # Notion export (keeping this outside the tabs)
             st.markdown('<div class="section-header">Export to Notion</div>', unsafe_allow_html=True)
             
             # Check if Notion API key is configured
@@ -2616,6 +2667,21 @@ def show_main_page():
                 st.session_state.transcription = text_input
                 st.success("Text loaded for processing!")
                 st.rerun()
+    
+    # Display warnings about API keys and model info at the bottom
+    # Check if API keys are set up
+    openai_key = api_keys.get("openai")
+    anthropic_key = api_keys.get("anthropic")
+    
+    # Show the model info message at the bottom
+    st.info(f"Using {st.session_state.transcription_provider} {st.session_state.transcription_model} for transcription and {st.session_state.ai_provider} {st.session_state.ai_model} for content processing. Model settings can be changed in the Admin panel.")
+    
+    # Show warnings after the info message (only if needed)
+    if not openai_key:
+        st.warning("⚠️ Your OpenAI API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
+    
+    if not anthropic_key:
+        st.warning("⚠️ Your Anthropic API key is not set up. Some features may not work properly. [Set up your API keys](?page=api)")
 
 def show_api_keys_page():
     st.markdown("## API Keys Management")
@@ -2685,6 +2751,26 @@ def show_api_keys_page():
         time.sleep(1)
         st.rerun()
     
+    # Test Notion connection
+    if st.button("🔍 Test Notion Connection"):
+        with st.spinner("Testing Notion connection..."):
+            result = test_notion_connection()
+            
+            if result["success"]:
+                st.success(f"✅ Connection successful!")
+                st.info(f"📊 Database: '{result['database_title']}' (ID: {result['database_id'][:8]}...)")
+                st.info(f"🔑 API Key: {result['api_key_length']} characters")
+            else:
+                st.error(f"❌ Connection failed: {result['error']}")
+                
+                # Provide helpful troubleshooting tips
+                if "Invalid API key" in result['error'] or "Unauthorized" in result['error']:
+                    st.warning("💡 **Troubleshooting tip**: Check that your Notion API key is correct and has the right permissions.")
+                elif "database" in result['error'].lower():
+                    st.warning("💡 **Troubleshooting tip**: Verify your database ID is correct and the integration has access to it.")
+                elif "not found" in result['error'].lower():
+                    st.warning("💡 **Troubleshooting tip**: Make sure the database exists and your integration is connected to the page.")
+    
     st.markdown("---")
     
     # Grok API Key
@@ -2700,65 +2786,6 @@ def show_api_keys_page():
     if st.button("Save Grok Key"):
         update_api_key("grok", new_grok_key)
         st.success("Grok API key updated successfully!")
-        time.sleep(1)
-        st.rerun()
-
-def show_usage_page():
-    st.markdown("## Usage Statistics")
-    
-    # Get user info
-    conn = get_db_connection()
-    user = conn.execute(
-        "SELECT email, subscription_tier, usage_quota, usage_current, created_at FROM users WHERE id = ?",
-        (st.session_state.user_id,)
-    ).fetchone()
-    conn.close()
-    
-    if not user:
-        st.error("Error retrieving user data")
-        return
-    
-    # User info section
-    st.markdown("### Account Information")
-    st.write(f"**Email:** {user['email']}")
-    st.write(f"**Account created:** {user['created_at']}")
-    st.write(f"**Subscription tier:** {user['subscription_tier'].title()}")
-    
-    # Usage statistics
-    st.markdown("### Current Usage")
-    
-    # Calculate percentage
-    usage_percent = min(100, (user['usage_current'] / user['usage_quota']) * 100) if user['usage_quota'] > 0 else 0
-    
-    # Show progress bar
-    st.progress(usage_percent / 100)
-    st.write(f"**Usage this month:** {user['usage_current']} / {user['usage_quota']} minutes ({usage_percent:.1f}%)")
-    
-    # Upgrade options
-    st.markdown("### Upgrade Your Plan")
-    st.markdown("""
-    | Plan | Monthly Price | Minutes/Month | Features |
-    |------|---------------|---------------|----------|
-    | Free | $0 | 60 | Basic transcription |
-    | Basic | $9.99 | 300 | + Claude AI models |
-    | Pro | $19.99 | 1,000 | + Advanced processing |
-    | Enterprise | Contact us | Custom | Custom integrations |
-    """)
-    
-    if user['subscription_tier'] != 'enterprise':
-        if st.button("Upgrade Now"):
-            st.info("This would redirect to a payment page in the production version.")
-    
-    # Reset usage manually (for testing)
-    if st.button("Reset Usage Counter"):
-        conn = get_db_connection()
-        conn.execute(
-            "UPDATE users SET usage_current = 0 WHERE id = ?",
-            (st.session_state.user_id,)
-        )
-        conn.commit()
-        conn.close()
-        st.success("Usage counter reset to 0")
         time.sleep(1)
         st.rerun()
 
@@ -2816,8 +2843,25 @@ def get_api_key_for_service(service_name):
         if env_key:
             return env_key
     
-    if not st.session_state.authenticated:
-        # Fallback to environment variables
+    # Get from user's stored keys (if possible)
+    try:
+        api_keys = get_user_api_keys()
+        key = api_keys.get(service_name)
+        
+        # Fallback to environment if user doesn't have a key
+        if not key:
+            if service_name == "openai":
+                return os.getenv("OPENAI_API_KEY")
+            elif service_name == "anthropic":
+                return os.getenv("ANTHROPIC_API_KEY")
+            elif service_name == "notion":
+                return os.getenv("NOTION_API_KEY")
+            elif service_name == "grok":
+                return os.getenv("GROK_API_KEY")
+        
+        return key
+    except:
+        # If any errors occur (session state issues, etc), fall back to env vars
         if service_name == "openai":
             return os.getenv("OPENAI_API_KEY")
         elif service_name == "anthropic":
@@ -2827,23 +2871,6 @@ def get_api_key_for_service(service_name):
         elif service_name == "grok":
             return os.getenv("GROK_API_KEY")
         return None
-    
-    # Get from user's stored keys
-    api_keys = get_user_api_keys()
-    key = api_keys.get(service_name)
-    
-    # Fallback to environment if user doesn't have a key
-    if not key:
-        if service_name == "openai":
-            return os.getenv("OPENAI_API_KEY")
-        elif service_name == "anthropic":
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif service_name == "notion":
-            return os.getenv("NOTION_API_KEY")
-        elif service_name == "grok":
-            return os.getenv("GROK_API_KEY")
-    
-    return key
 
 # Authentication UI
 def show_login_page():
@@ -3019,8 +3046,15 @@ def add_security_headers():
 
 # Add extended CSS for production look and feel
 def add_production_css():
-    with open('static/css/production.css') as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    css_path = os.path.join(script_dir, 'static', 'css', 'production.css')
+    
+    try:
+        with open(css_path) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning("Production CSS file not found, using default styling")
 
 # Initialize database with admin user if not exists
 def init_admin_user():
@@ -3284,7 +3318,7 @@ def show_admin_page():
         users_prompts = load_prompts()
         
         # Configure custom prompts for the selected user
-        configure_prompts(selected_user, users_prompts)
+        configure_prompts(st.session_state.prompts)
     
     conn.close()
     
@@ -3783,6 +3817,28 @@ def create_custom_header():
     if is_admin_user():
         admin_link = '<a href="?page=admin" class="nav-item" id="nav-admin">Admin</a>'
     
+    # Custom CSS that only addresses the spacing issue
+    custom_nav_css = '''
+    <style>
+    /* Make nav items expand to fill space */
+    .header-nav {
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-evenly;
+        gap: 15px;
+        padding: 0 30px;
+    }
+    
+    .nav-item {
+        flex: 1;
+        text-align: center;
+        display: block;
+        width: 100%;
+    }
+    </style>
+    '''
+    
     # Create the HTML and JS as separate strings
     header_html = f'''
     <div class="header-container">
@@ -3792,10 +3848,8 @@ def create_custom_header():
         <div class="header-nav">
             <a href="?page=home" class="nav-item" id="nav-home">Home</a>
             <a href="?page=api" class="nav-item" id="nav-api">API Keys</a>
-            <a href="?page=usage" class="nav-item" id="nav-usage">Usage</a>
             <a href="?page=user_config" class="nav-item" id="nav-user-config">User Config</a>
             {admin_link}
-            <a href="?page=legal" class="nav-item" id="nav-legal">Legal</a>
         </div>
         <div class="header-right">
             <div class="header-date">{datetime.now().strftime("%Y-%m-%d %H:%M")}</div>
@@ -3825,35 +3879,30 @@ def create_custom_header():
     </script>
     '''
     
-    # Combine the HTML and JavaScript
-    full_header = header_html + js_code
+    # Combine the HTML, CSS and JavaScript
+    full_header = custom_nav_css + header_html + js_code
     st.markdown(full_header, unsafe_allow_html=True)
 
 def load_js():
     """Load JavaScript files"""
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
     # Load cookie consent JavaScript
-    with open('static/js/cookie-consent.js') as f:
-        st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
+    try:
+        cookie_js_path = os.path.join(script_dir, 'static', 'js', 'cookie-consent.js')
+        with open(cookie_js_path) as f:
+            st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
+    except FileNotFoundError:
+        pass  # Skip if file doesn't exist
         
     # Load UI interactions JavaScript
-    with open('static/js/ui-interactions.js') as f:
-        st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
-
-# Show cookie consent banner if necessary
-def show_cookie_banner():
-    if st.session_state.show_cookie_banner:
-        cookie_banner_html = """
-        <div class="cookie-banner">
-            <div>
-                We use cookies to improve your experience. By continuing, you consent to our use of cookies.
-                <a href="?page=legal">Learn more</a>
-            </div>
-            <div class="cookie-banner-buttons">
-                <button>Accept</button>
-            </div>
-        </div>
-        """
-        st.markdown(cookie_banner_html, unsafe_allow_html=True)
+    try:
+        ui_js_path = os.path.join(script_dir, 'static', 'js', 'ui-interactions.js')
+        with open(ui_js_path) as f:
+            st.markdown(f'<script>{f.read()}</script>', unsafe_allow_html=True)
+    except FileNotFoundError:
+        pass  # Skip if file doesn't exist
 
 def transcribe_with_whisper(file_path):
     """Transcribe an audio file directly using OpenAI's Whisper API"""
@@ -4036,219 +4085,210 @@ def transcribe_with_whisper(file_path):
         return f"[Error transcribing audio: {str(e)}]"
 
 def show_user_config_page():
-    """Show user configuration page for managing profiles, knowledge base, and prompts"""
-    st.title("User Configuration")
+    """Show user configuration page"""
+    st.markdown("## User Configuration")
     
-    # Get available users and prompts
-    users, users_prompts = load_prompts()
+    # Add User Profile selection at the top (moved from sidebar)
+    st.markdown("### User Profile")
+    selected_user = st.selectbox("Select Profile", options=get_available_users(), key="user_profile_sidebar")
+    st.info("The selected profile determines which knowledge base files and custom prompts are used.")
+    st.markdown("---")
     
-    # Add tabs for different configuration sections
-    config_tabs = st.tabs(["User Profiles", "Knowledge Base", "Prompt Templates"])
+    # Split into tabs
+    user_tabs = st.tabs(["Prompts", "Knowledge Base"])
     
-    # Tab 1: User Profiles Management
-    with config_tabs[0]:
-        st.header("User Profiles")
-        st.write("Manage user profiles for different content generation styles and preferences.")
-        
-        # Current users list
-        st.subheader("Current Profiles")
-        user_table = {"Profile Name": [], "Knowledge Files": [], "Custom Prompts": []}
-        
-        for user in users:
-            # Count knowledge base files
-            kb_files = list_knowledge_base_files(user)
-            kb_count = len(kb_files)
-            
-            # Count custom prompts
-            if user in users_prompts:
-                prompt_count = len(users_prompts[user])
-            else:
-                prompt_count = 0
-                
-            user_table["Profile Name"].append(user)
-            user_table["Knowledge Files"].append(kb_count)
-            user_table["Custom Prompts"].append(prompt_count)
-        
-        # Display user profiles as a table
-        st.dataframe(user_table)
-        
-        # Create new profile
-        st.subheader("Create New Profile")
-        new_user = st.text_input("New Profile Name", key="new_profile_name",
-                                help="Enter a name for the new user profile. Use only letters, numbers, and underscores.")
-        
-        if st.button("Create Profile", key="create_profile_btn"):
-            if not new_user:
-                st.error("Please enter a valid profile name")
-            elif not re.match(r'^[a-zA-Z0-9_]+$', new_user):
-                st.error("Profile name can only contain letters, numbers, and underscores")
-            elif new_user in users:
-                st.error(f"Profile '{new_user}' already exists")
-            else:
-                # Create user directories
-                user_dir = os.path.join("prompts", new_user)
-                kb_dir = os.path.join(user_dir, "knowledge_base")
-                
-                try:
-                    os.makedirs(user_dir, exist_ok=True)
-                    os.makedirs(kb_dir, exist_ok=True)
-                    st.success(f"Created new profile: {new_user}")
-                    st.session_state.user_profile_sidebar = new_user
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error creating profile: {str(e)}")
+    # Prompts tab
+    with user_tabs[0]:
+        # Configure prompts using the new function that takes just the prompts dictionary
+        configure_prompts(st.session_state.prompts)
     
-    # Tab 2: Knowledge Base Management
-    with config_tabs[1]:
-        st.header("Knowledge Base")
-        st.write("Manage knowledge base files for the selected user profile. These files provide context and style guidance for AI-generated content.")
+    # Knowledge Base tab  
+    with user_tabs[1]:
+        st.markdown("### Knowledge Base")
+        st.write("Upload files for your knowledge base. These will be used to customize content generation.")
         
-        # Select user profile
-        selected_user = st.selectbox("Select Profile", options=users, key="kb_profile_select")
+        kb_path = "prompts/knowledge_base"
+        os.makedirs(kb_path, exist_ok=True)
         
-        if selected_user:
-            # Knowledge base directory for selected user
-            kb_dir = os.path.join("prompts", selected_user, "knowledge_base")
-            os.makedirs(kb_dir, exist_ok=True)
-            
-            # List existing knowledge base files
-            kb_files = list_knowledge_base_files(selected_user)
-            
-            if kb_files:
-                st.subheader("Current Knowledge Base Files")
-                
-                # Create a dictionary of filenames to display names
-                file_options = {}
-                for file_path in kb_files:
-                    filename = os.path.basename(file_path)
-                    name = os.path.splitext(filename)[0].replace('_', ' ').title()
-                    file_options[name] = file_path
-                
-                # File selection
-                selected_file = st.selectbox("Select File", options=list(file_options.keys()), key="kb_file_select")
-                
-                if selected_file and selected_file in file_options:
-                    file_path = file_options[selected_file]
-                    
-                    # Read and display file content
-                    try:
-                        with open(file_path, 'r') as f:
-                            file_content = f.read()
-                        
-                        # Edit file
-                        new_content = st.text_area("Edit File Content", value=file_content, height=300, key="kb_file_edit")
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("Update File", key="update_kb_file"):
-                                try:
-                                    with open(file_path, 'w') as f:
-                                        f.write(new_content)
-                                    st.success(f"Updated knowledge base file: {selected_file}")
-                                except Exception as e:
-                                    st.error(f"Error updating file: {str(e)}")
-                        
-                        with col2:
-                            if st.button("Delete File", key="delete_kb_file"):
-                                try:
-                                    os.remove(file_path)
-                                    st.success(f"Deleted knowledge base file: {selected_file}")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Error deleting file: {str(e)}")
-                    
-                    except Exception as e:
-                        st.error(f"Error reading file: {str(e)}")
-            
-            # Upload new knowledge base file
-            st.subheader("Add New Knowledge Base File")
-            
-            # Method 1: Upload file
-            uploaded_file = st.file_uploader("Upload Knowledge Base File", 
-                                           type=["txt", "md"], 
-                                           key="kb_file_upload",
-                                           help="Upload a text or markdown file to add to the knowledge base")
-            
-            if uploaded_file:
-                file_name = uploaded_file.name
-                if st.button("Add Uploaded File", key="add_uploaded_kb"):
-                    try:
-                        file_path = os.path.join(kb_dir, file_name)
-                        with open(file_path, 'wb') as f:
-                            f.write(uploaded_file.getvalue())
-                        st.success(f"Added knowledge base file: {file_name}")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error saving file: {str(e)}")
-            
-            # Method 2: Create file
-            st.subheader("Create New Knowledge Base File")
-            new_file_name = st.text_input("File Name (without extension)", key="new_kb_filename",
-                                         help="Enter a name for the new file (without extension)")
-            new_file_content = st.text_area("File Content", height=200, key="new_kb_content")
-            
-            if st.button("Create File", key="create_kb_file"):
-                if not new_file_name:
-                    st.error("Please enter a file name")
-                else:
-                    try:
-                        # Clean filename
-                        clean_name = re.sub(r'[^\w\s-]', '', new_file_name)
-                        clean_name = re.sub(r'[\s-]+', '_', clean_name).lower()
-                        
-                        # Add .md extension
-                        file_path = os.path.join(kb_dir, f"{clean_name}.md")
-                        
-                        # Check if file already exists
-                        if os.path.exists(file_path):
-                            st.error(f"File {clean_name}.md already exists")
-                        else:
-                            with open(file_path, 'w') as f:
-                                f.write(new_file_content)
-                            st.success(f"Created knowledge base file: {clean_name}.md")
+        # List existing knowledge base files
+        st.markdown("#### Current Knowledge Base Files")
+        kb_files = [f for f in os.listdir(kb_path) if f.endswith(('.txt', '.md'))]
+        
+        if not kb_files:
+            st.info("No knowledge base files found. Upload files below.")
+        else:
+            for file in kb_files:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(file)
+                with col2:
+                    if st.button("Delete", key=f"delete_{file}"):
+                        try:
+                            os.remove(os.path.join(kb_path, file))
+                            st.success(f"Deleted {file}")
                             st.rerun()
-                    except Exception as e:
-                        st.error(f"Error creating file: {str(e)}")
-    
-    # Tab 3: Prompt Template Management
-    with config_tabs[2]:
-        st.header("Prompt Templates")
-        st.write("Customize prompt templates for different content generation tasks.")
+                        except Exception as e:
+                            st.error(f"Error deleting file: {str(e)}")
         
-        # Select user profile
-        selected_user = st.selectbox("Select Profile", options=users, key="prompt_profile_select")
+        # Upload new files
+        st.markdown("#### Upload New Files")
+        st.write("Upload .txt or .md files to add to your knowledge base.")
         
-        if selected_user:
-            # Use the existing configure_prompts function
-            configure_prompts(selected_user, users_prompts)
+        uploaded_file = st.file_uploader("Upload Knowledge Base File", type=["txt", "md"])
+        
+        if uploaded_file is not None:
+            # Get filename and save
+            file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
+            save_path = os.path.join(kb_path, uploaded_file.name)
             
-            # Add explanation of prompt variables
-            with st.expander("Prompt Template Help"):
-                st.markdown("""
-                ### Prompt Template Variables
-                
-                Your prompt templates can include the following variables which will be replaced with actual content:
-                
-                - `{transcript}` - The full transcript text
-                - `{knowledge_base}` - Any knowledge base context that's relevant
-                
-                ### Prompt Template Format
-                
-                For best results, structure your prompts as follows:
-                
-                ```
-                ## Instructions
-                Instructions for the AI on how to approach the task.
-                
-                ## Context
-                Any contextual information about your style, preferences, or requirements.
-                
-                ## Prompt
-                The actual prompt that will be sent to the AI.
-                ```
-                
-                Only the section after "## Prompt" is required, but adding instructions and context helps organize your templates.
-                """)
+            try:
+                with open(save_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+                st.success(f"Saved file: {uploaded_file.name}")
+                # Reload knowledge base
+                st.session_state.knowledge_base = load_knowledge_base()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error saving file: {str(e)}")
+
+def get_prompt(prompt_type, prompts, default_prompts):
+    """Get a prompt by type, falling back to default if not available"""
+    return prompts.get(prompt_type, default_prompts.get(prompt_type, ""))
+
+def save_prompt(prompt_type, prompt_content):
+    """Save a prompt by type to the prompts directory"""
+    try:
+        with open(os.path.join("prompts", f"{prompt_type}.md"), "w") as f:
+            f.write(prompt_content)
+        return True
+    except Exception as e:
+        st.error(f"Error saving prompt: {str(e)}")
+        return False
+
+def load_knowledge_base():
+    """Load knowledge base files"""
+    knowledge_base = {}
+    kb_path = 'prompts/knowledge_base'
+    
+    if os.path.exists(kb_path):
+        for file in os.listdir(kb_path):
+            if file.endswith(('.txt', '.md')):
+                with open(os.path.join(kb_path, file), 'r') as f:
+                    name = os.path.splitext(file)[0].replace('_', ' ').title()
+                    knowledge_base[name] = f.read()
+    
+    return knowledge_base
+
+def run_full_pipeline(transcription, ai_provider, model, knowledge_base=None):
+    """Run the complete content generation pipeline with streaming outputs in sequence"""
+    try:
+        # Status container
+        status_container = st.empty()
+        status_container.info("Starting content generation pipeline...")
+        
+        # Step 1: Generate wisdom
+        status_container.info("Step 1/6: Extracting wisdom...")
+        wisdom = generate_wisdom(
+            transcription, 
+            ai_provider,
+            model,
+            knowledge_base=knowledge_base
+        )
+        if not wisdom:
+            status_container.error("❌ Failed to extract wisdom. Pipeline stopped.")
+            return False
+        st.session_state.wisdom = wisdom
+        status_container.success("✅ Wisdom extracted")
+        
+        # Step 2: Generate outline
+        status_container.info("Step 2/6: Creating outline...")
+        outline = generate_outline(
+            transcription,
+            wisdom,
+            ai_provider,
+            model,
+            knowledge_base=knowledge_base
+        )
+        if not outline:
+            status_container.error("❌ Failed to create outline. Pipeline stopped.")
+            return False
+        st.session_state.outline = outline
+        status_container.success("✅ Outline created")
+        
+        # Step 3: Generate social media content
+        status_container.info("Step 3/6: Creating social media content...")
+        social_content = generate_social_content(
+            wisdom,
+            outline,
+            ai_provider,
+            model,
+            knowledge_base=knowledge_base
+        )
+        if not social_content:
+            status_container.error("❌ Failed to create social media content. Pipeline stopped.")
+            return False
+        st.session_state.social = social_content
+        status_container.success("✅ Social media content created")
+        
+        # Step 4: Generate image prompts
+        status_container.info("Step 4/6: Creating image prompts...")
+        image_prompts = generate_image_prompts(
+            wisdom,
+            outline,
+            ai_provider,
+            model,
+            knowledge_base=knowledge_base
+        )
+        if not image_prompts:
+            status_container.error("❌ Failed to create image prompts. Pipeline stopped.")
+            return False
+        st.session_state.image_prompts = image_prompts
+        status_container.success("✅ Image prompts created")
+        
+        # Step 5: Generate article
+        status_container.info("Step 5/6: Writing full article...")
+        article = generate_article(
+            transcription,
+            wisdom,
+            outline,
+            ai_provider,
+            model,
+            knowledge_base=knowledge_base
+        )
+        if not article:
+            status_container.error("❌ Failed to write article. Pipeline stopped.")
+            return False
+        st.session_state.article = article
+        status_container.success("✅ Article created")
+        
+        # Step 6: Save to Notion
+        status_container.info("Step 6/6: Saving to Notion...")
+        
+        # Generate a title
+        title_to_use = generate_short_title(transcription)
+        
+        # Save to Notion
+        result = create_content_notion_entry(
+            title_to_use,
+            transcription,
+            wisdom=wisdom,
+            outline=outline,
+            social_content=social_content,
+            image_prompts=image_prompts,
+            article=article
+        )
+        
+        if not result:
+            status_container.error("❌ Failed to save to Notion.")
+            return False
+            
+        status_container.success("🎉 Complete content pipeline finished successfully!")
+        return True
+        
+    except Exception as e:
+        logger.exception("Error in full pipeline:")
+        st.error(f"Error in content pipeline: {str(e)}")
+        return False
 
 if __name__ == "__main__":
     main() 

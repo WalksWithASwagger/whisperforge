@@ -1,1 +1,0 @@
-no emoji, lots of sassy humor and deep insights KK style.... everygreen unique badass thought leadership. 2 lines per post. 10 posts total. each one original. 

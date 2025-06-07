@@ -1,3 +1,0 @@
-create 10 Midjourney prompts, one for each of the ideas in the social posts. 
-
-each prompt should start with /imagine and then be 5-7 words.
