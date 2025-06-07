@@ -169,7 +169,7 @@ def test_oauth_comprehensive():
     
     print("\n📋 NEXT STEPS:")
     print("1. Deploy to Streamlit Cloud")
-    print("2. Check that version shows v1.1")
+    print("2. Check that version shows v1.2")
     print("3. Verify debug panel shows 'Production' environment")
     print("4. Test Google OAuth login")
     print("5. Check logs for detailed OAuth flow information")

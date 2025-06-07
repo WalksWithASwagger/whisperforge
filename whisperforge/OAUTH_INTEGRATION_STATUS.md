@@ -2,7 +2,7 @@
 
 ## ✅ Current Status: PRODUCTION READY
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2025-06-07  
 **Environment:** Multi-environment support (localhost + Streamlit Cloud)
 
@@ -65,14 +65,14 @@ ERROR:core.oauth_handler:Error handling OAuth callback: invalid request: both au
 ## 🚀 Deployment Verification Checklist
 
 ### Pre-Deployment ✅
-- [x] Version 1.1 tagged and committed
+- [x] Version 1.2 tagged and committed
 - [x] Environment detection implemented
 - [x] OAuth handler improvements applied
 - [x] Database schema deployed
 - [x] Test suite passing
 
 ### Post-Deployment Testing
-- [ ] Check version displays as "v1.1" in production app
+- [ ] Check version displays as "v1.2" in production app
 - [ ] Verify debug panel shows "Production" environment
 - [ ] Test Google OAuth login flow
 - [ ] Confirm user creation/update works
