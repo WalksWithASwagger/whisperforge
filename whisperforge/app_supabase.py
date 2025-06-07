@@ -40,6 +40,25 @@ from core.styling import local_css, add_production_css, create_custom_header, lo
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _get_current_app_url() -> str:
+    """Detect current app URL based on environment"""
+    try:
+        # Check for Streamlit Cloud environment variables
+        if os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', ''):
+            return "https://whisperforge.streamlit.app"
+        
+        # Check hostname for Streamlit Cloud indicators
+        hostname = os.getenv('HOSTNAME', '')
+        if 'streamlit' in hostname or 'share' in hostname:
+            return "https://whisperforge.streamlit.app"
+        
+        # Default to localhost for development
+        return "http://localhost:8507"
+        
+    except Exception as e:
+        logger.warning(f"Could not detect app URL, using localhost: {e}")
+        return "http://localhost:8507"
+
 def run_content_pipeline(transcript, provider, model, knowledge_base=None):
     """Run the complete content generation pipeline"""
     try:
@@ -324,7 +343,9 @@ def show_auth_page():
     oauth_handler = init_oauth_handler()
     if oauth_handler:
         try:
-            oauth_url = oauth_handler.generate_oauth_url()
+            # Detect current environment and use appropriate redirect URL
+            current_url = _get_current_app_url()
+            oauth_url = oauth_handler.generate_oauth_url(redirect_to=current_url)
             
             # Create custom Google sign-in button
             google_button_html = f"""

@@ -24,38 +24,45 @@ class GoogleOAuthHandler:
     
     def __init__(self, supabase_client: Client):
         self.supabase = supabase_client
+        self.redirect_url = self._get_redirect_url()
         
         # Note: Google OAuth credentials are configured in Supabase dashboard, not as env vars
+    
+    def _get_redirect_url(self) -> str:
+        """Detect and return appropriate redirect URL based on environment"""
+        try:
+            import streamlit as st
+            # Check if we're running on Streamlit Cloud
+            if hasattr(st, 'config') and hasattr(st.config, 'get_option'):
+                # Try to detect Streamlit Cloud environment
+                if os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', ''):
+                    return "https://whisperforge.streamlit.app"
+            
+            # Check for common Streamlit Cloud environment indicators
+            hostname = os.getenv('HOSTNAME', '')
+            if 'streamlit' in hostname or 'share' in hostname:
+                return "https://whisperforge.streamlit.app"
+            
+            # Default to localhost for development
+            return "http://localhost:8507"
+            
+        except Exception as e:
+            logger.warning(f"Could not detect environment, using localhost: {e}")
+            return "http://localhost:8507"
     
     def generate_oauth_url(self, redirect_to: str = None) -> str:
         """Generate Google OAuth URL using Supabase"""
         try:
-            # Determine redirect URL dynamically if not provided
-            if not redirect_to:
-                import os
-                # Check if we're running on Streamlit Cloud
-                if os.getenv('STREAMLIT_SHARING_MODE') or os.getenv('HOSTNAME') == 'streamlit':
-                    # Running on Streamlit Cloud - let Supabase use current domain
-                    redirect_url = None
-                else:
-                    # Local development
-                    redirect_url = "http://localhost:8507"
-            else:
-                redirect_url = redirect_to
+            redirect_url = redirect_to or self.redirect_url
             
             # Use Supabase's built-in OAuth URL generation
-            oauth_options = {
+            response = self.supabase.auth.sign_in_with_oauth({
                 "provider": "google",
                 "options": {
+                    "redirect_to": redirect_url,
                     "scopes": "email profile"
                 }
-            }
-            
-            # Only add redirect_to if we have a specific URL
-            if redirect_url:
-                oauth_options["options"]["redirect_to"] = redirect_url
-            
-            response = self.supabase.auth.sign_in_with_oauth(oauth_options)
+            })
             
             logger.info(f"Generated OAuth URL: {response.url}")
             return response.url

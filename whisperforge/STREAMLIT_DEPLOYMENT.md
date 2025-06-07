@@ -26,14 +26,17 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 2. **Navigate to**: APIs & Services → Credentials
 3. **Edit your OAuth 2.0 Client ID**
 4. **Ensure these redirect URIs are added**:
-   - `https://utyjhedtqaagihuogyuy.supabase.co/auth/v1/callback` (Supabase)
+   - `https://utyjhedtqaagihuogyuy.supabase.co/auth/v1/callback` (Supabase - ✅ Already added)
    - `http://localhost:8507` (local development - optional)
+   - `https://whisperforge.streamlit.app` (Streamlit Cloud production - 🚨 **ADD THIS NOW**)
 
-### **Production Redirect URI:**
-Once you have your Streamlit Cloud URL, you may also want to add:
+### **🎯 CRITICAL: Add Production Redirect URI**
+You must add this exact URI to Google Cloud Console:
 ```
-https://your-app-name.streamlit.app
+https://whisperforge.streamlit.app
 ```
+
+**Without this, OAuth will fail on Streamlit Cloud deployment!**
 
 ## 📋 **Deployment Checklist**
 
