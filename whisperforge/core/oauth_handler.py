@@ -24,40 +24,9 @@ class GoogleOAuthHandler:
     
     def __init__(self, supabase_client: Client):
         self.supabase = supabase_client
-        self.redirect_url = self._get_redirect_url()
+        self.redirect_url = "http://localhost:8507"  # Default for local development
         
         # Note: Google OAuth credentials are configured in Supabase dashboard, not as env vars
-    
-    def _get_redirect_url(self) -> str:
-        """Detect and return appropriate redirect URL based on environment"""
-        try:
-            import streamlit as st
-            
-            # Check environment variables
-            hostname = os.getenv('HOSTNAME', '')
-            sharing_mode = os.getenv('STREAMLIT_SHARING_MODE', '')
-            
-            logger.info(f"Environment detection - HOSTNAME: {hostname}, STREAMLIT_SHARING_MODE: {sharing_mode}")
-            
-            # Check if we're running on Streamlit Cloud
-            if hasattr(st, 'config') and hasattr(st.config, 'get_option'):
-                # Try to detect Streamlit Cloud environment
-                if sharing_mode or 'streamlit.app' in hostname:
-                    logger.info("Detected Streamlit Cloud environment")
-                    return "https://whisperforge.streamlit.app"
-            
-            # Check for common Streamlit Cloud environment indicators
-            if 'streamlit' in hostname or 'share' in hostname:
-                logger.info("Detected Streamlit Cloud via hostname")
-                return "https://whisperforge.streamlit.app"
-            
-            # Default to localhost for development
-            logger.info("Using localhost for development")
-            return "http://localhost:8507"
-            
-        except Exception as e:
-            logger.warning(f"Could not detect environment, using localhost: {e}")
-            return "http://localhost:8507"
     
     def generate_oauth_url(self, redirect_to: str = None) -> str:
         """Generate Google OAuth URL using Supabase"""
@@ -87,16 +56,11 @@ class GoogleOAuthHandler:
             code = url_params.get('code')
             if not code:
                 logger.error("No authorization code found in callback")
-                logger.error(f"Available URL params: {list(url_params.keys())}")
                 return None
-            
-            # Handle both list and string formats
-            auth_code = code[0] if isinstance(code, list) else code
-            logger.info(f"Processing OAuth callback with auth code: {auth_code[:10]}...")
             
             # Exchange code for session using Supabase
             response = self.supabase.auth.exchange_code_for_session({
-                "auth_code": auth_code
+                "auth_code": code[0] if isinstance(code, list) else code
             })
             
             if response.user:
@@ -282,9 +246,7 @@ def handle_oauth_redirect():
     if 'code' in query_params:
         # We have an OAuth callback
         st.session_state.oauth_callback = True
-        # Convert query_params to dict for compatibility
-        st.session_state.oauth_params = dict(query_params)
-        logger.info(f"OAuth redirect detected with code: {query_params.get('code', 'Not found')[:10]}...")
+        st.session_state.oauth_params = query_params
         return True
     
     return False 

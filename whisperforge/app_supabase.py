@@ -40,38 +40,6 @@ from core.styling import local_css, add_production_css, create_custom_header, lo
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get app version
-def get_app_version() -> str:
-    """Get the current app version"""
-    try:
-        version_file = Path(__file__).parent / "VERSION"
-        if version_file.exists():
-            return version_file.read_text().strip()
-        return "1.0"
-    except Exception:
-        return "1.0"
-
-APP_VERSION = get_app_version()
-
-def _get_current_app_url() -> str:
-    """Detect current app URL based on environment"""
-    try:
-        # Check for Streamlit Cloud environment variables
-        if os.getenv('STREAMLIT_SHARING_MODE') or 'streamlit.app' in os.getenv('HOSTNAME', ''):
-            return "https://whisperforge.streamlit.app"
-        
-        # Check hostname for Streamlit Cloud indicators
-        hostname = os.getenv('HOSTNAME', '')
-        if 'streamlit' in hostname or 'share' in hostname:
-            return "https://whisperforge.streamlit.app"
-        
-        # Default to localhost for development
-        return "http://localhost:8507"
-        
-    except Exception as e:
-        logger.warning(f"Could not detect app URL, using localhost: {e}")
-        return "http://localhost:8507"
-
 def run_content_pipeline(transcript, provider, model, knowledge_base=None):
     """Run the complete content generation pipeline"""
     try:
@@ -330,7 +298,7 @@ def log_pipeline_execution_supabase(pipeline_data: dict) -> bool:
 # Authentication UI
 def show_auth_page():
     """Show authentication page"""
-    st.title(f"🔐 WhisperForge v{APP_VERSION} - Sign In")
+    st.title("🔐 WhisperForge - Sign In")
     
     # Handle OAuth callback first
     if handle_oauth_redirect():
@@ -356,9 +324,7 @@ def show_auth_page():
     oauth_handler = init_oauth_handler()
     if oauth_handler:
         try:
-            # Detect current environment and use appropriate redirect URL
-            current_url = _get_current_app_url()
-            oauth_url = oauth_handler.generate_oauth_url(redirect_to=current_url)
+            oauth_url = oauth_handler.generate_oauth_url()
             
             # Create custom Google sign-in button
             google_button_html = f"""
@@ -485,9 +451,7 @@ def show_main_app():
     
     # Sidebar
     with st.sidebar:
-        st.markdown(f"### 👤 Account")
-        st.caption(f"WhisperForge v{APP_VERSION}")
-        st.markdown("---")
+        st.markdown("### 👤 Account")
         db, _ = init_supabase()
         if db:
             user = db.get_user(st.session_state.user_id)
@@ -506,15 +470,6 @@ def show_main_app():
             st.session_state.authenticated = False
             st.session_state.user_id = None
             st.rerun()
-        
-        st.markdown("---")
-        
-        # Debug info (expandable)
-        with st.expander("🔍 Debug Info"):
-            st.write(f"**Version:** {APP_VERSION}")
-            st.write(f"**Environment:** {'Production' if 'streamlit.app' in _get_current_app_url() else 'Development'}")
-            st.write(f"**App URL:** {_get_current_app_url()}")
-            st.write(f"**User ID:** {st.session_state.get('user_id', 'Not logged in')}")
         
         st.markdown("---")
         
@@ -538,7 +493,7 @@ def show_main_app():
 
 def show_home_page():
     """Show main content generation page"""
-    st.title(f"⚡ WhisperForge Content Pipeline v{APP_VERSION}")
+    st.title("⚡ WhisperForge Content Pipeline")
     
     # Audio upload
     uploaded_file = st.file_uploader(
