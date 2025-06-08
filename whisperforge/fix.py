@@ -1,2 +1,0 @@
-import re; data = open("app.py").read(); data = re.sub(r"(            with st\.spinner.*?:
-)                response", r"\1                response", data, flags=re.DOTALL); data = re.sub(r"                          (\"https://api\.grok\.x\.ai/v1/chat/completions\",)", r"                    \1", data); data = re.sub(r"                          (headers=headers,)", r"                    \1", data); data = re.sub(r"                          (json=payload)", r"                    \1", data); open("app.py", "w").write(data)
