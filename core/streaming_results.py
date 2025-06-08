@@ -9,6 +9,7 @@ import time
 from typing import Dict, Any, Optional
 from .streaming_pipeline import get_pipeline_controller
 import uuid
+from .visible_thinking import render_thinking_stream
 
 # CSS for streaming results
 STREAMING_RESULTS_CSS = """
@@ -82,13 +83,19 @@ def show_streaming_results():
     results = controller.get_results()
     errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
     
+    # Always show content that's available, whether complete or not
+    if not results and not errors:
+        return
+    
+    # 🌊 NEW: Show live streaming content during processing
+    if controller.is_active:
+        show_live_streaming_content()
+        return
+    
     # Only show final results when pipeline is complete
     if not controller.is_complete:
         return
         
-    if not results and not errors:
-        return
-    
     # 🌌 AWARD-WINNING MINIMAL COMPLETION INTERFACE
     st.markdown(f"""
     <div class="zen-completion">
@@ -267,32 +274,22 @@ def show_streaming_results():
         font-size: 0.7rem;
         color: rgba(255, 255, 255, 0.6);
         letter-spacing: 0.05em;
-        font-weight: 300;
         transition: all 0.3s ease;
-    }}
-    
-    .action-orb:hover .orb-icon {{
-        color: white;
-        transform: scale(1.1);
-    }}
-    
-    .action-orb:hover .orb-label {{
-        color: rgba(255, 255, 255, 0.9);
     }}
     
     @keyframes orb-breathe {{
         0%, 100% {{ transform: translate(-50%, -50%) scale(1); opacity: 0.6; }}
-        50% {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }}
+        50% {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.9; }}
     }}
     
     @keyframes zen-glow {{
         0%, 100% {{ text-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }}
-        50% {{ text-shadow: 0 0 30px rgba(0, 255, 255, 0.6), 0 0 40px rgba(64, 224, 208, 0.3); }}
+        50% {{ text-shadow: 0 0 30px rgba(0, 255, 255, 0.6); }}
     }}
     
     @keyframes bio-pulse {{
         0%, 100% {{ opacity: 1; transform: scale(1); }}
-        50% {{ opacity: 0.6; transform: scale(1.2); }}
+        50% {{ opacity: 0.7; transform: scale(1.2); }}
     }}
     
     @keyframes aurora-scan {{
@@ -304,507 +301,388 @@ def show_streaming_results():
     </style>
     """, unsafe_allow_html=True)
     
-    # Hidden Streamlit buttons for functionality (triggered by JavaScript)
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("Download All", key="hidden_download", help="Download all content"):
-            _show_download_options(results)
-    with col2:
-        if st.button("Export PDF", key="hidden_pdf", help="Export as PDF"):
-            st.info("✨ PDF export coming soon!")
-    with col3:
-        if st.button("Send to Notion", key="hidden_notion", help="Send to Notion"):
-            st.info("🔗 Notion integration coming soon!")
-    
-    st.markdown("<div style='margin: 16px 0;'></div>", unsafe_allow_html=True)
-    
-    # 🌸 ZEN CONTENT GARDEN - Japanese minimalism meets bioluminescence
-    content_sections = [
-        ("article_creation", "○", "article", "Your comprehensive piece"),
-        ("social_content", "◐", "social", "Platform content"),
-        ("wisdom_extraction", "◑", "insights", "Core wisdom"),
-        ("image_prompts", "◒", "visuals", "Image concepts"),
-        ("transcription", "●", "transcript", "Source audio")
-    ]
-    
-    available_content = []
-    for key, symbol, name, desc in content_sections:
-        if key in results and results[key]:
-            available_content.append((key, symbol, name, desc, results[key]))
-    
-    if available_content:
-        st.markdown("""
-        <div class="content-garden">
-            <div class="garden-title">created essence</div>
-        </div>
-        
-        <style>
-        .content-garden {
-            text-align: center;
-            margin: 3rem 0 2rem 0;
-        }
-        
-        .garden-title {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.4);
-            letter-spacing: 0.2em;
-            font-weight: 200;
-            margin-bottom: 2rem;
-        }
-        
-        .content-zen-card {
-            background: rgba(0, 255, 255, 0.01);
-            border: 1px solid rgba(0, 255, 255, 0.08);
-            border-radius: 16px;
-            margin: 1rem 0;
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-            overflow: hidden;
-            position: relative;
-        }
-        
-        .content-zen-card:hover {
-            border-color: rgba(0, 255, 255, 0.15);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 255, 255, 0.08);
-        }
-        
-        .content-zen-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
-            transition: left 0.6s ease;
-        }
-        
-        .content-zen-card:hover::before {
-            left: 100%;
-        }
-        
-        .zen-header {
-            padding: 1.5rem 2rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            cursor: pointer;
-        }
-        
-        .zen-symbol {
-            font-size: 1.8rem;
-            color: rgba(0, 255, 255, 0.7);
-            transition: all 0.3s ease;
-            width: 40px;
-            text-align: center;
-        }
-        
-        .zen-info {
-            flex: 1;
-        }
-        
-        .zen-name {
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin: 0;
-            font-weight: 300;
-            letter-spacing: 0.05em;
-        }
-        
-        .zen-desc {
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.4);
-            margin: 0.2rem 0 0 0;
-            font-weight: 200;
-        }
-        
-        .zen-expand {
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 0.8rem;
-            transition: all 0.3s ease;
-        }
-        
-        .content-zen-card:hover .zen-symbol {
-            color: #00FFFF;
-            transform: scale(1.1);
-        }
-        
-        .content-zen-card:hover .zen-expand {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        for key, symbol, name, desc, content in available_content:
-            # Zen content card
-            st.markdown(f"""
-            <div class="content-zen-card">
-                <div class="zen-header">
-                    <div class="zen-symbol">{symbol}</div>
-                    <div class="zen-info">
-                        <div class="zen-name">{name}</div>
-                        <div class="zen-desc">{desc}</div>
-                    </div>
-                    <div class="zen-expand">◦</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Minimalist expandable content
-            with st.expander(f"explore {name}", expanded=False):
-                if key == "social_content":
-                    _show_social_posts_zen(content)
-                else:
-                    # Clean content display
-                    if len(content) > 1000:
-                        st.markdown("**preview**")
-                        st.markdown(f"*{content[:500]}...*")
-                        
-                        reveal_key = generate_unique_key(f"show_full_{key}_{name}")
-                        if st.button(f"reveal all", key=reveal_key):
-                            st.markdown("**complete**")
-                            textarea_key = generate_unique_key(f"textarea_{key}_{name}")
-                            st.text_area("", content, height=300, key=textarea_key)
-                    else:
-                        st.markdown(content)
-                
-                # Zen copy action
-                copy_key = generate_unique_key(f"copy_{key}_{name}")
-                if st.button(f"∞ capture", key=copy_key, use_container_width=False):
-                    st.code(content, language="text")
+    # Display all available results with beautiful Aurora styling
+    show_2025_content_display()
 
 
-def _show_social_posts_zen(social_content: str):
-    """Display social posts with zen aesthetic"""
+def show_live_streaming_content():
+    """🌊 NEW: Real-time content streaming during processing - 2025 Aurora Style"""
+    controller = get_pipeline_controller()
+    results = controller.get_results()
     
-    # Parse the social content into individual posts
-    posts = []
-    if social_content:
-        # Try to split by common post separators
-        potential_posts = social_content.split('\n\n')
-        post_num = 1
-        for post in potential_posts:
-            if post.strip() and len(post.strip()) > 20:
-                posts.append((f"essence {post_num}", post.strip()))
-                post_num += 1
+    if not results:
+        return
     
-    if not posts:
-        posts = [("essence 1", social_content)]
-    
-    # Zen post display
     st.markdown("""
+    <div class="live-stream-header">
+        <div class="stream-pulse"></div>
+        <h3>🌊 Live Generation Stream</h3>
+        <div class="stream-indicator">●</div>
+    </div>
+    
     <style>
-    .zen-post {
-        background: rgba(0, 255, 255, 0.005);
-        border: 1px solid rgba(0, 255, 255, 0.06);
+    .live-stream-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 24px 0;
+        padding: 16px;
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+        border: 1px solid rgba(0, 255, 255, 0.15);
         border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        transition: all 0.4s ease;
         position: relative;
         overflow: hidden;
     }
     
-    .zen-post:hover {
-        border-color: rgba(0, 255, 255, 0.12);
-        transform: translateY(-1px);
-    }
-    
-    .zen-post::before {
-        content: '';
+    .stream-pulse {
         position: absolute;
         top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
-        opacity: 0;
-        transition: opacity 0.4s ease;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+        animation: stream-flow 3s ease-in-out infinite;
     }
     
-    .zen-post:hover::before {
-        opacity: 1;
-    }
-    
-    .zen-post-title {
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.4);
-        margin-bottom: 1rem;
-        letter-spacing: 0.1em;
-        font-weight: 200;
-    }
-    
-    .zen-post-content {
-        color: rgba(255, 255, 255, 0.8);
-        line-height: 1.7;
+    .live-stream-header h3 {
+        margin: 0;
+        color: #00FFFF;
         font-weight: 300;
-        font-size: 0.95rem;
+        letter-spacing: 0.05em;
+    }
+    
+    .stream-indicator {
+        color: #00FF00;
+        font-size: 12px;
+        animation: blink 1s ease-in-out infinite;
+    }
+    
+    @keyframes stream-flow {
+        0%, 100% { left: -100%; opacity: 0; }
+        50% { left: 100%; opacity: 1; }
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
     }
     </style>
     """, unsafe_allow_html=True)
     
-    for post_title, post_content in posts[:5]:
-        st.markdown(f"""
-        <div class="zen-post">
-            <div class="zen-post-title">{post_title}</div>
-            <div class="zen-post-content">{post_content.replace(chr(10), '<br>')}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Minimal copy button
-        if st.button(f"◦ capture {post_title.split()[1]}", key=f"copy_{post_title.lower().replace(' ', '_')}", use_container_width=False):
-            st.code(post_content, language="text")
-
-
-def _show_social_posts_beautiful(social_content: str):
-    """Show social posts in beautiful individual cards like the screenshot"""
-    
-    # Parse the social content into individual posts
-    posts = []
-    if social_content:
-        # Try to split by common post separators
-        potential_posts = social_content.split('\n\n')
-        post_num = 1
-        for post in potential_posts:
-            if post.strip() and len(post.strip()) > 20:  # Filter out empty or very short lines
-                posts.append((f"Social Post #{post_num}", post.strip()))
-                post_num += 1
-    
-    if not posts:
-        posts = [("Social Post #1", social_content)]  # Fallback to single post
-    
-    # Show each post in a beautiful card
-    for post_title, post_content in posts[:5]:  # Limit to 5 posts max
-        st.markdown(f"""
-        <div style="
-            background: rgba(0, 255, 255, 0.03);
-            border: 1px solid rgba(0, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 12px 0;
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h4 style="color: #00FFFF; margin: 0;">{post_title}</h4>
-                <button style="
-                    background: transparent;
-                    border: 1px solid rgba(0, 255, 255, 0.3);
-                    color: #00FFFF;
-                    border-radius: 6px;
-                    padding: 4px 8px;
-                    font-size: 0.8rem;
-                    cursor: pointer;
-                ">📋</button>
-            </div>
-            <div style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
-                {post_content.replace(chr(10), '<br>')}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Individual copy button for each post
-        if st.button(f"📋 Copy {post_title}", key=f"copy_{post_title.lower().replace(' ', '_').replace('#', '')}", use_container_width=False):
-            st.code(post_content, language="text")
-
-
-def _show_content_stream_card(step_id: str, step_title: str, step_description: str, content: str, error: Optional[str] = None):
-    """Show a streaming content card with Aurora styling for real-time display"""
-    
-    if error:
-        st.error(f"❌ {step_title}: {error}")
-        return
-    
-    if not content:
-        st.info(f"🔄 {step_title}: {step_description}...")
-        return
-    
-    # Create expandable container for each result
-    with st.expander(f"✅ {step_title} - Complete", expanded=True):
-        st.markdown(f"**{step_description}**")
-        
-        # Special handling for different content types
-        if step_id == "upload_validation":
-            if isinstance(content, dict):
-                st.success(f"File validated: {content.get('file_name', 'Unknown')} ({content.get('file_size_mb', 0):.1f} MB)")
-            else:
-                st.success(str(content))
-        elif step_id == "database_storage":
-            st.success("Content saved to database successfully")
-        else:
-            # Show the actual content with proper formatting
-            if len(content) > 1000:
-                # For long content, show first part with expand option
-                st.markdown(content[:500] + "...")
-                with st.expander("Show full content"):
-                    st.markdown(content)
-            else:
-                st.markdown(content)
-        
-        # Copy button for text content
-        if step_id not in ["upload_validation", "database_storage"] and content:
-            if st.button(f"📋 Copy {step_title}", key=f"copy_{step_id}", use_container_width=False):
-                st.code(content, language="markdown")
-
-def _show_content_card(content_type: str, content: str, error: Optional[str] = None):
-    """Show a content card with Aurora styling"""
-    
-    if error:
-        st.error(f"❌ Error generating {content_type.replace('_', ' ')}: {error}")
-        return
-    
-    if not content:
-        st.info(f"🔄 Generating {content_type.replace('_', ' ')}...")
-        return
-    
-    # Get content title
-    titles = {
-        "transcription": "Audio Transcription",
-        "wisdom_extraction": "Key Insights & Wisdom",
-        "outline_creation": "Structured Content Outline",
-        "article_creation": "Full Article",
-        "social_content": "Social Media Content",
-        "image_prompts": "AI Image Generation Prompts"
+    # Show available content with streaming animations
+    content_map = {
+        'transcription': ('🎙️', 'Transcription', 'Audio-to-text conversion'),
+        'wisdom_extraction': ('💎', 'Key Insights', 'Extracted wisdom and takeaways'),
+        'research_enrichment': ('🔍', 'Research Links', 'Supporting context and sources'),
+        'outline_creation': ('📋', 'Content Outline', 'Structured organization'),
+        'article_creation': ('📰', 'Full Article', 'Complete written content'),
+        'social_content': ('📱', 'Social Posts', 'Platform-optimized content'),
+        'image_prompts': ('🖼️', 'Image Prompts', 'Visual concept descriptions')
     }
     
-    title = titles.get(content_type, content_type.replace('_', ' ').title())
-    
-    # Escape content for safe HTML display
-    content_escaped = html.escape(content)
-    
-    st.markdown(f"""
-    <div class="aurora-content-card">
-        <div class="aurora-content-header">
-            <span class="aurora-content-title">{title}</span>
-            <div class="aurora-content-meta">
-                <span class="aurora-status-badge completed">✓ Complete</span>
-            </div>
-        </div>
-        <div class="aurora-content-body">
-            {content_escaped.replace(chr(10), '<br>')}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Copy to clipboard button
-    if st.button(f"📋 Copy {title}", key=f"copy_{content_type}", use_container_width=False):
-        st.code(content, language="markdown")
+    for key, (icon, title, desc) in content_map.items():
+        if key in results and results[key]:
+            show_streaming_content_card(icon, title, desc, results[key], is_live=True)
 
 
-def _show_editor_feedback(results: Dict[str, Any]):
-    """Show editor feedback and critiques"""
+def show_streaming_content_card(icon: str, title: str, description: str, content: str, is_live: bool = False):
+    """🎨 Beautiful streaming content card with Aurora effects"""
     
-    critique_keys = [k for k in results.keys() if k.endswith("_critique")]
+    # Create unique key for this card
+    card_key = generate_unique_key(f"stream_card_{title.lower()}")
     
-    if not critique_keys:
-        st.info("📝 Editor feedback will appear here when available.")
-        return
+    # Live vs complete styling
+    border_color = "rgba(0, 255, 100, 0.2)" if is_live else "rgba(0, 255, 255, 0.15)"
+    bg_gradient = "rgba(0, 255, 100, 0.03), rgba(0, 255, 255, 0.05)" if is_live else "rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05)"
+    glow_color = "rgba(0, 255, 100, 0.4)" if is_live else "rgba(0, 255, 255, 0.3)"
     
-    st.markdown("""
-    <div class="aurora-editor-section">
-        <div class="aurora-editor-header">
-            <span class="aurora-editor-title">✍️ Editorial Review</span>
-            <div class="aurora-editor-badge">AI Editor Active</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    for critique_key in critique_keys:
-        content_type = critique_key.replace("_critique", "")
-        critique = results[critique_key]
-        
-        # Get content type display name
-        type_names = {
-            "wisdom": "Wisdom Extraction",
-            "outline": "Content Outline", 
-            "article": "Article Writing",
-            "social": "Social Media Content"
-        }
-        
-        type_name = type_names.get(content_type, content_type.title())
-        
-        with st.expander(f"📝 Editorial Feedback: {type_name}", expanded=False):
-            st.markdown(f"""
-            <div class="aurora-critique-card">
-                <div class="aurora-critique-content">
-                    {html.escape(critique).replace(chr(10), '<br>')}
+    with st.container():
+        st.markdown(f"""
+        <div class="aurora-stream-card {'live' if is_live else 'complete'}">
+            <div class="card-header">
+                <span class="card-icon">{icon}</span>
+                <div class="card-title-group">
+                    <h4 class="card-title">{title}</h4>
+                    <p class="card-description">{description}</p>
                 </div>
+                {'<div class="live-badge">LIVE</div>' if is_live else '<div class="complete-badge">✓</div>'}
             </div>
-            """, unsafe_allow_html=True)
+            <div class="card-separator"></div>
+        </div>
+        
+        <style>
+        .aurora-stream-card {{
+            background: linear-gradient(135deg, {bg_gradient});
+            border: 1px solid {border_color};
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px 0;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            backdrop-filter: blur(20px);
+        }}
+        
+        .aurora-stream-card::before {{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, {glow_color}, transparent);
+            animation: card-glow 4s ease-in-out infinite;
+        }}
+        
+        .aurora-stream-card.live::before {{
+            animation: card-glow 2s ease-in-out infinite;
+        }}
+        
+        .card-header {{
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }}
+        
+        .card-icon {{
+            font-size: 1.8rem;
+            filter: drop-shadow(0 0 8px {glow_color});
+        }}
+        
+        .card-title-group {{
+            flex: 1;
+        }}
+        
+        .card-title {{
+            margin: 0;
+            color: #00FFFF;
+            font-size: 1.1rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }}
+        
+        .card-description {{
+            margin: 4px 0 0 0;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }}
+        
+        .live-badge {{
+            background: linear-gradient(135deg, rgba(0, 255, 100, 0.2), rgba(0, 255, 100, 0.1));
+            border: 1px solid rgba(0, 255, 100, 0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            color: #00FF88;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            animation: pulse-live 2s ease-in-out infinite;
+        }}
+        
+        .complete-badge {{
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #00FFFF;
+        }}
+        
+        .card-separator {{
+            height: 1px;
+            background: linear-gradient(90deg, transparent, {border_color}, transparent);
+            margin: 16px 0 0 0;
+        }}
+        
+        @keyframes card-glow {{
+            0%, 100% {{ left: -100%; opacity: 0; }}
+            50% {{ left: 100%; opacity: 1; }}
+        }}
+        
+        @keyframes pulse-live {{
+            0%, 100% {{ transform: scale(1); opacity: 1; }}
+            50% {{ transform: scale(1.05); opacity: 0.8; }}
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Content preview with smart truncation
+        if len(content) > 300:
+            preview = content[:300] + "..."
+            
+            # Expandable content
+            with st.expander(f"📖 Preview {title}", expanded=False):
+                st.markdown(preview)
+                
+            with st.expander(f"📄 Full {title}", expanded=False):
+                st.markdown(content)
+                
+                # Copy button
+                copy_key = generate_unique_key(f"copy_{title}")
+                if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
+                    st.code(content, language="markdown")
+        else:
+            st.markdown(content)
+            
+            # Copy button for short content
+            copy_key = generate_unique_key(f"copy_short_{title}")
+            if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
+                st.code(content, language="markdown")
 
 
-def show_enhanced_streaming_status():
-    """PHASE 3: ENHANCED STREAMING UX OVERHAUL - 2025 st.status() integration WITH VISIBLE THINKING"""
-    from .visible_thinking import render_thinking_stream
+def show_2025_content_display():
+    """🚀 Ultra-modern 2025 Aurora content display for completed results"""
     controller = get_pipeline_controller()
-    
-    if not controller.is_active and not controller.is_complete:
-        return
-
-    current_step = controller.current_step_index
-    pipeline_steps = [
-        ("Upload Validation", "File format & compatibility check", "upload_validation"),
-        ("Audio Transcription", "Speech-to-text conversion", "transcription"),
-        ("Wisdom Extraction", "Key insights extraction", "wisdom_extraction"),
-        ("Research Enrichment", "Supporting links & context", "research_enrichment"),  
-        ("Outline Generation", "Content structure creation", "outline_creation"),
-        ("Article Creation", "Full article generation", "article_creation"),
-        ("Social Media Posts", "Platform-optimized content", "social_content"),
-        ("Image Prompts", "Visual concept generation", "image_prompts"),
-        ("Database Storage", "Secure content storage", "database_storage")
-    ]
-    
     results = controller.get_results()
-    errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
     
-    # Show visible thinking bubbles first (above the status)
-    thinking_container = st.container()
-    render_thinking_stream(thinking_container)
+    if not results:
+        return
     
-    # Main processing status container with st.status()
-    if controller.is_active:
-        current_title, current_desc, current_key = pipeline_steps[current_step]
-        
-        with st.status(f"🔄 {current_title}", expanded=True) as status:
-            st.write(f"📝 **{current_desc}**")
-            
-            # Show previous completed steps
-            for i in range(current_step):
-                title, _, step_key = pipeline_steps[i]
-                if step_key in results:
-                    st.write(f"✅ {title} - Complete")
-                elif step_key in errors:
-                    st.write(f"❌ {title} - Error: {errors[step_key]}")
-                else:
-                    st.write(f"✅ {title} - Complete")
-            
-            # Current step with progress
-            st.write(f"🔄 **{current_title}** - {current_desc}...")
-            
-            # Show preview of remaining steps
-            for i in range(current_step + 1, len(pipeline_steps)):
-                title, _, _ = pipeline_steps[i]
-                st.write(f"⭕ {title} - Pending")
-            
-            # Update status based on completion
-            if current_step >= len(pipeline_steps) - 1:
-                status.update(label="✅ Processing Complete!", state="complete", expanded=False)
-            else:
-                status.update(label=f"🔄 {current_title}", state="running")
+    # Beautiful completion header
+    st.markdown("""
+    <div class="completion-showcase">
+        <div class="showcase-bg"></div>
+        <div class="showcase-content">
+            <h2>✨ Transformation Complete</h2>
+            <p>Your audio has been transformed into structured, actionable content</p>
+        </div>
+        <div class="showcase-orbs">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+        </div>
+    </div>
     
-    elif controller.is_complete:
-        st.status("✅ All processing complete!", state="complete", expanded=False)
-        
-        # Show completion summary
-        with st.container():
-            st.markdown("### 🌟 Generation Summary")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Steps Completed", len([r for r in results if r]), len(pipeline_steps))
-            with col2:
-                st.metric("Errors", len(errors), delta_color="inverse")
-            with col3:
-                success_rate = ((len(results) - len(errors)) / len(pipeline_steps)) * 100
-                st.metric("Success Rate", f"{success_rate:.1f}%")
+    <style>
+    .completion-showcase {
+        position: relative;
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 48px;
+        margin: 32px 0;
+        text-align: center;
+        overflow: hidden;
+    }
+    
+    .showcase-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 30% 70%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 30%, rgba(64, 224, 208, 0.08) 0%, transparent 50%);
+        animation: bg-float 8s ease-in-out infinite;
+    }
+    
+    .showcase-content {
+        position: relative;
+        z-index: 2;
+    }
+    
+    .showcase-content h2 {
+        margin: 0 0 12px 0;
+        color: #00FFFF;
+        font-size: 2.2rem;
+        font-weight: 300;
+        letter-spacing: 0.05em;
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    
+    .showcase-content p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1.1rem;
+        letter-spacing: 0.02em;
+    }
+    
+    .showcase-orbs {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        pointer-events: none;
+    }
+    
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(1px);
+    }
+    
+    .orb-1 {
+        width: 60px;
+        height: 60px;
+        background: radial-gradient(circle, rgba(0, 255, 255, 0.2), transparent);
+        top: 20%;
+        left: 20%;
+        animation: orb-float-1 6s ease-in-out infinite;
+    }
+    
+    .orb-2 {
+        width: 40px;
+        height: 40px;
+        background: radial-gradient(circle, rgba(64, 224, 208, 0.15), transparent);
+        top: 60%;
+        right: 25%;
+        animation: orb-float-2 8s ease-in-out infinite reverse;
+    }
+    
+    .orb-3 {
+        width: 30px;
+        height: 30px;
+        background: radial-gradient(circle, rgba(0, 255, 200, 0.1), transparent);
+        bottom: 30%;
+        left: 30%;
+        animation: orb-float-3 7s ease-in-out infinite;
+    }
+    
+    @keyframes bg-float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-10px) rotate(2deg); }
+    }
+    
+    @keyframes orb-float-1 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(10px, -15px) scale(1.1); }
+        66% { transform: translate(-8px, 12px) scale(0.9); }
+    }
+    
+    @keyframes orb-float-2 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-12px, -10px) scale(1.2); }
+    }
+    
+    @keyframes orb-float-3 {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        25% { transform: translate(8px, -8px) scale(0.8); }
+        75% { transform: translate(-6px, 10px) scale(1.1); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Display all results with modern cards
+    content_map = {
+        'transcription': ('🎙️', 'Audio Transcription', 'Complete speech-to-text conversion'),
+        'wisdom_extraction': ('💎', 'Key Insights & Wisdom', 'Extracted insights and actionable takeaways'),
+        'research_enrichment': ('🔍', 'Research Enrichment', 'Supporting links and contextual information'),
+        'outline_creation': ('📋', 'Content Outline', 'Structured organization and flow'),
+        'article_creation': ('📰', 'Full Article', 'Complete written content ready for publication'),
+        'social_content': ('📱', 'Social Media Content', 'Platform-optimized posts and captions'),
+        'image_prompts': ('🖼️', 'Image Generation Prompts', 'AI-generated visual concept descriptions')
+    }
+    
+    for key, (icon, title, desc) in content_map.items():
+        if key in results and results[key]:
+            show_streaming_content_card(icon, title, desc, results[key], is_live=False)
 
 
 def _show_download_options(results: Dict[str, Any]):
@@ -1014,6 +892,205 @@ STREAMING_RESULTS_CSS = """
 </style>
 """
 
+def show_enhanced_streaming_status():
+    """PHASE 3: ENHANCED STREAMING UX OVERHAUL - 2025 st.status() integration WITH VISIBLE THINKING"""
+    controller = get_pipeline_controller()
+    
+    if not controller.is_active and not controller.is_complete:
+        return
+
+    current_step = controller.current_step_index
+    pipeline_steps = [
+        ("Upload Validation", "File format & compatibility check", "upload_validation"),
+        ("Audio Transcription", "Speech-to-text conversion", "transcription"),
+        ("Wisdom Extraction", "Key insights extraction", "wisdom_extraction"),
+        ("Research Enrichment", "Supporting links & context", "research_enrichment"),  
+        ("Outline Generation", "Content structure creation", "outline_creation"),
+        ("Article Creation", "Full article generation", "article_creation"),
+        ("Social Media Posts", "Platform-optimized content", "social_content"),
+        ("Image Prompts", "Visual concept generation", "image_prompts"),
+        ("Database Storage", "Secure content storage", "database_storage")
+    ]
+    
+    results = controller.get_results()
+    errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
+    
+    # 🧠 VISIBLE THINKING INTEGRATION - Show AI thought bubbles during processing
+    if controller.is_active and st.session_state.get("thinking_enabled", True):
+        # Create dedicated container for thinking bubbles
+        thinking_container = st.container()
+        with thinking_container:
+            st.markdown("""
+            <div class="thinking-section">
+                <div class="thinking-header">
+                    <span class="thinking-icon">🧠</span>
+                    <span class="thinking-title">AI Thinking Process</span>
+                    <div class="thinking-pulse"></div>
+                </div>
+            </div>
+            
+            <style>
+            .thinking-section {
+                background: linear-gradient(135deg, rgba(255, 20, 147, 0.08), rgba(138, 43, 226, 0.05));
+                border: 1px solid rgba(255, 20, 147, 0.15);
+                border-radius: 12px;
+                padding: 16px;
+                margin: 16px 0;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .thinking-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            
+            .thinking-icon {
+                font-size: 1.2rem;
+                animation: think-pulse 2s ease-in-out infinite;
+            }
+            
+            .thinking-title {
+                color: rgba(255, 20, 147, 0.9);
+                font-weight: 500;
+                font-size: 0.9rem;
+                letter-spacing: 0.02em;
+            }
+            
+            .thinking-pulse {
+                width: 8px;
+                height: 8px;
+                background: #FF1493;
+                border-radius: 50%;
+                margin-left: auto;
+                animation: pulse-dot 1.5s ease-in-out infinite;
+            }
+            
+            @keyframes think-pulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+            }
+            
+            @keyframes pulse-dot {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.4; transform: scale(0.8); }
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Render the actual thinking stream
+            try:
+                render_thinking_stream(thinking_container)
+            except Exception as e:
+                st.info(f"💭 AI is thinking... (thinking system loading)")
+    
+    # Main processing status container with st.status()
+    if controller.is_active:
+        current_title, current_desc, current_key = pipeline_steps[current_step]
+        
+        with st.status(f"🔄 {current_title}", expanded=True) as status:
+            st.write(f"📝 **{current_desc}**")
+            
+            # Progress bar
+            progress = (current_step / len(pipeline_steps)) * 100
+            st.progress(progress / 100, text=f"Progress: {progress:.0f}% ({current_step + 1}/{len(pipeline_steps)})")
+            
+            # Show previous completed steps with content preview
+            for i in range(current_step):
+                title, _, step_key = pipeline_steps[i]
+                if step_key in results:
+                    st.write(f"✅ {title} - Complete")
+                    # Show brief preview of generated content
+                    if step_key in results and results[step_key] and step_key not in ["upload_validation", "database_storage"]:
+                        preview = str(results[step_key])[:100] + "..." if len(str(results[step_key])) > 100 else str(results[step_key])
+                        st.caption(f"Preview: {preview}")
+                elif step_key in errors:
+                    st.write(f"❌ {title} - Error: {errors[step_key]}")
+                else:
+                    st.write(f"✅ {title} - Complete")
+            
+            # Current step with enhanced styling
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.05));
+                border-left: 3px solid #00FFFF;
+                padding: 12px 16px;
+                margin: 8px 0;
+                border-radius: 0 8px 8px 0;
+            ">
+                🔄 <strong>{current_title}</strong> - {current_desc}...
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show preview of remaining steps
+            for i in range(current_step + 1, len(pipeline_steps)):
+                title, _, _ = pipeline_steps[i]
+                st.write(f"⭕ {title} - Pending")
+            
+            # Update status based on completion
+            if current_step >= len(pipeline_steps) - 1:
+                status.update(label="✅ Processing Complete!", state="complete", expanded=False)
+            else:
+                status.update(label=f"🔄 {current_title}", state="running")
+    
+    elif controller.is_complete:
+        # Completion status with beautiful summary
+        with st.status("✅ All processing complete!", state="complete", expanded=False):
+            st.success("Your audio has been transformed into comprehensive content!")
+        
+        # Enhanced completion summary
+        st.markdown("""
+        <div class="completion-summary">
+            <h4>🌟 Generation Summary</h4>
+        </div>
+        
+        <style>
+        .completion-summary {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.05));
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            text-align: center;
+        }
+        
+        .completion-summary h4 {
+            margin: 0;
+            color: #00FFFF;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            completed_count = len([r for r in results.values() if r])
+            st.metric("Steps Completed", completed_count, len(pipeline_steps))
+        with col2:
+            error_count = len(errors)
+            st.metric("Errors", error_count, delta_color="inverse")
+        with col3:
+            success_rate = ((completed_count - error_count) / len(pipeline_steps)) * 100
+            st.metric("Success Rate", f"{success_rate:.1f}%")
+        
+        # Show content type breakdown
+        if results:
+            st.markdown("**Generated Content Types:**")
+            content_types = []
+            if results.get('transcription'): content_types.append("📝 Transcription")
+            if results.get('wisdom_extraction'): content_types.append("💎 Insights")
+            if results.get('research_enrichment'): content_types.append("🔍 Research")
+            if results.get('outline_creation'): content_types.append("📋 Outline")
+            if results.get('article_creation'): content_types.append("📰 Article")
+            if results.get('social_content'): content_types.append("📱 Social Posts")
+            if results.get('image_prompts'): content_types.append("🖼️ Image Prompts")
+            
+            if content_types:
+                st.write(" • ".join(content_types))
+
 def show_processing_status():
-    """Display ultra-modern Aurora pipeline with real-time visibility - ORIGINAL"""
+    """Display ultra-modern Aurora pipeline with real-time visibility - WRAPPER"""
     show_enhanced_streaming_status()  # Use the new enhanced version 
