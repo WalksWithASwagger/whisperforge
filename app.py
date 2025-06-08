@@ -810,12 +810,12 @@ def show_main_app():
     # Apply Aurora theme and show compact header with signout
     apply_aurora_theme()
     
-    # Compact header with integrated signout
-    col1, col2 = st.columns([4, 1])
-    with col1:
-        create_aurora_header(show_signout=False)
-    with col2:
-        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+    # New Aurora header with integrated navigation
+    create_aurora_header()
+    
+    # Signout button integrated into navigation
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
+    with col5:
         if st.button("Sign Out", type="secondary", use_container_width=True):
             # Clear authentication
             st.session_state.authenticated = False

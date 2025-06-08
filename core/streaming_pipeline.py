@@ -71,11 +71,17 @@ class StreamingPipelineController:
         step_id = self.PIPELINE_STEPS[step_index]
         
         try:
-            # Process the step
-            result = self._execute_step(step_id, step_index)
-            
-            # Store result
-            st.session_state.pipeline_results[step_id] = result
+            # Show immediate status update
+            with st.status(f"Processing {step_id.replace('_', ' ').title()}...", expanded=True):
+                st.write(f"Step {step_index + 1} of {len(self.PIPELINE_STEPS)}: {step_id.replace('_', ' ')}")
+                
+                # Process the step
+                result = self._execute_step(step_id, step_index)
+                
+                # Store result
+                st.session_state.pipeline_results[step_id] = result
+                
+                st.write("✅ Complete!")
             
             # Move to next step
             st.session_state.pipeline_step_index += 1
@@ -87,6 +93,7 @@ class StreamingPipelineController:
             error_msg = str(e)
             st.session_state.pipeline_errors[step_id] = error_msg
             st.session_state.pipeline_active = False
+            st.error(f"❌ Error in {step_id}: {error_msg}")
             return False
     
     def _execute_step(self, step_id: str, step_index: int) -> Any:

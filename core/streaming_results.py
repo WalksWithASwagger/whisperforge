@@ -9,6 +9,63 @@ import time
 from typing import Dict, Any, Optional
 from .streaming_pipeline import get_pipeline_controller
 
+# CSS for streaming results
+STREAMING_RESULTS_CSS = """
+<style>
+/* Aurora Progress Animation */
+@keyframes aurora-flow {
+    0%, 100% { left: -100%; opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+@keyframes aurora-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+@keyframes completion-glow {
+    0%, 100% { left: -100%; opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+/* Enhanced Button Styling */
+.stButton > button {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+    border: 1px solid rgba(0, 255, 255, 0.2) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+    border-color: rgba(0, 255, 255, 0.3) !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
+}
+
+/* Expander Styling */
+.streamlit-expanderHeader {
+    background: rgba(0, 255, 255, 0.03) !important;
+    border: 1px solid rgba(0, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+}
+
+.streamlit-expanderContent {
+    background: rgba(0, 255, 255, 0.02) !important;
+    border: 1px solid rgba(0, 255, 255, 0.1) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+}
+</style>
+"""
+
 
 def show_streaming_results():
     """Display ultra-modern Aurora final results - STREAMLINED"""
@@ -117,13 +174,13 @@ def show_streaming_results():
                 else:
                     if len(content) > 800:
                         st.markdown(f"**Preview:** {content[:800]}...")
-                        if st.button(f"Show Full Content", key=f"full_{key}"):
-                            st.text_area(f"Full {title} Content", content, height=400, key=f"textarea_{key}")
+                        if st.button(f"Show Full Content", key=f"show_full_{key}_{hash(title)%1000}"):
+                            st.text_area(f"Full {title} Content", content, height=400, key=f"textarea_{key}_{hash(title)%1000}")
                     else:
                         st.markdown(content)
                 
                 # Compact copy button
-                if st.button(f"📋 Copy", key=f"copy_{key}", use_container_width=False):
+                if st.button(f"📋 Copy", key=f"copy_{key}_{hash(title)%1000}", use_container_width=False):
                     st.code(content, language="markdown")
 
 
@@ -473,8 +530,8 @@ def show_processing_status():
                     content = results[step_key]
                     if isinstance(content, str) and len(content) > 500:
                         st.markdown(f"**Preview:** {content[:500]}...")
-                        if st.button(f"Show Full Content", key=f"full_{step_key}"):
-                            st.text_area(f"Full {title} Content", content, height=300, key=f"textarea_{step_key}")
+                        if st.button(f"Show Full Content", key=f"show_full_{step_key}_{i}"):
+                            st.text_area(f"Full {title} Content", content, height=300, key=f"textarea_{step_key}_{i}")
                     else:
                         st.markdown(content if isinstance(content, str) else str(content))
     
