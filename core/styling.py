@@ -223,7 +223,7 @@ def apply_aurora_theme():
     """, unsafe_allow_html=True)
 
 def create_aurora_header():
-    """Create a flagship Aurora header with navigation menu - REBUILT FOR 2025"""
+    """Create a flagship Aurora header with integrated navigation and logout - REBUILT FOR 2025"""
     
     # First, inject the CSS using st.html()
     st.html("""
@@ -232,7 +232,7 @@ def create_aurora_header():
         background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 40, 60, 0.98));
         border: 1px solid rgba(0, 255, 255, 0.2);
         border-radius: 12px;
-        margin: 8px 0 20px 0;
+        margin: 4px 0 16px 0;
         position: relative;
         overflow: hidden;
         backdrop-filter: blur(10px);
@@ -253,7 +253,7 @@ def create_aurora_header():
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 16px 24px;
+        padding: 12px 20px;
         position: relative;
         z-index: 1;
     }
@@ -261,11 +261,11 @@ def create_aurora_header():
     .aurora-brand {
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: 12px;
     }
     
     .aurora-title {
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         font-weight: 800;
         background: linear-gradient(135deg, #00FFFF, #7DF9FF, #40E0D0);
         -webkit-background-clip: text;
@@ -279,7 +279,12 @@ def create_aurora_header():
     .aurora-status {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        padding: 4px 8px;
+        background: rgba(0, 255, 136, 0.1);
+        border: 1px solid rgba(0, 255, 136, 0.2);
+        border-radius: 20px;
+        backdrop-filter: blur(5px);
     }
     
     .aurora-status-dot {
@@ -292,9 +297,15 @@ def create_aurora_header():
     }
     
     .aurora-status-text {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.75rem;
         font-weight: 500;
+    }
+
+    .aurora-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     
     @keyframes aurora-flow {
@@ -338,9 +349,101 @@ def create_aurora_header():
                     <span class="aurora-status-text">Authenticated</span>
                 </div>
             </div>
+            <div id="aurora-nav-placeholder" class="aurora-nav">
+                <!-- Navigation buttons will be inserted here by Streamlit -->
+            </div>
         </div>
     </header>
     """)
+
+def create_aurora_nav_buttons():
+    """Create integrated navigation buttons for the Aurora header"""
+    
+    # Enhanced styling for integrated nav buttons
+    st.markdown("""
+    <style>
+    /* Aurora nav button styling */
+    .aurora-nav-button {
+        margin: 0 2px !important;
+    }
+    
+    .aurora-nav-button .stButton > button {
+        background: rgba(0, 255, 255, 0.08) !important;
+        border: 1px solid rgba(0, 255, 255, 0.15) !important;
+        color: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 8px !important;
+        padding: 6px 16px !important;
+        font-weight: 500 !important;
+        font-size: 0.85rem !important;
+        transition: all 0.2s ease !important;
+        min-width: 80px !important;
+        height: 32px !important;
+    }
+    
+    .aurora-nav-button .stButton > button:hover {
+        background: rgba(0, 255, 255, 0.15) !important;
+        border-color: rgba(0, 255, 255, 0.25) !important;
+        color: #00FFFF !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 255, 255, 0.1);
+    }
+    
+    /* Active/Primary button styling */
+    .aurora-nav-button .stButton > button[kind="primary"] {
+        background: rgba(0, 255, 255, 0.2) !important;
+        border-color: rgba(0, 255, 255, 0.3) !important;
+        color: #00FFFF !important;
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.15);
+    }
+    
+    /* Logout button special styling */
+    .aurora-logout-button .stButton > button {
+        background: rgba(255, 100, 100, 0.1) !important;
+        border: 1px solid rgba(255, 100, 100, 0.2) !important;
+        color: rgba(255, 180, 180, 0.9) !important;
+    }
+    
+    .aurora-logout-button .stButton > button:hover {
+        background: rgba(255, 100, 100, 0.2) !important;
+        border-color: rgba(255, 100, 100, 0.3) !important;
+        color: #FF6B6B !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    pages = [
+        ("Processing", "Content Pipeline"),
+        ("History", "Content History"), 
+        ("Settings", "Settings"),
+        ("Status", "Health Check")
+    ]
+    
+    current_page = st.session_state.get('current_page', 'Content Pipeline')
+    
+    # Create horizontal layout for nav buttons
+    nav_cols = st.columns([1, 1, 1, 1, 0.8])  # Last column smaller for logout
+    
+    for i, (page_name, page_key) in enumerate(pages):
+        with nav_cols[i]:
+            st.markdown('<div class="aurora-nav-button">', unsafe_allow_html=True)
+            if st.button(
+                page_name, 
+                key=f"nav_{page_name}", 
+                type="primary" if page_key == current_page else "secondary",
+                use_container_width=True
+            ):
+                st.session_state.current_page = page_key
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Logout button in the last column
+    with nav_cols[4]:
+        st.markdown('<div class="aurora-logout-button">', unsafe_allow_html=True)
+        if st.button("Sign Out", key="logout_btn", use_container_width=True):
+            return True  # Signal logout
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    return False  # No logout
 
 def create_aurora_progress_card(title, current_step, total_steps, description=""):
     """Create a beautiful Aurora progress card"""

@@ -97,10 +97,12 @@ def authenticate_user_supabase(email: str, password: str) -> bool:
             # New bcrypt password
             from core.utils import verify_password
             if verify_password(password, stored_password):
-                st.session_state.user_id = user["id"]
-                st.session_state.authenticated = True
-                logger.info(f"User authenticated successfully with bcrypt: {email}")
-                return True
+                # Use session manager for proper session handling
+                from core.session_manager import login_user
+                success = login_user(user["id"], email)
+                if success:
+                    logger.info(f"User authenticated successfully with bcrypt: {email}")
+                    return True
         else:
             # Legacy SHA-256 password - check and migrate
             from core.utils import legacy_hash_password, hash_password
@@ -113,10 +115,12 @@ def authenticate_user_supabase(email: str, password: str) -> bool:
                     "updated_at": "now()"
                 }).eq("id", user["id"]).execute()
                 
-                st.session_state.user_id = user["id"]
-                st.session_state.authenticated = True
-                logger.info(f"User authenticated and migrated to bcrypt: {email}")
-                return True
+                # Use session manager for proper session handling
+                from core.session_manager import login_user
+                success = login_user(user["id"], email)
+                if success:
+                    logger.info(f"User authenticated and migrated to bcrypt: {email}")
+                    return True
         
         logger.warning(f"Authentication failed for user: {email}")
         return False
@@ -398,11 +402,12 @@ def handle_oauth_callback():
                     else:
                         st.session_state.user_id = existing_user.data[0]["id"]
                     
-                    # Set authentication state
-                    st.session_state.authenticated = True
-                    st.session_state.user_email = user_email
+                    # Use session manager for proper session handling
+                    from core.session_manager import login_user
+                    success = login_user(st.session_state.user_id, user_email)
                     
-                    st.sidebar.write("Debug - Authentication state set successfully")
+                    if success:
+                        st.sidebar.write("Debug - Authentication state set successfully")
                     
                     # Clear OAuth parameters to prevent re-processing
                     st.query_params.clear()
@@ -643,23 +648,17 @@ def _generate_nav_buttons():
     return ""  # Return empty string since we're using Streamlit buttons
 
 def show_main_app():
-    """Main application with clean layout"""
+    """Main application with clean layout and integrated navigation"""
     
-    # Initialize session state
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Content Pipeline"
-    if 'ai_provider' not in st.session_state:
-        st.session_state.ai_provider = "OpenAI"
-    if 'ai_model' not in st.session_state:
-        st.session_state.ai_model = "gpt-4o"
+    # Initialize session management
+    from core.session_manager import check_session
     
-    # Load user prompts on app initialization
-    if 'prompts' not in st.session_state:
-        st.session_state.prompts = get_user_prompts_supabase()
-    
-    # Load knowledge base on app initialization
-    if 'knowledge_base' not in st.session_state:
-        st.session_state.knowledge_base = get_user_knowledge_base_supabase()
+    # Validate session before proceeding
+    if not check_session():
+        st.error("Session expired. Please log in again.")
+        st.session_state.authenticated = False
+        st.rerun()
+        return
     
     # Check for page navigation via query params
     query_params = st.query_params
@@ -669,10 +668,6 @@ def show_main_app():
             st.session_state.current_page = page
             # Clear the query param after processing
             st.query_params.clear()
-    
-    # Load user data
-    st.session_state.prompts = get_user_prompts_supabase()
-    st.session_state.knowledge_base = get_user_knowledge_base_supabase()
     
     # Clean main app styling
     st.markdown("""
@@ -798,24 +793,24 @@ def show_main_app():
     </style>
     """, unsafe_allow_html=True)
     
-    # Apply Aurora theme and show compact header with signout
+    # Apply Aurora theme and show compact header with integrated navigation
     apply_aurora_theme()
     
     # New Aurora header with integrated navigation
     create_aurora_header()
     
-    # Signout button integrated into navigation
-    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
-    with col5:
-        if st.button("Sign Out", type="secondary", use_container_width=True):
-            # Clear authentication
-            st.session_state.authenticated = False
-            st.session_state.user_id = None
-            st.session_state.current_page = "Content Pipeline"
-            st.rerun()
+    # Integrated navigation with logout handling
+    from core.styling import create_aurora_nav_buttons
+    from core.session_manager import logout_user
+    import time
     
-    # Navigation buttons
-    _generate_nav_buttons()
+    if create_aurora_nav_buttons():
+        # User clicked logout
+        logout_user()
+        st.success("Logged out successfully!")
+        time.sleep(1)  # Brief pause to show message
+        st.session_state.current_page = "Content Pipeline"
+        st.rerun()
     
     # Show the selected page
     if st.session_state.current_page == "Content Pipeline":
@@ -1469,16 +1464,18 @@ def show_health_page():
                 st.success(f"✅ **{check.title()}:** {status}")
 
 def main():
-    """Main application entry point - FIXED OAUTH ROUTING"""
+    """Main application entry point - ENHANCED SESSION MANAGEMENT"""
     try:
-        # Initialize session tracking
+        # Initialize session tracking and management
         init_session_tracking()
         
-        # Initialize session state
-        if 'authenticated' not in st.session_state:
-            st.session_state.authenticated = False
-        if 'user_id' not in st.session_state:
-            st.session_state.user_id = None
+        # Initialize advanced session management
+        from core.session_manager import init_session, restore_session
+        init_session()
+        
+        # Try to restore session from storage first
+        if not st.session_state.get('authenticated', False):
+            restore_session()
         
         # Check for health endpoint
         query_params = st.query_params
