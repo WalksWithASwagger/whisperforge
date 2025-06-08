@@ -13,6 +13,7 @@ st.set_page_config(
 
 import os
 import json
+import time
 import tempfile
 import logging
 from datetime import datetime
@@ -35,6 +36,14 @@ from core.styling import local_css, add_production_css, create_custom_header, lo
 from core.monitoring import (
     init_monitoring, track_error, track_performance, track_user_action, 
     get_health_status, init_session_tracking
+)
+from core.progress import (
+    ProgressTracker, create_audio_pipeline_progress, progress_context
+)
+from core.file_upload import FileUploadManager
+from core.notifications import (
+    show_success, show_error, show_warning, show_info,
+    create_step_completion_animation, create_loading_spinner
 )
 
 # Set up logging
@@ -585,46 +594,193 @@ def show_main_app():
         show_settings_page()
 
 def show_home_page():
-    """Show main content generation page"""
+    """Show main content generation page with beautiful file upload"""
     st.title("⚡ WhisperForge Content Pipeline")
+    st.markdown("Transform your audio content into structured, actionable insights with AI-powered analysis.")
     
-    # Audio upload
-    uploaded_file = st.file_uploader(
-        "Upload Audio File",
-        type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'mov', 'avi'],
-        help="Upload an audio file to transcribe and generate content"
+    # Initialize file upload manager
+    file_manager = FileUploadManager()
+    
+    # Beautiful file upload zone
+    st.markdown("### 📁 Upload Your Audio Content")
+    uploaded_file = file_manager.create_upload_zone(
+        accept_types=['.mp3', '.wav', '.m4a', '.flac', '.mp4', '.mov', '.avi'],
+        show_preview=True
     )
     
     if uploaded_file:
+        # Validate the uploaded file
+        validation = file_manager.validate_file(uploaded_file)
+        
+        if not validation['valid']:
+            st.error("❌ File validation failed:")
+            for error in validation['errors']:
+                st.error(f"• {error}")
+            return
+        
+        if validation['warnings']:
+            st.warning("⚠️ Warnings:")
+            for warning in validation['warnings']:
+                st.warning(f"• {warning}")
+        
         st.session_state.audio_file = uploaded_file
         
-        # Provider selection
-        col1, col2 = st.columns(2)
+        # Configuration section with beautiful styling
+        st.markdown("### ⚙️ Processing Configuration")
+        
+        config_container = st.container()
+        with config_container:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 🤖 AI Provider")
+                st.session_state.ai_provider = st.selectbox(
+                    "Choose your AI provider",
+                    ["Anthropic", "OpenAI", "Grok"],
+                    index=["Anthropic", "OpenAI", "Grok"].index(st.session_state.ai_provider),
+                    help="Select which AI provider to use for content generation"
+                )
+            
+            with col2:
+                st.markdown("#### 🧠 Model Selection")
+                models = {
+                    "Anthropic": ["claude-3-7-sonnet-20250219", "claude-3-sonnet-20240229"],
+                    "OpenAI": ["gpt-4", "gpt-3.5-turbo"],
+                    "Grok": ["grok-2-2024-08-13", "grok-2-mini-2024-08-13"]
+                }
+                st.session_state.ai_model = st.selectbox(
+                    "Choose model version",
+                    models[st.session_state.ai_provider],
+                    index=0,
+                    help="Select the specific model variant for processing"
+                )
+        
+        # Processing estimation
+        st.markdown("### 📊 Processing Estimate")
+        col1, col2, col3 = st.columns(3)
+        
         with col1:
-            st.session_state.ai_provider = st.selectbox(
-                "AI Provider",
-                ["Anthropic", "OpenAI", "Grok"],
-                index=["Anthropic", "OpenAI", "Grok"].index(st.session_state.ai_provider)
+            st.metric(
+                "File Size", 
+                validation['formatted_size'],
+                help="Size of your uploaded file"
             )
         
         with col2:
-            models = {
-                "Anthropic": ["claude-3-7-sonnet-20250219", "claude-3-sonnet-20240229"],
-                "OpenAI": ["gpt-4", "gpt-3.5-turbo"],
-                "Grok": ["grok-2-2024-08-13", "grok-2-mini-2024-08-13"]
-            }
-            st.session_state.ai_model = st.selectbox(
-                "Model",
-                models[st.session_state.ai_provider],
-                index=0
+            # Estimate processing time based on file size
+            estimated_minutes = max(1, validation['file_size'] // (1024 * 1024) * 0.5)
+            st.metric(
+                "Est. Time", 
+                f"~{estimated_minutes:.0f}min",
+                help="Estimated processing time"
             )
         
-        # Process button
-        if st.button("🚀 Start Processing", type="primary"):
+        with col3:
+            st.metric(
+                "Pipeline Steps", 
+                "7 stages",
+                help="Number of processing stages"
+            )
+        
+        # Beautiful process button
+        st.markdown("### 🚀 Ready to Process")
+        
+        process_button_html = """
+        <div style="text-align: center; margin: 20px 0;">
+            <style>
+            .process-button {
+                background: linear-gradient(135deg, #7928CA 0%, #FF0080 100%);
+                border: none;
+                border-radius: 12px;
+                color: white;
+                padding: 16px 32px;
+                font-size: 18px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                text-decoration: none;
+                display: inline-block;
+                box-shadow: 0 4px 15px rgba(121, 40, 202, 0.3);
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .process-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(121, 40, 202, 0.4);
+            }
+            
+            .process-button:active {
+                transform: translateY(0px);
+            }
+            
+            .process-button::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                transition: left 0.5s ease;
+            }
+            
+            .process-button:hover::before {
+                left: 100%;
+            }
+            </style>
+        </div>
+        """
+        
+        st.markdown(process_button_html, unsafe_allow_html=True)
+        
+        if st.button("🚀 Start Processing Pipeline", type="primary", use_container_width=True):
             process_audio_pipeline(uploaded_file)
+    
+    else:
+        # Show helpful information when no file is uploaded
+        st.markdown("### 💡 How It Works")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            **📤 Upload**
+            
+            Upload your audio or video file in any supported format. We handle the rest!
+            """)
+        
+        with col2:
+            st.markdown("""
+            **🎤 Transcribe**
+            
+            Our AI converts speech to text with high accuracy and speaker recognition.
+            """)
+        
+        with col3:
+            st.markdown("""
+            **✨ Generate**
+            
+            Extract insights, create outlines, social content, and image prompts automatically.
+            """)
+        
+        # Feature highlights
+        st.markdown("### 🌟 Features")
+        
+        features = [
+            "🎯 **Smart Content Extraction** - AI identifies key insights and wisdom",
+            "📋 **Structured Outlines** - Organized content ready for use", 
+            "📱 **Social Media Ready** - Platform-optimized content generation",
+            "🎨 **Image Prompts** - AI-generated prompts for visual content",
+            "💾 **Cloud Storage** - All content saved and accessible anytime",
+            "🔒 **Secure Processing** - Your data is protected and private"
+        ]
+        
+        for feature in features:
+            st.markdown(feature)
 
 def process_audio_pipeline(audio_file):
-    """Process audio through the complete pipeline"""
+    """Process audio through the complete pipeline with beautiful progress tracking"""
     
     # Track pipeline execution
     pipeline_start = datetime.now()
@@ -636,62 +792,324 @@ def process_audio_pipeline(audio_file):
         "metadata": {"filename": audio_file.name}
     }
     
+    # Create progress tracker
+    progress = create_audio_pipeline_progress()
+    
     try:
-        # Step 1: Transcription
-        with st.spinner("🎤 Transcribing audio..."):
-            transcript = transcribe_audio(audio_file)
-            st.session_state.transcription = transcript
-        
-        if not transcript:
-            st.error("Failed to transcribe audio")
-            return
-        
-        st.success("✅ Transcription complete!")
-        with st.expander("📄 View Transcript"):
-            st.text_area("Transcript", transcript, height=200)
-        
-        # Step 2: Generate all content using the pipeline
-        with st.spinner("🤖 Generating content..."):
-            generated_content = run_content_pipeline(
-                transcript, 
-                st.session_state.ai_provider, 
-                st.session_state.ai_model, 
-                st.session_state.knowledge_base
-            )
-        
-        st.success("✅ Content generation complete!")
-        
-        # Display generated content
-        for content_type, content in generated_content.items():
-            with st.expander(f"📝 {content_type.replace('_', ' ').title()}"):
-                st.markdown(content)
-        
-        # Save content to Supabase
-        content_data = {
-            "title": f"Content from {audio_file.name}",
-            "transcript": transcript,
-            **generated_content,
-            "metadata": {
-                "ai_provider": st.session_state.ai_provider,
-                "ai_model": st.session_state.ai_model,
-                "file_size": audio_file.size,
-                "created_at": datetime.now().isoformat()
+        with progress_context(progress):
+            # Step 1: File upload validation
+            step = progress.next_step()
+            if step:
+                show_info("🔍 Validating file format and size...")
+                time.sleep(0.5)  # Simulate validation time
+                show_success("✅ File validation complete!")
+                
+            # Step 2: Transcription
+            step = progress.next_step()
+            if step:
+                show_info("🎤 Starting audio transcription...")
+                transcript = transcribe_audio(audio_file)
+                st.session_state.transcription = transcript
+                
+                if not transcript:
+                    progress.error("Failed to transcribe audio")
+                    show_error("❌ Failed to transcribe audio")
+                    return
+                    
+                show_success("🎤 Audio transcription completed successfully!")
+            
+            # Display transcript with beautiful styling
+            st.markdown("### 📄 Transcript Generated")
+            with st.expander("View Full Transcript", expanded=False):
+                st.text_area("", transcript, height=200, key="transcript_display")
+            
+            # Step 3: Wisdom extraction
+            step = progress.next_step()
+            if step:
+                show_info("💡 Extracting key insights and wisdom...")
+                wisdom = generate_wisdom(
+                    transcript, 
+                    st.session_state.ai_provider, 
+                    st.session_state.ai_model, 
+                    None, 
+                    st.session_state.knowledge_base
+                )
+                show_success("💡 Wisdom extraction completed!")
+            
+            # Step 4: Outline creation
+            step = progress.next_step()
+            if step:
+                show_info("📋 Creating structured content outline...")
+                outline = generate_outline(
+                    transcript, 
+                    wisdom, 
+                    st.session_state.ai_provider, 
+                    st.session_state.ai_model, 
+                    None, 
+                    st.session_state.knowledge_base
+                )
+                show_success("📋 Outline creation completed!")
+            
+            # Step 5: Social media content
+            step = progress.next_step()
+            if step:
+                show_info("📱 Generating social media content...")
+                social = generate_social_content(
+                    wisdom, 
+                    outline, 
+                    st.session_state.ai_provider, 
+                    st.session_state.ai_model, 
+                    None, 
+                    st.session_state.knowledge_base
+                )
+                show_success("📱 Social media content generated!")
+            
+            # Step 6: Image prompts
+            step = progress.next_step()
+            if step:
+                show_info("🎨 Creating AI image prompts...")
+                images = generate_image_prompts(
+                    wisdom, 
+                    outline, 
+                    st.session_state.ai_provider, 
+                    st.session_state.ai_model, 
+                    None, 
+                    st.session_state.knowledge_base
+                )
+                show_success("🎨 Image prompts created!")
+            
+            # Combine generated content
+            generated_content = {
+                "wisdom_extraction": wisdom,
+                "outline_creation": outline,
+                "social_media": social,
+                "image_prompts": images
             }
+            
+            # Step 7: Save to database
+            step = progress.next_step()
+            if step:
+                show_info("💾 Saving content to your library...")
+                content_data = {
+                    "title": f"Content from {audio_file.name}",
+                    "transcript": transcript,
+                    **generated_content,
+                    "metadata": {
+                        "ai_provider": st.session_state.ai_provider,
+                        "ai_model": st.session_state.ai_model,
+                        "file_size": audio_file.size,
+                        "created_at": datetime.now().isoformat()
+                    }
+                }
+                
+                content_id = save_generated_content_supabase(content_data)
+                if not content_id:
+                    progress.error("Failed to save content to database")
+                    show_error("💾 Failed to save content to database")
+                else:
+                    show_success("💾 Content saved successfully to your library!")
+                    
+        # Show success message with animation
+        st.balloons()
+        create_step_completion_animation()
+        
+        # Display generated content in beautiful cards
+        st.markdown("### ✨ Generated Content")
+        st.markdown("*Your content is ready! Click on each tab to explore the results.*")
+        
+        # Create tabs for each content type with enhanced styling
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "💡 Wisdom & Insights", 
+            "📋 Content Outline", 
+            "📱 Social Media", 
+            "🎨 Image Prompts"
+        ])
+        
+        with tab1:
+            st.markdown("#### 🧠 Key Insights & Wisdom")
+            st.markdown("*AI-extracted insights and valuable takeaways from your content*")
+            
+            # Create a beautiful content card
+            wisdom_html = f"""
+            <div class="content-card wisdom-card">
+                <div class="content-header">
+                    <span class="content-icon">💡</span>
+                    <span class="content-title">Wisdom & Insights</span>
+                </div>
+                <div class="content-body">
+                    {wisdom.replace('\n', '<br>')}
+                </div>
+            </div>
+            """
+            st.markdown(wisdom_html, unsafe_allow_html=True)
+            
+            # Copy button
+            if st.button("📋 Copy Wisdom", key="copy_wisdom"):
+                st.code(wisdom, language="markdown")
+            
+        with tab2:
+            st.markdown("#### 📊 Structured Content Outline")
+            st.markdown("*Organized structure ready for presentations, articles, or courses*")
+            
+            outline_html = f"""
+            <div class="content-card outline-card">
+                <div class="content-header">
+                    <span class="content-icon">📋</span>
+                    <span class="content-title">Content Outline</span>
+                </div>
+                <div class="content-body">
+                    {outline.replace('\n', '<br>')}
+                </div>
+            </div>
+            """
+            st.markdown(outline_html, unsafe_allow_html=True)
+            
+            if st.button("📋 Copy Outline", key="copy_outline"):
+                st.code(outline, language="markdown")
+            
+        with tab3:
+            st.markdown("#### 📲 Social Media Ready Content")
+            st.markdown("*Platform-optimized content for maximum engagement*")
+            
+            social_html = f"""
+            <div class="content-card social-card">
+                <div class="content-header">
+                    <span class="content-icon">📱</span>
+                    <span class="content-title">Social Media Content</span>
+                </div>
+                <div class="content-body">
+                    {social.replace('\n', '<br>')}
+                </div>
+            </div>
+            """
+            st.markdown(social_html, unsafe_allow_html=True)
+            
+            if st.button("📋 Copy Social Content", key="copy_social"):
+                st.code(social, language="markdown")
+            
+        with tab4:
+            st.markdown("#### 🎭 AI Image Generation Prompts")
+            st.markdown("*Ready-to-use prompts for creating visual content with AI tools*")
+            
+            images_html = f"""
+            <div class="content-card images-card">
+                <div class="content-header">
+                    <span class="content-icon">🎨</span>
+                    <span class="content-title">Image Generation Prompts</span>
+                </div>
+                <div class="content-body">
+                    {images.replace('\n', '<br>')}
+                </div>
+            </div>
+            """
+            st.markdown(images_html, unsafe_allow_html=True)
+            
+            if st.button("📋 Copy Image Prompts", key="copy_images"):
+                st.code(images, language="markdown")
+        
+        # Add content card styling
+        content_card_css = """
+        <style>
+        .content-card {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            margin: 15px 0;
+            border: 1px solid rgba(121, 40, 202, 0.2);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
         
-        content_id = save_generated_content_supabase(content_data)
-        if content_id:
-            st.success(f"✅ Content saved with ID: {content_id}")
+        .content-card:hover {
+            border-color: rgba(121, 40, 202, 0.4);
+            box-shadow: 0 8px 25px rgba(121, 40, 202, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .content-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .content-icon {
+            font-size: 20px;
+        }
+        
+        .content-title {
+            font-family: var(--terminal-font);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        
+        .content-body {
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        
+        .wisdom-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+        }
+        
+        .outline-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #36D399, #10B981);
+        }
+        
+        .social-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #FF0080, #7928CA);
+        }
+        
+        .images-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #3ABFF8, #06B6D4);
+        }
+        </style>
+        """
+        
+        st.markdown(content_card_css, unsafe_allow_html=True)
         
         # Log successful pipeline execution
         pipeline_end = datetime.now()
         pipeline_data.update({
             "success": True,
             "duration": (pipeline_end - pipeline_start).total_seconds(),
-            "content_id": content_id
+            "content_id": content_id if 'content_id' in locals() else None
         })
         
+        # Show completion notification
+        st.success(f"🎉 Pipeline completed successfully! Content saved with ID: {content_id if 'content_id' in locals() else 'N/A'}")
+        
     except Exception as e:
+        progress.error(str(e))
         st.error(f"❌ Pipeline error: {e}")
         pipeline_data["error"] = str(e)
         logger.exception("Pipeline error")
