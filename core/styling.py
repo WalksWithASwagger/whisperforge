@@ -239,7 +239,7 @@ def create_aurora_header(title="WhisperForge", subtitle="Transform Audio into St
         justify-content: {'space-between' if show_signout else 'center'};
         align-items: center;
     ">
-        <!-- Elegant slower Aurora scanning line -->
+
         <div style="
             position: absolute;
             top: 0;
@@ -250,7 +250,7 @@ def create_aurora_header(title="WhisperForge", subtitle="Transform Audio into St
             animation: elegant-aurora-scan 6s ease-in-out infinite;
         "></div>
         
-        <!-- Main content -->
+
         <div style="text-align: {'left' if show_signout else 'center'};">
             <h1 style="
                 font-size: 2.2rem;

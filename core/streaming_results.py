@@ -312,8 +312,8 @@ def show_processing_status():
     current_step = controller.current_step_index
     errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
     
-    # Compact Aurora processing header
-    st.markdown("""
+    # Compact Aurora processing header - FIXED string formatting
+    st.markdown(f"""
     <div style="
         background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
         border: 1px solid rgba(0, 255, 255, 0.3);
@@ -342,12 +342,12 @@ def show_processing_status():
     </div>
     
     <style>
-    @keyframes aurora-scan {
-        0%, 100% { left: -100%; }
-        50% { left: 100%; }
-    }
+    @keyframes aurora-scan {{
+        0%, 100% {{ left: -100%; }}
+        50% {{ left: 100%; }}
+    }}
     </style>
-    """.format(current_step=current_step), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     # Compact pipeline steps - single container each
     pipeline_steps = [
