@@ -51,45 +51,7 @@ logger = logging.getLogger(__name__)
 # Initialize monitoring
 init_monitoring()
 
-def run_content_pipeline(transcript, provider, model, knowledge_base=None):
-    """Run the complete content generation pipeline"""
-    with track_performance("content_pipeline", {"provider": provider, "model": model}):
-        try:
-            track_user_action("pipeline_start", {"provider": provider, "model": model})
-            
-            # Step 1: Generate wisdom
-            with track_performance("generate_wisdom"):
-                wisdom = generate_wisdom(transcript, provider, model, None, knowledge_base)
-            
-            # Step 2: Generate outline 
-            with track_performance("generate_outline"):
-                outline = generate_outline(transcript, wisdom, provider, model, None, knowledge_base)
-            
-            # Step 3: Generate social content
-            with track_performance("generate_social"):
-                social = generate_social_content(wisdom, outline, provider, model, None, knowledge_base)
-            
-            # Step 4: Generate image prompts
-            with track_performance("generate_images"):
-                images = generate_image_prompts(wisdom, outline, provider, model, None, knowledge_base)
-            
-            track_user_action("pipeline_complete", {"provider": provider, "model": model})
-            
-            return {
-                "wisdom_extraction": wisdom,
-                "outline_creation": outline, 
-                "social_media": social,
-                "image_prompts": images
-            }
-        except Exception as e:
-            track_error(e, {"operation": "content_pipeline", "provider": provider, "model": model})
-            logger.error(f"Pipeline error: {e}")
-            return {
-                "wisdom_extraction": f"Error: {str(e)}",
-                "outline_creation": f"Error: {str(e)}",
-                "social_media": f"Error: {str(e)}",
-                "image_prompts": f"Error: {str(e)}"
-            }
+# Removed unused run_content_pipeline - replaced by streaming_pipeline.py
 
 # Initialize Supabase client
 @st.cache_resource
@@ -1191,7 +1153,8 @@ def show_settings_page():
         
         prompt_types = [
             "wisdom_extraction",
-            "outline_creation", 
+            "outline_creation",
+            "article_writing", 
             "social_media",
             "image_prompts"
         ]
