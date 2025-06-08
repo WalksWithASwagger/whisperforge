@@ -442,8 +442,8 @@ def show_auth_page():
     
     # Load the stable CSS framework
     try:
-        from core.ui_components import load_css
-        load_css()
+        from core.ui_components import load_aurora_css
+        load_aurora_css()
     except:
         # Fallback CSS if ui_components not available
         st.markdown("""
@@ -1019,7 +1019,7 @@ def show_content_history_page():
             text-align: center;
             margin: 32px 0;
         ">
-            <div style="font-size: 3rem; margin-bottom: 16px;">🎙️</div>
+            <div style="font-size: 3rem; margin-bottom: 16px; color: var(--aurora-primary);">♦</div>
             <h3 style="color: #00FFFF; margin-bottom: 8px;">No Content Yet</h3>
             <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 24px;">
                 Process some audio files to see your transcripts, insights, and generated content here!
@@ -1046,7 +1046,7 @@ def show_content_history_page():
             if isinstance(content_data, dict):
                 # Metadata section
                 if 'metadata' in content_data:
-                    st.markdown("### 📊 Metadata")
+                    st.markdown("### Metadata")
                     metadata = content_data['metadata']
                     if isinstance(metadata, dict):
                         col1, col2, col3 = st.columns(3)
@@ -1060,15 +1060,15 @@ def show_content_history_page():
                 # Display each content type in its own section
                 # Map both old and new column names for backward compatibility
                 content_sections = {
-                    'transcript': ('🎙️', 'Audio Transcription', 'The original speech-to-text conversion'),
-                    'transcription': ('🎙️', 'Audio Transcription', 'The original speech-to-text conversion'),
-                    'wisdom_extraction': ('💎', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
-                    'outline_creation': ('📋', 'Content Outline', 'Structured organization and flow'),
-                    'article': ('📰', 'Full Article', 'Complete written content'),
-                    'article_creation': ('📰', 'Full Article', 'Complete written content'),
-                    'social_media': ('📱', 'Social Media Posts', 'Platform-optimized content'),
-                    'social_content': ('📱', 'Social Media Posts', 'Platform-optimized content'),
-                    'image_prompts': ('🖼️', 'Image Generation Prompts', 'AI-generated visual concepts')
+                            'transcript': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
+        'transcription': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
+                    'wisdom_extraction': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
+                    'outline_creation': ('◇', 'Content Outline', 'Structured organization and flow'),
+                    'article': ('◈', 'Full Article', 'Complete written content'),
+                    'article_creation': ('◈', 'Full Article', 'Complete written content'),
+                    'social_media': ('◉', 'Social Media Posts', 'Platform-optimized content'),
+                    'social_content': ('◉', 'Social Media Posts', 'Platform-optimized content'),
+                    'image_prompts': ('◎', 'Image Generation Prompts', 'AI-generated visual concepts')
                 }
                 
                 for section_key, (icon, title, description) in content_sections.items():
@@ -1093,13 +1093,13 @@ def show_content_history_page():
                         if len(str(content)) > 500:
                             # Show preview for long content
                             st.markdown(f"**Preview:** {str(content)[:300]}...")
-                            if st.button(f"📄 Show Full {title}", key=f"show_{section_key}_{i}"):
+                            if st.button(f"Show Full {title}", key=f"show_{section_key}_{i}"):
                                 st.text_area(f"Full {title}", content, height=200, key=f"full_{section_key}_{i}")
                         else:
                             st.markdown(content)
                         
                         # Copy button
-                        if st.button(f"📋 Copy {title}", key=f"copy_{section_key}_{i}", help=f"Copy {title} to clipboard"):
+                        if st.button(f"Copy {title}", key=f"copy_{section_key}_{i}", help=f"Copy {title} to clipboard"):
                             st.code(content, language="markdown")
                         
                         st.markdown("---")

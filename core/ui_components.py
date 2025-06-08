@@ -4,72 +4,100 @@
 import streamlit as st
 from pathlib import Path
 
-def load_css():
-    """Load the stable CSS framework"""
+def load_aurora_css():
+    """Load the Aurora CSS framework with beautiful animations"""
     css_file = Path(__file__).parent.parent / "static" / "css" / "whisperforge_ui.css"
     if css_file.exists():
         with open(css_file) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    else:
-        # Fallback minimal CSS if file doesn't exist
-        st.markdown("""
-        <style>
-        .stApp {
-            background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%) !important;
-            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
-        }
-        .main .block-container {
-            padding-top: 1rem !important;
-            max-width: 1200px !important;
-            margin: 0 auto !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    
+    # Always load Aurora styling enhancements
+    from .styling import apply_aurora_theme
+    apply_aurora_theme()
 
-class StableContainer:
-    """Stable container system that prevents UI errors"""
+class AuroraContainer:
+    """Beautiful Aurora-themed container system with animations"""
     
     @staticmethod
     def auth_page():
-        """Create stable auth page container"""
-        load_css()
+        """Create Aurora auth page container"""
+        load_aurora_css()
         return st.container()
     
     @staticmethod
     def main_app():
-        """Create stable main app container"""
-        load_css()
+        """Create Aurora main app container"""
+        load_aurora_css()
         return st.container()
     
     @staticmethod
     def content_section(title=None):
-        """Create stable content section"""
+        """Create Aurora content section with beautiful styling"""
         container = st.container()
         with container:
             if title:
-                st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
+                st.markdown(f'''
+                <div class="aurora-card aurora-fade-in">
+                    <h3 style="
+                        color: var(--aurora-primary);
+                        font-size: 1.4rem;
+                        font-weight: 700;
+                        margin: 0;
+                        text-shadow: var(--aurora-glow);
+                    ">{title}</h3>
+                </div>
+                ''', unsafe_allow_html=True)
         return container
     
     @staticmethod
     def upload_section():
-        """Create stable upload section"""
-        return st.container()
+        """Create Aurora upload section with hover effects"""
+        container = st.container()
+        with container:
+            st.markdown('''
+            <div class="upload-section aurora-fade-in">
+            </div>
+            ''', unsafe_allow_html=True)
+        return container
     
     @staticmethod
     def results_section():
-        """Create stable results section"""
-        return st.container()
+        """Create Aurora results section"""
+        container = st.container()
+        with container:
+            st.markdown('''
+            <div class="results-container aurora-fade-in">
+            </div>
+            ''', unsafe_allow_html=True)
+        return container
 
-class SafeComponents:
-    """Safe, error-resistant UI components"""
+class AuroraComponents:
+    """Beautiful Aurora-themed UI components with smooth animations"""
     
     @staticmethod
     def logo_header(title="WhisperForge", tagline="Transform audio into structured content"):
-        """Safe logo header that always works"""
+        """Beautiful Aurora logo header with glowing effects"""
         try:
             st.markdown(f"""
-            <div class="auth-logo">{title}</div>
-            <div class="auth-tagline">{tagline}</div>
+            <div class="aurora-card aurora-fade-in" style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="
+                    font-size: 3rem;
+                    font-weight: 700;
+                    background: linear-gradient(120deg, var(--aurora-primary), var(--aurora-tertiary), var(--aurora-secondary));
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    text-shadow: var(--aurora-glow);
+                    margin: 0 0 16px 0;
+                    animation: aurora-glow 3s ease-in-out infinite;
+                ">{title}</h1>
+                <p style="
+                    color: var(--aurora-text-muted);
+                    font-size: 1.2rem;
+                    margin: 0;
+                    font-weight: 300;
+                ">{tagline}</p>
+            </div>
             """, unsafe_allow_html=True)
         except Exception:
             # Fallback to standard Streamlit
@@ -144,13 +172,26 @@ class SafeComponents:
             return options[0] if options else "Error"
     
     @staticmethod
-    def safe_progress_bar(progress, text=""):
-        """Safe progress bar with validation"""
+    def aurora_progress_bar(progress, text="", title="Processing"):
+        """Beautiful Aurora progress bar with glowing effects"""
         try:
             progress_val = max(0, min(100, int(progress)))
-            if text:
-                st.write(text)
-            return st.progress(progress_val)
+            st.markdown(f"""
+            <div class="aurora-progress-container aurora-fade-in">
+                <div class="aurora-progress-header">
+                    <h4 class="aurora-progress-title">{title}</h4>
+                    <div class="aurora-progress-stats">
+                        <span>{progress_val}%</span>
+                    </div>
+                </div>
+                
+                <div class="aurora-progress-bar">
+                    <div class="aurora-progress-fill" style="width: {progress_val}%"></div>
+                </div>
+                
+                {f'<p style="color: var(--aurora-text-muted); margin: 8px 0 0 0;">{text}</p>' if text else ''}
+            </div>
+            """, unsafe_allow_html=True)
         except Exception as e:
             st.error(f"Progress bar error: {e}")
             return None
@@ -270,35 +311,33 @@ class ErrorBoundary:
             except:
                 pass  # Even fallback failed
 
-# Convenience functions for common patterns
+# Aurora convenience functions for common patterns
 def create_auth_layout():
-    """Create consistent auth page layout"""
-    container = StableContainer.auth_page()
-    load_css()
+    """Create beautiful Aurora auth page layout"""
+    container = AuroraContainer.auth_page()
     return container
 
 def create_main_layout():
-    """Create consistent main app layout"""
-    container = StableContainer.main_app()
-    load_css()
+    """Create beautiful Aurora main app layout"""
+    container = AuroraContainer.main_app()
     return container
 
 def handle_oauth_section():
-    """Handle OAuth section safely"""
+    """Handle OAuth section safely with Aurora styling"""
     return ErrorBoundary.safe_render(lambda: st.container())
 
 def handle_email_auth_section():
-    """Handle email auth section safely"""
+    """Handle email auth section safely with Aurora styling"""
     return ErrorBoundary.safe_render(lambda: st.container())
 
-# Export all classes and functions
+# Export all Aurora classes and functions
 __all__ = [
-    'StableContainer',
-    'SafeComponents', 
+    'AuroraContainer',
+    'AuroraComponents', 
     'StatusMessages',
     'LayoutHelpers',
     'ErrorBoundary',
-    'load_css',
+    'load_aurora_css',
     'create_auth_layout',
     'create_main_layout',
     'handle_oauth_section',
