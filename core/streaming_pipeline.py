@@ -11,6 +11,8 @@ from .content_generation import (
     transcribe_audio, generate_wisdom, generate_outline, generate_article,
     generate_social_content, generate_image_prompts, editor_critique
 )
+from .research_enrichment import generate_research_enrichment
+from .visible_thinking import thinking_step_start, thinking_step_complete, thinking_error, render_thinking_stream
 # Removed old complex progress tracker - using simple progress bars now
 
 
@@ -20,8 +22,8 @@ class StreamingPipelineController:
     # Define pipeline steps as class constant
     PIPELINE_STEPS = [
         "upload_validation", "transcription", "wisdom_extraction", 
-        "outline_creation", "article_creation", "social_content", 
-        "image_prompts", "database_storage"
+        "research_enrichment", "outline_creation", "article_creation", 
+        "social_content", "image_prompts", "database_storage"
     ]
     
     def __init__(self):
@@ -99,24 +101,39 @@ class StreamingPipelineController:
     def _execute_step(self, step_id: str, step_index: int) -> Any:
         """Execute a specific pipeline step"""
         
-        if step_id == "upload_validation":
-            return self._step_upload_validation()
-        elif step_id == "transcription":
-            return self._step_transcription()
-        elif step_id == "wisdom_extraction":
-            return self._step_wisdom_extraction()
-        elif step_id == "outline_creation":
-            return self._step_outline_creation()
-        elif step_id == "article_creation":
-            return self._step_article_creation()
-        elif step_id == "social_content":
-            return self._step_social_content()
-        elif step_id == "image_prompts":
-            return self._step_image_prompts()
-        elif step_id == "database_storage":
-            return self._step_database_storage()
-        else:
-            raise Exception(f"Unknown step: {step_id}")
+        # Add visible thinking at step start
+        thinking_step_start(step_id)
+        
+        try:
+            if step_id == "upload_validation":
+                result = self._step_upload_validation()
+            elif step_id == "transcription":
+                result = self._step_transcription()
+            elif step_id == "wisdom_extraction":
+                result = self._step_wisdom_extraction()
+            elif step_id == "research_enrichment":
+                result = self._step_research_enrichment()
+            elif step_id == "outline_creation":
+                result = self._step_outline_creation()
+            elif step_id == "article_creation":
+                result = self._step_article_creation()
+            elif step_id == "social_content":
+                result = self._step_social_content()
+            elif step_id == "image_prompts":
+                result = self._step_image_prompts()
+            elif step_id == "database_storage":
+                result = self._step_database_storage()
+            else:
+                raise Exception(f"Unknown step: {step_id}")
+            
+            # Add success thinking
+            thinking_step_complete(step_id)
+            return result
+            
+        except Exception as e:
+            # Add error thinking
+            thinking_error(step_id, str(e))
+            raise
     
     def _step_upload_validation(self) -> Dict[str, Any]:
         """Step 1: Validate uploaded file"""
@@ -194,6 +211,27 @@ Please provide an improved version that addresses the feedback while maintaining
         
         st.session_state.pipeline_wisdom = wisdom
         return wisdom
+    
+    def _step_research_enrichment(self) -> Dict[str, Any]:
+        """Step 3.5: Research Enrichment - NEW STEP"""
+        wisdom = st.session_state.pipeline_wisdom
+        transcript = st.session_state.pipeline_transcript
+        
+        # Check if research enrichment is enabled (default True for paid users)
+        research_enabled = st.session_state.get("research_enabled", True)
+        
+        # Generate research enrichment
+        research_data = generate_research_enrichment(
+            wisdom=wisdom,
+            transcript=transcript,
+            ai_provider=st.session_state.ai_provider,
+            ai_model=st.session_state.ai_model,
+            enabled=research_enabled
+        )
+        
+        # Store in session for access by later steps
+        st.session_state.pipeline_research = research_data
+        return research_data
     
     def _step_outline_creation(self) -> str:
         """Step 4: Create outline"""
@@ -387,6 +425,7 @@ Please provide improved versions that address the feedback."""
             "title": f"Content from {st.session_state.pipeline_file_info['name']}",
             "transcript": st.session_state.pipeline_results.get("transcription", ""),
             "wisdom_extraction": st.session_state.pipeline_results.get("wisdom_extraction", ""),
+            "research_enrichment": st.session_state.pipeline_results.get("research_enrichment", {}),
             "outline_creation": st.session_state.pipeline_results.get("outline_creation", ""),
             "article": st.session_state.pipeline_results.get("article_creation", ""),
             "social_media": st.session_state.pipeline_results.get("social_content", ""),
@@ -396,6 +435,8 @@ Please provide improved versions that address the feedback."""
                 "ai_model": st.session_state.ai_model,
                 "file_size": st.session_state.pipeline_file_info["size"],
                 "editor_enabled": st.session_state.get("editor_enabled", False),
+                "research_enabled": st.session_state.get("research_enabled", True),
+                "thinking_enabled": st.session_state.get("thinking_enabled", True),
                 "created_at": datetime.now().isoformat()
             }
         }

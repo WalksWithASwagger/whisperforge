@@ -1161,6 +1161,7 @@ def show_content_history_page():
                             'transcript': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
         'transcription': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
                     'wisdom_extraction': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
+                    'research_enrichment': ('🔍', 'Research Enrichment', 'Supporting links and context'),
                     'outline_creation': ('◇', 'Content Outline', 'Structured organization and flow'),
                     'article': ('◈', 'Full Article', 'Complete written content'),
                     'article_creation': ('◈', 'Full Article', 'Complete written content'),
@@ -1187,16 +1188,20 @@ def show_content_history_page():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Show content with copy functionality
-                        if len(str(content)) > 500:
-                            # Show preview for long content
-                            st.markdown(f"**Preview:** {str(content)[:300]}...")
-                            show_full_key = generate_unique_key(f"show_{section_key}_{title}")
-                            if st.button(f"Show Full {title}", key=show_full_key):
-                                full_text_key = generate_unique_key(f"full_{section_key}_{title}")
-                                st.text_area(f"Full {title}", content, height=200, key=full_text_key)
+                        # Special handling for research enrichment
+                        if section_key == "research_enrichment" and isinstance(content, dict):
+                            _show_research_content(content)
                         else:
-                            st.markdown(content)
+                            # Show regular text content with copy functionality
+                            if len(str(content)) > 500:
+                                # Show preview for long content
+                                st.markdown(f"**Preview:** {str(content)[:300]}...")
+                                show_full_key = generate_unique_key(f"show_{section_key}_{title}")
+                                if st.button(f"Show Full {title}", key=show_full_key):
+                                    full_text_key = generate_unique_key(f"full_{section_key}_{title}")
+                                    st.text_area(f"Full {title}", content, height=200, key=full_text_key)
+                            else:
+                                st.markdown(content)
                         
                         # Copy button
                         copy_key = generate_unique_key(f"copy_{section_key}_{title}")
@@ -1208,6 +1213,71 @@ def show_content_history_page():
                 # Fallback for non-dict content
                 st.markdown("### Raw Content")
                 st.markdown(str(content_data))
+
+def _show_research_content(research_data: dict):
+    """Display research enrichment content in a beautiful format"""
+    
+    entities = research_data.get("entities", [])
+    total_entities = research_data.get("total_entities", 0)
+    processing_time = research_data.get("processing_time", 0)
+    status = research_data.get("status", "unknown")
+    
+    if status == "disabled":
+        st.info("Research enrichment was disabled for this content.")
+        return
+    elif status == "no_entities_found":
+        st.info("No entities found for research enrichment.")
+        return
+    elif status == "error":
+        error_msg = research_data.get("error_message", "Unknown error")
+        st.error(f"Research enrichment failed: {error_msg}")
+        return
+    
+    if not entities:
+        st.info("No research entities available.")
+        return
+    
+    # Summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Entities Found", total_entities)
+    with col2:
+        st.metric("Processing Time", f"{processing_time:.1f}s")
+    with col3:
+        gem_count = sum(1 for entity in entities for link in entity.get("links", []) if link.get("is_gem"))
+        st.metric("Gem Links", gem_count)
+    
+    # Display entities
+    for i, entity in enumerate(entities):
+        entity_name = entity.get("name", f"Entity {i+1}")
+        entity_type = entity.get("type", "unknown")
+        why_matters = entity.get("why_matters", "")
+        links = entity.get("links", [])
+        
+        with st.expander(f"🔍 {entity_name} ({entity_type})", expanded=i==0):
+            if why_matters:
+                st.markdown(f"**Why this matters:** {why_matters}")
+                st.markdown("---")
+            
+            if links:
+                st.markdown("**Research Links:**")
+                for j, link in enumerate(links):
+                    title = link.get("title", f"Link {j+1}")
+                    url = link.get("url", "#")
+                    description = link.get("description", "")
+                    is_gem = link.get("is_gem", False)
+                    
+                    # Style gem links differently
+                    if is_gem:
+                        st.markdown(f"✨ **[{title}]({url})** (Gem)")
+                    else:
+                        st.markdown(f"🔗 **[{title}]({url})**")
+                    
+                    if description:
+                        st.markdown(f"  *{description}*")
+                    st.markdown("")
+            else:
+                st.info("No research links available for this entity.")
 
 def show_settings_page():
     """Settings page with clean layout"""
@@ -1240,12 +1310,29 @@ def show_settings_page():
         )
         st.session_state.ai_model = model
         
-        # Editor settings
+        # Feature settings
+        st.markdown("##### Feature Settings")
+        
         editor_default = st.checkbox(
             "Enable AI Editor by default",
-            value=st.session_state.get("editor_enabled", False)
+            value=st.session_state.get("editor_enabled", False),
+            help="Enable AI-powered content critiques and revisions"
         )
         st.session_state.editor_enabled = editor_default
+        
+        research_enabled = st.checkbox(
+            "Enable Research Enrichment",
+            value=st.session_state.get("research_enabled", True),
+            help="Automatically generate supporting research links for entities"
+        )
+        st.session_state.research_enabled = research_enabled
+        
+        thinking_enabled = st.checkbox(
+            "Enable Visible Thinking",
+            value=st.session_state.get("thinking_enabled", True),
+            help="Show chat-style thinking bubbles during processing"
+        )
+        st.session_state.thinking_enabled = thinking_enabled
     
     with tab2:
         st.markdown("#### API Keys")

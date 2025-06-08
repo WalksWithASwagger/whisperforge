@@ -732,7 +732,8 @@ def _show_editor_feedback(results: Dict[str, Any]):
 
 
 def show_enhanced_streaming_status():
-    """PHASE 3: ENHANCED STREAMING UX OVERHAUL - 2025 st.status() integration"""
+    """PHASE 3: ENHANCED STREAMING UX OVERHAUL - 2025 st.status() integration WITH VISIBLE THINKING"""
+    from .visible_thinking import render_thinking_stream
     controller = get_pipeline_controller()
     
     if not controller.is_active and not controller.is_complete:
@@ -742,7 +743,8 @@ def show_enhanced_streaming_status():
     pipeline_steps = [
         ("Upload Validation", "File format & compatibility check", "upload_validation"),
         ("Audio Transcription", "Speech-to-text conversion", "transcription"),
-        ("Wisdom Extraction", "Key insights extraction", "wisdom_extraction"),  
+        ("Wisdom Extraction", "Key insights extraction", "wisdom_extraction"),
+        ("Research Enrichment", "Supporting links & context", "research_enrichment"),  
         ("Outline Generation", "Content structure creation", "outline_creation"),
         ("Article Creation", "Full article generation", "article_creation"),
         ("Social Media Posts", "Platform-optimized content", "social_content"),
@@ -752,6 +754,10 @@ def show_enhanced_streaming_status():
     
     results = controller.get_results()
     errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
+    
+    # Show visible thinking bubbles first (above the status)
+    thinking_container = st.container()
+    render_thinking_stream(thinking_container)
     
     # Main processing status container with st.status()
     if controller.is_active:
