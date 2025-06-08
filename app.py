@@ -362,8 +362,9 @@ def show_auth_page():
                 redirect_url = os.getenv("OAUTH_REDIRECT_URL")
                 
                 if not redirect_url:
-                    # Check for Render deployment
-                    render_service_url = os.getenv("RENDER_EXTERNAL_URL")
+                    # Check for Render deployment (Render provides RENDER_SERVICE_NAME)
+                    render_service_name = os.getenv("RENDER_SERVICE_NAME")
+                    render_external_url = os.getenv("RENDER_EXTERNAL_URL")
                     
                     # Check for Streamlit Cloud (legacy)
                     streamlit_app_url = os.getenv("STREAMLIT_APP_URL")
@@ -377,17 +378,16 @@ def show_auth_page():
                         streamlit_app_url
                     )
                     
-                    # Check for Render deployment
+                    # Check for Render deployment - Render sets RENDER_SERVICE_NAME
                     is_render = (
-                        render_service_url or
-                        "onrender.com" in os.getenv("RENDER_EXTERNAL_URL", "") or
-                        os.getenv("RENDER")
+                        render_service_name or
+                        render_external_url or
+                        os.getenv("RENDER") or
+                        "onrender.com" in os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
                     )
                     
-                    if is_render and render_service_url:
-                        redirect_url = render_service_url
-                    elif is_render:
-                        # Fallback for Render
+                    if is_render:
+                        # For Render, use the known URL (will be whisperforge.ai once custom domain is set)
                         redirect_url = "https://whisperforge.onrender.com"
                     elif is_streamlit_cloud and streamlit_app_url:
                         redirect_url = streamlit_app_url
@@ -401,6 +401,9 @@ def show_auth_page():
                         redirect_url = "http://localhost:8501"
                 
                 if redirect_url:
+                    # Debug: Show what redirect URL we're using
+                    st.info(f"🔍 **Debug**: OAuth redirect URL: `{redirect_url}`")
+                    
                     # Use Supabase's built-in OAuth - simple and clean!
                     auth_response = db.client.auth.sign_in_with_oauth({
                         "provider": "google",
