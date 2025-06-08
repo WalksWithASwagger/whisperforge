@@ -223,76 +223,124 @@ def apply_aurora_theme():
     """, unsafe_allow_html=True)
 
 def create_aurora_header():
-    """Create a flagship Aurora header with navigation menu"""
+    """Create a flagship Aurora header with navigation menu - REBUILT FOR 2025"""
     
-    # Header with navigation
-    header_html = """
-    <div style="
+    # First, inject the CSS using st.html()
+    st.html("""
+    <style>
+    .aurora-header {
         background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 40, 60, 0.98));
         border: 1px solid rgba(0, 255, 255, 0.2);
         border-radius: 12px;
         margin: 8px 0 20px 0;
         position: relative;
         overflow: hidden;
-    ">
-        <div style="
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
-            animation: aurora-flow 8s ease-in-out infinite;
-        "></div>
-        
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 24px;
-        ">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <h1 style="
-                    font-size: 1.8rem;
-                    font-weight: 800;
-                    background: linear-gradient(135deg, #00FFFF, #7DF9FF, #40E0D0);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    background-clip: text;
-                    margin: 0;
-                    text-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-                ">WhisperForge</h1>
-                
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div style="
-                        width: 6px;
-                        height: 6px;
-                        background: #00FF88;
-                        border-radius: 50%;
-                        animation: status-pulse 2s ease-in-out infinite;
-                    "></div>
-                    <span style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem;">Authenticated</span>
-                </div>
-            </div>
-        </div>
-    </div>
+        backdrop-filter: blur(10px);
+    }
     
-    <style>
+    .aurora-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
+        animation: aurora-flow 8s ease-in-out infinite;
+    }
+    
+    .aurora-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .aurora-brand {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .aurora-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #00FFFF, #7DF9FF, #40E0D0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0;
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+        letter-spacing: -0.02em;
+    }
+    
+    .aurora-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .aurora-status-dot {
+        width: 6px;
+        height: 6px;
+        background: #00FF88;
+        border-radius: 50%;
+        animation: status-pulse 2s ease-in-out infinite;
+        box-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+    }
+    
+    .aurora-status-text {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
     @keyframes aurora-flow {
-        0%, 100% { left: -100%; opacity: 0; }
-        25% { opacity: 1; }
-        75% { opacity: 1; }
-        100% { left: 100%; opacity: 0; }
+        0%, 100% { 
+            left: -100%; 
+            opacity: 0; 
+        }
+        25% { 
+            opacity: 1; 
+        }
+        75% { 
+            opacity: 1; 
+        }
+        100% { 
+            left: 100%; 
+            opacity: 0; 
+        }
     }
     
     @keyframes status-pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.3); }
+        0%, 100% { 
+            opacity: 1; 
+            transform: scale(1); 
+        }
+        50% { 
+            opacity: 0.6; 
+            transform: scale(1.3); 
+        }
     }
     </style>
-    """
+    """)
     
-    st.markdown(header_html, unsafe_allow_html=True)
+    # Then render the HTML structure using st.html()
+    st.html("""
+    <header class="aurora-header">
+        <div class="aurora-header-content">
+            <div class="aurora-brand">
+                <h1 class="aurora-title">WhisperForge</h1>
+                <div class="aurora-status">
+                    <div class="aurora-status-dot"></div>
+                    <span class="aurora-status-text">Authenticated</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    """)
 
 def create_aurora_progress_card(title, current_step, total_steps, description=""):
     """Create a beautiful Aurora progress card"""

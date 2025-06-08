@@ -16,8 +16,14 @@ import json
 import time
 import tempfile
 import logging
+import uuid
 from datetime import datetime
 from pathlib import Path
+
+# Generate truly unique keys for Streamlit widgets
+def generate_unique_key(base_name: str) -> str:
+    """Generate truly unique key for Streamlit widgets to prevent DuplicateWidgetID errors"""
+    return f"{base_name}_{uuid.uuid4().hex[:8]}_{int(time.time() * 1000000) % 1000000}"
 
 # Load environment variables first
 from dotenv import load_dotenv
@@ -279,22 +285,45 @@ def save_generated_content_supabase(content_data: dict) -> str:
         return ""
 
 def get_user_content_history_supabase(limit: int = 20) -> list:
-    """Get user content history"""
+    """Get user content history - ENHANCED WITH DEBUG LOGGING"""
     try:
-        db, _ = init_supabase()
-        if not db:
+        # Enhanced authentication check
+        if not st.session_state.get("authenticated", False):
+            logger.warning("User not authenticated when fetching history")
             return []
             
+        if not st.session_state.get("user_id"):
+            logger.warning("No user_id in session state when fetching history")
+            return []
+        
+        db, _ = init_supabase()
+        if not db:
+            logger.error("Failed to initialize Supabase client for history")
+            return []
+        
+        user_id = st.session_state.user_id
+        logger.info(f"Fetching content history for user_id: {user_id}")
+        
+        # Enhanced query with better error handling
         result = db.client.table("generated_content")\
             .select("id, content_data, created_at")\
-            .eq("user_id", st.session_state.user_id)\
+            .eq("user_id", user_id)\
             .order("created_at", desc=True)\
             .limit(limit)\
             .execute()
         
-        return result.data
+        logger.info(f"History query result: {len(result.data) if result.data else 0} items found")
+        
+        # Debug: Log first item structure if available
+        if result.data and len(result.data) > 0:
+            logger.info(f"Sample history item keys: {list(result.data[0].keys())}")
+        
+        return result.data if result.data else []
+        
     except Exception as e:
         logger.error(f"Error getting content history: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return []
 
 def log_pipeline_execution_supabase(pipeline_data: dict) -> bool:
@@ -949,43 +978,134 @@ def show_home_page():
         st.markdown("**Get started by uploading an audio file above.**")
 
 def show_processing_results(results):
-    """Display processing results in a clean format"""
-    st.markdown("### Results")
+    """PHASE 6: ENHANCED CONTENT DISPLAY with modern card layouts and copy functionality"""
     
     if not results:
-        st.info("No results to display yet")
+        st.info("🔄 No results to display yet")
         return
     
-    # Create tabs for different result types
-    tabs = st.tabs(["Wisdom", "Outline", "Social Media", "Image Prompts"])
+    # Beautiful results header
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        margin: 24px 0;
+    ">
+        <h2 style="color: #00FFFF; margin: 0; font-weight: 300;">✨ Generation Complete</h2>
+        <p style="color: rgba(255, 255, 255, 0.7); margin: 8px 0 0 0;">Your content has been transformed</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with tabs[0]:
-        if "wisdom_extraction" in results:
-            st.markdown("#### Key Insights")
-            st.markdown(results["wisdom_extraction"])
+    # Enhanced content sections with modern cards
+    content_sections = {
+        'transcription': ('🎙️', 'Audio Transcription', 'Speech-to-text conversion'),
+        'wisdom_extraction': ('💎', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
+        'outline_creation': ('📋', 'Content Outline', 'Structured organization and flow'),
+        'article_creation': ('📰', 'Full Article', 'Complete written content'),
+        'social_content': ('📱', 'Social Media Posts', 'Platform-optimized content'),
+        'image_prompts': ('🖼️', 'Image Generation Prompts', 'AI-generated visual concepts')
+    }
     
-    with tabs[1]:
-        if "outline_creation" in results:
-            st.markdown("#### Content Outline")
-            st.markdown(results["outline_creation"])
-    
-    with tabs[2]:
-        if "social_media" in results:
-            st.markdown("#### Social Media Content")
-            st.markdown(results["social_media"])
-    
-    with tabs[3]:
-        if "image_prompts" in results:
-            st.markdown("#### Image Generation Prompts")
-            st.markdown(results["image_prompts"])
+    # Display each result in a beautiful card
+    for section_key, (icon, title, description) in content_sections.items():
+        if section_key in results and results[section_key]:
+            content = results[section_key]
+            
+            # Modern content card
+            with st.container():
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05));
+                    border: 1px solid rgba(0, 255, 255, 0.1);
+                    border-radius: 12px;
+                    padding: 24px;
+                    margin: 16px 0;
+                    transition: all 0.3s ease;
+                ">
+                    <div style="display: flex; align-items: center; margin-bottom: 16px;">
+                        <span style="font-size: 1.5rem; margin-right: 12px;">{icon}</span>
+                        <div>
+                            <h3 style="color: #00FFFF; margin: 0; font-weight: 500;">{title}</h3>
+                            <p style="color: rgba(255, 255, 255, 0.6); margin: 4px 0 0 0; font-size: 0.9rem;">{description}</p>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Content display with preview/expand
+                if len(str(content)) > 800:
+                    # Show preview for long content
+                    st.markdown(f"**Preview:**")
+                    st.markdown(f"{str(content)[:400]}...")
+                    
+                    # Expandable full content
+                    with st.expander("📖 Show Full Content", expanded=False):
+                        st.markdown(content)
+                        
+                        # Copy button inside expander
+                        copy_key = generate_unique_key(f"copy_full_{section_key}")
+                        if st.button(f"📋 Copy {title}", key=copy_key, use_container_width=True):
+                            st.code(content, language="markdown")
+                else:
+                    # Show full content for shorter text
+                    st.markdown(content)
+                
+                # Action buttons
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    copy_key = generate_unique_key(f"copy_{section_key}")
+                    if st.button(f"📋 Copy {title}", key=copy_key):
+                        st.code(content, language="markdown")
+                        st.success(f"✅ {title} copied!")
+                
+                with col2:
+                    download_key = generate_unique_key(f"download_{section_key}")
+                    st.download_button(
+                        "💾 Download",
+                        data=content,
+                        file_name=f"{section_key}.md",
+                        mime="text/markdown",
+                        key=download_key
+                    )
+                
+                with col3:
+                    share_key = generate_unique_key(f"share_{section_key}")
+                    if st.button("🔗 Share", key=share_key):
+                        st.info("Share functionality coming soon!")
+                
+                st.markdown("---")
 
 def show_content_history_page():
-    """Show user's content history with beautiful Aurora styling"""
+    """Show user's content history with beautiful Aurora styling - ENHANCED DEBUG"""
     st.markdown("# 📋 Content History")
     st.markdown("Your generated content archive with transcripts, insights, and metadata")
     
+    # Debug information in expander
+    with st.expander("🔍 Debug Information", expanded=False):
+        st.write(f"**Authentication Status:** {st.session_state.get('authenticated', False)}")
+        st.write(f"**User ID:** {st.session_state.get('user_id', 'None')}")
+        st.write(f"**Session State Keys:** {list(st.session_state.keys())}")
+        
+        # Test database connection
+        try:
+            db, _ = init_supabase()
+            if db:
+                st.success("✅ Database connection successful")
+                
+                # Test query with count
+                count_result = db.client.table("generated_content").select("id", count="exact").eq("user_id", st.session_state.get("user_id", "")).execute()
+                st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
+            else:
+                st.error("❌ Database connection failed")
+        except Exception as e:
+            st.error(f"❌ Database test error: {e}")
+    
     history = get_user_content_history_supabase()
     
+    # Enhanced empty state with debug info
     if not history:
         # Beautiful empty state
         st.markdown("""
@@ -1071,13 +1191,16 @@ def show_content_history_page():
                         if len(str(content)) > 500:
                             # Show preview for long content
                             st.markdown(f"**Preview:** {str(content)[:300]}...")
-                            if st.button(f"Show Full {title}", key=f"show_{section_key}_{i}"):
-                                st.text_area(f"Full {title}", content, height=200, key=f"full_{section_key}_{i}")
+                            show_full_key = generate_unique_key(f"show_{section_key}_{title}")
+                            if st.button(f"Show Full {title}", key=show_full_key):
+                                full_text_key = generate_unique_key(f"full_{section_key}_{title}")
+                                st.text_area(f"Full {title}", content, height=200, key=full_text_key)
                         else:
                             st.markdown(content)
                         
                         # Copy button
-                        if st.button(f"Copy {title}", key=f"copy_{section_key}_{i}", help=f"Copy {title} to clipboard"):
+                        copy_key = generate_unique_key(f"copy_{section_key}_{title}")
+                        if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
                             st.code(content, language="markdown")
                         
                         st.markdown("---")
@@ -1151,6 +1274,10 @@ def show_settings_page():
     with tab3:
         st.markdown("#### Custom Prompts")
         
+        # Initialize prompts in session state if not present
+        if 'prompts' not in st.session_state:
+            st.session_state.prompts = get_user_prompts_supabase()
+        
         prompt_types = [
             "wisdom_extraction",
             "outline_creation",
@@ -1159,25 +1286,47 @@ def show_settings_page():
             "image_prompts"
         ]
         
+        # PHASE 5: ENHANCED SETTINGS PERSISTENCE with callbacks
+        def save_prompt_callback(prompt_type: str):
+            """Callback function to save prompt immediately"""
+            def callback():
+                new_value = st.session_state[f"prompt_{prompt_type}"]
+                if save_user_prompt_supabase(prompt_type, new_value):
+                    st.session_state.prompts[prompt_type] = new_value
+                    st.session_state[f"save_status_{prompt_type}"] = "✅ Saved!"
+                else:
+                    st.session_state[f"save_status_{prompt_type}"] = "❌ Save failed"
+            return callback
+        
         for prompt_type in prompt_types:
             st.markdown(f"##### {prompt_type.replace('_', ' ').title()}")
             
             current_prompt = st.session_state.prompts.get(prompt_type, "")
             
+            # Text area with on_change callback for immediate saving
             new_prompt = st.text_area(
                 f"Prompt for {prompt_type}",
                 value=current_prompt,
                 height=100,
-                key=f"prompt_{prompt_type}"
+                key=f"prompt_{prompt_type}",
+                on_change=save_prompt_callback(prompt_type),
+                help="Changes are saved automatically when you modify the text"
             )
             
-            if st.button(f"Save {prompt_type.replace('_', ' ').title()}", key=f"save_{prompt_type}"):
+            # Show save status if available
+            if f"save_status_{prompt_type}" in st.session_state:
+                st.markdown(st.session_state[f"save_status_{prompt_type}"])
+                # Clear status after showing
+                del st.session_state[f"save_status_{prompt_type}"]
+            
+            # Manual save button as backup
+            save_key = generate_unique_key(f"save_{prompt_type}")
+            if st.button(f"💾 Save {prompt_type.replace('_', ' ').title()}", key=save_key):
                 if save_user_prompt_supabase(prompt_type, new_prompt):
-                    st.success(f"Saved {prompt_type} prompt!")
-                    # Reload prompts from database to ensure persistence
-                    st.session_state.prompts = get_user_prompts_supabase()
+                    st.success(f"✅ Saved {prompt_type} prompt!")
                     st.session_state.prompts[prompt_type] = new_prompt
-                    st.rerun()  # Refresh to show updated state
+                else:
+                    st.error(f"❌ Failed to save {prompt_type} prompt")
     
     with tab4:
         st.markdown("#### Knowledge Base")

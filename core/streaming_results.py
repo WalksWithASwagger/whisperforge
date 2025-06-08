@@ -8,6 +8,7 @@ import html
 import time
 from typing import Dict, Any, Optional
 from .streaming_pipeline import get_pipeline_controller
+import uuid
 
 # CSS for streaming results
 STREAMING_RESULTS_CSS = """
@@ -66,6 +67,14 @@ STREAMING_RESULTS_CSS = """
 </style>
 """
 
+# Enhanced UI Functions for streaming results
+def apply_streaming_css():
+    """Apply Aurora theme CSS for streaming results"""
+
+# Generate truly unique keys for Streamlit widgets
+def generate_unique_key(base_name: str) -> str:
+    """Generate truly unique key for Streamlit widgets to prevent DuplicateWidgetID errors"""
+    return f"{base_name}_{uuid.uuid4().hex[:8]}_{int(time.time() * 1000000) % 1000000}"
 
 def show_streaming_results():
     """Display ultra-modern Aurora final results - STREAMLINED"""
@@ -451,14 +460,17 @@ def show_streaming_results():
                         st.markdown("**preview**")
                         st.markdown(f"*{content[:500]}...*")
                         
-                        if st.button(f"reveal all", key=f"show_full_{key}_{hash(name)%1000}"):
+                        reveal_key = generate_unique_key(f"show_full_{key}_{name}")
+                        if st.button(f"reveal all", key=reveal_key):
                             st.markdown("**complete**")
-                            st.text_area("", content, height=300, key=f"textarea_{key}_{hash(name)%1000}")
+                            textarea_key = generate_unique_key(f"textarea_{key}_{name}")
+                            st.text_area("", content, height=300, key=textarea_key)
                     else:
                         st.markdown(content)
                 
                 # Zen copy action
-                if st.button(f"∞ capture", key=f"copy_{key}_{hash(name)%1000}", use_container_width=False):
+                copy_key = generate_unique_key(f"copy_{key}_{name}")
+                if st.button(f"∞ capture", key=copy_key, use_container_width=False):
                     st.code(content, language="text")
 
 
@@ -719,163 +731,14 @@ def _show_editor_feedback(results: Dict[str, Any]):
             """, unsafe_allow_html=True)
 
 
-def show_processing_status():
-    """Display ultra-modern Aurora pipeline with real-time visibility"""
+def show_enhanced_streaming_status():
+    """PHASE 3: ENHANCED STREAMING UX OVERHAUL - 2025 st.status() integration"""
     controller = get_pipeline_controller()
     
     if not controller.is_active and not controller.is_complete:
         return
-    
+
     current_step = controller.current_step_index
-    errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
-    
-    # 🧘‍♂️ ZEN PROCESSING MEDITATION
-    st.markdown(f"""
-    <div class="processing-zen">
-        <div class="zen-circle">
-            <div class="zen-inner-circle">
-                <div class="zen-progress" style="--progress: {(current_step / 8) * 100}%"></div>
-            </div>
-            <div class="zen-step-count">{current_step + 1}<span class="zen-total">/8</span></div>
-        </div>
-        <div class="zen-flow-text">
-            <div class="zen-main">transformation in motion</div>
-            <div class="zen-sub">essence emerging</div>
-        </div>
-        <div class="zen-particles">
-            <div class="particle"></div>
-            <div class="particle"></div>
-            <div class="particle"></div>
-        </div>
-    </div>
-    
-    <style>
-    .processing-zen {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2rem 0;
-        margin: 2rem 0;
-        position: relative;
-    }}
-    
-    .zen-circle {{
-        position: relative;
-        width: 100px;
-        height: 100px;
-        margin-bottom: 1.5rem;
-    }}
-    
-    .zen-inner-circle {{
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        border: 2px solid rgba(0, 255, 255, 0.1);
-        position: relative;
-        overflow: hidden;
-    }}
-    
-    .zen-progress {{
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: conic-gradient(
-            from 0deg,
-            rgba(0, 255, 255, 0.6) 0%,
-            rgba(64, 224, 208, 0.4) var(--progress),
-            rgba(0, 255, 255, 0.05) var(--progress),
-            rgba(0, 255, 255, 0.05) 100%
-        );
-        border-radius: 50%;
-        animation: zen-rotate 8s linear infinite;
-    }}
-    
-    .zen-step-count {{
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.2rem;
-        color: rgba(0, 255, 255, 0.8);
-        font-weight: 200;
-        text-align: center;
-    }}
-    
-    .zen-total {{
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.4);
-    }}
-    
-    .zen-flow-text {{
-        text-align: center;
-    }}
-    
-    .zen-main {{
-        font-size: 1rem;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 0.3rem;
-        letter-spacing: 0.1em;
-        font-weight: 300;
-    }}
-    
-    .zen-sub {{
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.4);
-        letter-spacing: 0.15em;
-        font-weight: 200;
-    }}
-    
-    .zen-particles {{
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-    }}
-    
-    .particle {{
-        position: absolute;
-        width: 2px;
-        height: 2px;
-        background: rgba(0, 255, 255, 0.4);
-        border-radius: 50%;
-        animation: zen-float 6s ease-in-out infinite;
-    }}
-    
-    .particle:nth-child(1) {{
-        top: 20%;
-        left: 20%;
-        animation-delay: 0s;
-    }}
-    
-    .particle:nth-child(2) {{
-        top: 60%;
-        right: 25%;
-        animation-delay: 2s;
-    }}
-    
-    .particle:nth-child(3) {{
-        bottom: 30%;
-        left: 70%;
-        animation-delay: 4s;
-    }}
-    
-    @keyframes zen-rotate {{
-        0% {{ transform: rotate(0deg); }}
-        100% {{ transform: rotate(360deg); }}
-    }}
-    
-    @keyframes zen-float {{
-        0%, 100% {{ opacity: 0.2; transform: translateY(0px); }}
-        50% {{ opacity: 0.8; transform: translateY(-10px); }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Compact pipeline steps - single container each
     pipeline_steps = [
         ("Upload Validation", "File format & compatibility check", "upload_validation"),
         ("Audio Transcription", "Speech-to-text conversion", "transcription"),
@@ -888,204 +751,54 @@ def show_processing_status():
     ]
     
     results = controller.get_results()
+    errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
     
-    for i, (title, description, step_key) in enumerate(pipeline_steps):
-        # Determine step state and real visibility
-        has_error = step_key in errors
-        has_result = step_key in results
+    # Main processing status container with st.status()
+    if controller.is_active:
+        current_title, current_desc, current_key = pipeline_steps[current_step]
         
-        if has_error:
-            state = "error"
-            icon = "❌"
-            border_color = "rgba(255, 68, 68, 0.6)"
-            bg_color = "rgba(255, 68, 68, 0.1)"
-            progress = 0
-            status_text = "Error"
-        elif i < current_step or (i == current_step and has_result):
-            state = "completed"
-            icon = "✅"
-            border_color = "rgba(0, 255, 136, 0.4)"
-            bg_color = "rgba(0, 255, 136, 0.08)"
-            progress = 100
-            status_text = "Complete"
-        elif i == current_step and controller.is_active:
-            state = "processing"
-            icon = "◐"  # More subtle processing indicator
-            border_color = "rgba(0, 255, 255, 0.5)"
-            bg_color = "rgba(0, 255, 255, 0.12)"
-            progress = min(90, max(10, (time.time() % 8) * 12))  # More realistic progress
-            status_text = "Processing..."
-        else:
-            state = "pending"
-            icon = "○"
-            border_color = "rgba(107, 114, 128, 0.2)"
-            bg_color = "rgba(107, 114, 128, 0.03)"
-            progress = 0
-            status_text = "Pending"
-        
-        # 🌿 ZEN STEP STONES - Minimal pipeline visualization  
-        expandable = has_result or has_error
-        zen_symbol = "◯" if state == "pending" else "◐" if state == "processing" else "●" if state == "completed" else "✕"
-        
-        st.markdown(f"""
-        <div class="zen-step {state}">
-            <div class="zen-step-content">
-                <div class="zen-step-symbol">{zen_symbol}</div>
-                <div class="zen-step-info">
-                    <div class="zen-step-title">{title.lower()}</div>
-                    <div class="zen-step-desc">{description}</div>
-                </div>
-                <div class="zen-step-status">{status_text.lower()}</div>
-            </div>
-            {f'''
-            <div class="zen-progress-flow">
-                <div class="zen-flow-line" style="--flow-width: {progress}%"></div>
-            </div>
-            ''' if state == 'processing' else ''}
-        </div>
-        
-        <style>
-        .zen-step {{
-            margin: 0.8rem 0;
-            border-radius: 16px;
-            overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            border: 1px solid rgba(0, 255, 255, 0.04);
-            background: rgba(0, 255, 255, 0.005);
-        }}
-        
-        .zen-step.processing {{
-            border-color: rgba(0, 255, 255, 0.15);
-            background: rgba(0, 255, 255, 0.02);
-        }}
-        
-        .zen-step.completed {{
-            border-color: rgba(0, 255, 136, 0.12);
-            background: rgba(0, 255, 136, 0.01);
-        }}
-        
-        .zen-step.error {{
-            border-color: rgba(255, 68, 68, 0.2);
-            background: rgba(255, 68, 68, 0.02);
-        }}
-        
-        .zen-step:hover {{
-            transform: translateX(4px);
-            border-color: rgba(0, 255, 255, 0.1);
-        }}
-        
-        .zen-step-content {{
-            display: flex;
-            align-items: center;
-            padding: 1.2rem 1.5rem;
-            gap: 1rem;
-        }}
-        
-        .zen-step-symbol {{
-            font-size: 1.4rem;
-            color: rgba(0, 255, 255, 0.6);
-            min-width: 30px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }}
-        
-        .zen-step.processing .zen-step-symbol {{
-            animation: zen-pulse 2s ease-in-out infinite;
-            color: rgba(0, 255, 255, 0.8);
-        }}
-        
-        .zen-step.completed .zen-step-symbol {{
-            color: rgba(0, 255, 136, 0.8);
-        }}
-        
-        .zen-step.error .zen-step-symbol {{
-            color: rgba(255, 68, 68, 0.8);
-        }}
-        
-        .zen-step-info {{
-            flex: 1;
-        }}
-        
-        .zen-step-title {{
-            font-size: 0.95rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin: 0 0 0.2rem 0;
-            font-weight: 300;
-            letter-spacing: 0.02em;
-        }}
-        
-        .zen-step-desc {{
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.4);
-            margin: 0;
-            font-weight: 200;
-        }}
-        
-        .zen-step-status {{
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.5);
-            letter-spacing: 0.05em;
-            font-weight: 300;
-        }}
-        
-        .zen-progress-flow {{
-            height: 2px;
-            background: rgba(0, 0, 0, 0.2);
-            margin: 0 1.5rem 0.8rem 1.5rem;
-        }}
-        
-        .zen-flow-line {{
-            height: 100%;
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.6), rgba(64, 224, 208, 0.4));
-            width: var(--flow-width);
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
-        }}
-        
-        @keyframes zen-pulse {{
-            0%, 100% {{ opacity: 0.6; transform: scale(1); }}
-            50% {{ opacity: 1; transform: scale(1.05); }}
-        }}
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Expandable content using Streamlit's native expander
-        if expandable:
-            with st.expander(f"View {title} Details", expanded=False):
-                if has_error:
-                    st.error(f"**Error in {title}:**")
-                    st.code(errors[step_key], language="text")
-                if has_result:
-                    content = results[step_key]
-                    if isinstance(content, str) and len(content) > 500:
-                        st.markdown(f"**Preview:** {content[:500]}...")
-                        if st.button(f"Show Full Content", key=f"show_full_{step_key}_{i}"):
-                            st.text_area(f"Full {title} Content", content, height=300, key=f"textarea_{step_key}_{i}")
-                    else:
-                        st.markdown(content if isinstance(content, str) else str(content))
+        with st.status(f"🔄 {current_title}", expanded=True) as status:
+            st.write(f"📝 **{current_desc}**")
+            
+            # Show previous completed steps
+            for i in range(current_step):
+                title, _, step_key = pipeline_steps[i]
+                if step_key in results:
+                    st.write(f"✅ {title} - Complete")
+                elif step_key in errors:
+                    st.write(f"❌ {title} - Error: {errors[step_key]}")
+                else:
+                    st.write(f"✅ {title} - Complete")
+            
+            # Current step with progress
+            st.write(f"🔄 **{current_title}** - {current_desc}...")
+            
+            # Show preview of remaining steps
+            for i in range(current_step + 1, len(pipeline_steps)):
+                title, _, _ = pipeline_steps[i]
+                st.write(f"⭕ {title} - Pending")
+            
+            # Update status based on completion
+            if current_step >= len(pipeline_steps) - 1:
+                status.update(label="✅ Processing Complete!", state="complete", expanded=False)
+            else:
+                status.update(label=f"🔄 {current_title}", state="running")
     
-    # Compact control buttons
-    if controller.is_active or controller.is_complete:
-        st.markdown("<div style='margin: 20px 0 10px 0;'></div>", unsafe_allow_html=True)
+    elif controller.is_complete:
+        st.status("✅ All processing complete!", state="complete", expanded=False)
         
-        if controller.is_active:
-            col1, col2 = st.columns([1, 1])
+        # Show completion summary
+        with st.container():
+            st.markdown("### 🌟 Generation Summary")
+            col1, col2, col3 = st.columns(3)
+            
             with col1:
-                if st.button("⏹ Stop Processing", key="stop_processing", type="secondary", use_container_width=True):
-                    controller.reset_pipeline()
-                    st.rerun()
+                st.metric("Steps Completed", len([r for r in results if r]), len(pipeline_steps))
             with col2:
-                if st.button("🔄 Refresh Status", key="refresh_status", use_container_width=True):
-                    st.rerun()
-        else:
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                if st.button("🔄 Process New File", key="reset_for_new", use_container_width=True):
-                    controller.reset_pipeline()
-                    st.rerun()
-            with col2:
-                if st.button("📥 Download Results", key="download_results", type="primary", use_container_width=True):
-                    _show_download_options(controller.get_results())
+                st.metric("Errors", len(errors), delta_color="inverse")
+            with col3:
+                success_rate = ((len(results) - len(errors)) / len(pipeline_steps)) * 100
+                st.metric("Success Rate", f"{success_rate:.1f}%")
 
 
 def _show_download_options(results: Dict[str, Any]):
@@ -1293,4 +1006,8 @@ STREAMING_RESULTS_CSS = """
     50% { left: 100%; }
 }
 </style>
-""" 
+"""
+
+def show_processing_status():
+    """Display ultra-modern Aurora pipeline with real-time visibility - ORIGINAL"""
+    show_enhanced_streaming_status()  # Use the new enhanced version 
