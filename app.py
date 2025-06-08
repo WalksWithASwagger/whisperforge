@@ -420,6 +420,15 @@ def show_auth_page():
             linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
         font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif;
         min-height: 100vh;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Remove default Streamlit padding that pushes content down */
+    .main .block-container {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        max-width: 100% !important;
     }
     
     .aurora-auth-page {
@@ -428,6 +437,8 @@ def show_auth_page():
         align-items: center;
         justify-content: center;
         padding: 24px;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
     
     .aurora-auth-card {
