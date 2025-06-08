@@ -401,9 +401,6 @@ def show_auth_page():
                         redirect_url = "http://localhost:8501"
                 
                 if redirect_url:
-                    # Debug: Show what redirect URL we're using
-                    st.info(f"🔍 **Debug**: OAuth redirect URL: `{redirect_url}`")
-                    
                     # Use Supabase's built-in OAuth - simple and clean!
                     auth_response = db.client.auth.sign_in_with_oauth({
                         "provider": "google",
