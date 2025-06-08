@@ -4,6 +4,7 @@ Contains functions that are shared between the original app and Supabase version
 """
 
 import hashlib
+import bcrypt
 import os
 import time
 import logging
@@ -13,7 +14,23 @@ from typing import Dict, Optional, Any
 logger = logging.getLogger(__name__)
 
 def hash_password(password: str) -> str:
-    """Hash a password using SHA-256"""
+    """Hash a password using bcrypt with salt"""
+    # Generate salt and hash password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify a password against its hash"""
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+    except Exception as e:
+        logger.error(f"Password verification error: {e}")
+        return False
+
+# Legacy SHA-256 hash function for migration purposes
+def legacy_hash_password(password: str) -> str:
+    """Legacy SHA-256 hash - DEPRECATED, use for migration only"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 # Default prompts for content generation

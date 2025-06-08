@@ -29,3 +29,6 @@ python-multipart>=0.0.6
 # Additional dependencies for deployment
 watchdog>=3.0.0
 Pillow>=10.0.0
+
+# Security - Password hashing
+bcrypt>=4.0.0
