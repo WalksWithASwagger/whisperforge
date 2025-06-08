@@ -361,8 +361,8 @@ def handle_oauth_callback():
     """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
-    # Only process if we have OAuth parameters
-    if 'code' in query_params:
+    # Only process if we have OAuth parameters (need both code and state for proper OAuth flow)
+    if 'code' in query_params and not st.session_state.get('authenticated', False):
         # Add debug info to sidebar
         st.sidebar.write(f"Debug - Processing OAuth callback")
         st.sidebar.write(f"Debug - Code received: {query_params['code'][:20]}...")
@@ -372,8 +372,15 @@ def handle_oauth_callback():
             if db:
                 code = query_params['code']
                 
-                # Exchange code for session
-                response = db.client.auth.exchange_code_for_session(code)
+                # Proper Supabase OAuth exchange - use the correct method
+                try:
+                    # Try the session exchange first (recommended for web apps)
+                    response = db.client.auth.exchange_code_for_session({
+                        "auth_code": code
+                    })
+                except:
+                    # Fallback to the alternative method
+                    response = db.client.auth.exchange_code_for_session(code)
                 
                 if response and hasattr(response, 'user') and response.user:
                     # Get or create user in our database
@@ -538,9 +545,16 @@ def show_auth_page():
                     redirect_url = "http://localhost:8501"
                 
                 if redirect_url:
+                    # Proper Supabase OAuth URL generation
                     auth_response = db.client.auth.sign_in_with_oauth({
                         "provider": "google",
-                        "options": {"redirect_to": redirect_url}
+                        "options": {
+                            "redirect_to": redirect_url,
+                            "query_params": {
+                                "access_type": "offline",
+                                "prompt": "consent"
+                            }
+                        }
                     })
                     
                     if hasattr(auth_response, 'url') and auth_response.url:

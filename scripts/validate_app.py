@@ -143,13 +143,10 @@ def test_file_structure(result):
         "core/content_generation.py",
         "core/streaming_pipeline.py",
         "core/monitoring.py",
-        "prompts/default/transcription.md",
         "prompts/default/wisdom_extraction.md",
         "prompts/default/outline_creation.md",
-        "prompts/default/article_generation.md",
-        "prompts/default/social_content.md",
-        "prompts/default/image_prompts.md",
-        "prompts/default/editor_feedback.md"
+        "prompts/default/social_media.md",
+        "prompts/default/image_prompts.md"
     ]
     
     optional_files = [
@@ -231,13 +228,10 @@ def test_prompt_files(result):
     print("\n🔍 Testing Prompt Files...")
     
     prompt_files = [
-        "prompts/default/transcription.md",
-        "prompts/default/wisdom_extraction.md", 
+        "prompts/default/wisdom_extraction.md",
         "prompts/default/outline_creation.md",
-        "prompts/default/article_generation.md",
-        "prompts/default/social_content.md",
-        "prompts/default/image_prompts.md",
-        "prompts/default/editor_feedback.md"
+        "prompts/default/social_media.md",
+        "prompts/default/image_prompts.md"
     ]
     
     for prompt_file in prompt_files:
