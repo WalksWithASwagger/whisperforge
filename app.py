@@ -32,7 +32,7 @@ from core.content_generation import (
     transcribe_audio, generate_wisdom, generate_outline, generate_article,
     generate_social_content, generate_image_prompts, editor_critique
 )
-from core.styling import local_css, add_production_css, create_custom_header, load_js
+from core.styling import apply_aurora_theme, create_aurora_header, AuroraComponents
 from core.monitoring import (
     init_monitoring, track_error, track_performance, track_user_action, 
     get_health_status, init_session_tracking

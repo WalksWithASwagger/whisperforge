@@ -17,6 +17,13 @@ from .content_generation import (
 class StreamingPipelineController:
     """Controls step-by-step pipeline execution with real-time UI updates"""
     
+    # Define pipeline steps as class constant
+    PIPELINE_STEPS = [
+        "upload_validation", "transcription", "wisdom_extraction", 
+        "outline_creation", "article_creation", "social_content", 
+        "image_prompts", "database_storage"
+    ]
+    
     def __init__(self):
         self.reset_pipeline()
     
@@ -48,19 +55,12 @@ class StreamingPipelineController:
             
         step_index = st.session_state.pipeline_step_index
         
-        # Define pipeline steps inline
-        pipeline_steps = [
-            "upload_validation", "transcription", "wisdom_extraction", 
-            "outline_creation", "article_creation", "social_content", 
-            "image_prompts", "database_storage"
-        ]
-        
-        if step_index >= len(pipeline_steps):
+        if step_index >= len(self.PIPELINE_STEPS):
             # Pipeline complete
             st.session_state.pipeline_active = False
             return False
         
-        step_id = pipeline_steps[step_index]
+        step_id = self.PIPELINE_STEPS[step_index]
         
         try:
             # Process the step
@@ -388,7 +388,7 @@ Please provide improved versions that address the feedback."""
     def is_complete(self) -> bool:
         """Check if pipeline has completed"""
         return (not self.is_active and 
-                st.session_state.get("pipeline_step_index", 0) >= len(WHISPERFORGE_PIPELINE_STEPS))
+                st.session_state.get("pipeline_step_index", 0) >= len(self.PIPELINE_STEPS))
     
     @property
     def current_step_index(self) -> int:
@@ -398,7 +398,7 @@ Please provide improved versions that address the feedback."""
     @property
     def progress_percentage(self) -> float:
         """Get overall progress percentage"""
-        return (self.current_step_index / 8) * 100
+        return (self.current_step_index / len(self.PIPELINE_STEPS)) * 100
     
     def get_results(self) -> Dict[str, Any]:
         """Get all pipeline results"""
