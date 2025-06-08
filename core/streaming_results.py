@@ -175,45 +175,76 @@ def _show_editor_feedback(results: Dict[str, Any]):
 
 
 def show_processing_status():
-    """Show current processing status with live updates"""
+    """Show current processing status with beautiful Aurora progress bars"""
     controller = get_pipeline_controller()
     
     if not controller.is_active and not controller.is_complete:
         return
     
-    # Get the progress tracker from session state if available
-    progress_tracker = st.session_state.get('progress_tracker')
+    # Beautiful Aurora Progress Bar
+    st.markdown("### 📊 Processing Pipeline")
     
-    if progress_tracker:
-        # Update the progress display - this should render the HTML properly
-        progress_tracker._update_display()
-    else:
-        # Fallback display without progress tracker
-        st.markdown("""
-        <div class="aurora-section">
-            <div class="aurora-section-title">
-                <span>📊</span>
-                Processing Status
-            </div>
+    # Get current step info
+    current_step = controller.current_step_index
+    total_steps = 8
+    progress_percentage = (current_step / total_steps) * 100
+    
+    # Create Aurora progress bar with HTML
+    aurora_progress_html = f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+        backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(0, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 16px 0;
+        position: relative;
+        overflow: hidden;
+    ">
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        ">
+            <h4 style="color: #00FFFF; margin: 0;">WhisperForge Pipeline</h4>
+            <span style="color: rgba(255, 255, 255, 0.8);">{current_step}/{total_steps} steps • {progress_percentage:.1f}%</span>
         </div>
-        """, unsafe_allow_html=True)
         
-        if controller.is_active:
-            col1, col2, col3 = st.columns([2, 1, 1])
-            
-            with col1:
-                current_step = controller.current_step_index
-                total_steps = 8  # Fixed total steps
-                st.info(f"🔄 Processing step {current_step + 1} of {total_steps}...")
-            
-            with col2:
-                progress = controller.progress_percentage
-                st.metric("Progress", f"{progress:.1f}%")
-            
-            with col3:
-                if st.button("⏹️ Stop Processing", key="stop_processing"):
-                    controller.reset_pipeline()
-                    st.rerun()
+        <div style="
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            height: 12px;
+            overflow: hidden;
+            margin: 16px 0;
+        ">
+            <div style="
+                background: linear-gradient(90deg, #00FFFF, #7DF9FF, #40E0D0);
+                height: 100%;
+                width: {progress_percentage}%;
+                border-radius: 12px;
+                box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+                transition: width 0.8s ease;
+            "></div>
+        </div>
+        
+        <div style="color: rgba(255, 255, 255, 0.9); font-size: 0.9rem;">
+            {'🔄 Processing...' if controller.is_active else '✅ Complete!'}
+        </div>
+    </div>
+    """
+    
+    st.markdown(aurora_progress_html, unsafe_allow_html=True)
+    
+    # Control buttons
+    if controller.is_active:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info(f"🔄 Currently processing step {current_step + 1} of {total_steps}")
+        with col2:
+            if st.button("⏹️ Stop", key="stop_processing"):
+                controller.reset_pipeline()
+                st.rerun()
     
     if controller.is_complete:
         st.success("🎉 Processing completed successfully!")

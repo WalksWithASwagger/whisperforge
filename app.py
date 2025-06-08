@@ -659,6 +659,14 @@ def show_main_app():
     if 'ai_model' not in st.session_state:
         st.session_state.ai_model = "gpt-4o"
     
+    # Load user prompts on app initialization
+    if 'prompts' not in st.session_state:
+        st.session_state.prompts = get_user_prompts_supabase()
+    
+    # Load knowledge base on app initialization
+    if 'knowledge_base' not in st.session_state:
+        st.session_state.knowledge_base = get_user_knowledge_base_supabase()
+    
     # Check for page navigation via query params
     query_params = st.query_params
     if 'page' in query_params:
@@ -991,26 +999,111 @@ def show_processing_results(results):
             st.markdown(results["image_prompts"])
 
 def show_content_history_page():
-    """Show user's content history"""
-    st.markdown("# Content History")
+    """Show user's content history with beautiful Aurora styling"""
+    st.markdown("# 📋 Content History")
+    st.markdown("Your generated content archive with transcripts, insights, and metadata")
     
     history = get_user_content_history_supabase()
     
     if not history:
-        st.info("No content history yet. Process some audio files to see your results here!")
+        # Beautiful empty state
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 48px;
+            text-align: center;
+            margin: 32px 0;
+        ">
+            <div style="font-size: 3rem; margin-bottom: 16px;">🎙️</div>
+            <h3 style="color: #00FFFF; margin-bottom: 8px;">No Content Yet</h3>
+            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 24px;">
+                Process some audio files to see your transcripts, insights, and generated content here!
+            </p>
+            <p style="color: rgba(255, 255, 255, 0.5); font-size: 0.9rem;">
+                Go to Content Pipeline to get started
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         return
     
-    for item in history:
-        with st.expander(f"Content from {item['created_at'][:10]}"):
-            content = item["content_data"]
+    # Show stats
+    st.markdown(f"**Found {len(history)} content items**")
+    
+    # Display each item in beautiful Aurora containers
+    for i, item in enumerate(history):
+        # Parse creation date
+        created_date = item.get('created_at', '')[:10] if item.get('created_at') else 'Unknown date'
+        
+        # Create Aurora content card
+        with st.expander(f"✨ Content Generated on {created_date}", expanded=i==0):
+            content_data = item.get("content_data", {})
             
-            if isinstance(content, dict):
-                for key, value in content.items():
-                    st.markdown(f"**{key.replace('_', ' ').title()}:**")
-                    st.markdown(value)
-                    st.markdown("---")
+            if isinstance(content_data, dict):
+                # Metadata section
+                if 'metadata' in content_data:
+                    st.markdown("### 📊 Metadata")
+                    metadata = content_data['metadata']
+                    if isinstance(metadata, dict):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("File Size", metadata.get('file_size', 'Unknown'))
+                        with col2:
+                            st.metric("Duration", metadata.get('duration', 'Unknown'))
+                        with col3:
+                            st.metric("AI Model", metadata.get('ai_model', 'Unknown'))
+                
+                # Display each content type in its own section
+                # Map both old and new column names for backward compatibility
+                content_sections = {
+                    'transcript': ('🎙️', 'Audio Transcription', 'The original speech-to-text conversion'),
+                    'transcription': ('🎙️', 'Audio Transcription', 'The original speech-to-text conversion'),
+                    'wisdom_extraction': ('💎', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
+                    'outline_creation': ('📋', 'Content Outline', 'Structured organization and flow'),
+                    'article': ('📰', 'Full Article', 'Complete written content'),
+                    'article_creation': ('📰', 'Full Article', 'Complete written content'),
+                    'social_media': ('📱', 'Social Media Posts', 'Platform-optimized content'),
+                    'social_content': ('📱', 'Social Media Posts', 'Platform-optimized content'),
+                    'image_prompts': ('🖼️', 'Image Generation Prompts', 'AI-generated visual concepts')
+                }
+                
+                for section_key, (icon, title, description) in content_sections.items():
+                    if section_key in content_data and content_data[section_key]:
+                        content = content_data[section_key]
+                        
+                        # Aurora content section
+                        st.markdown(f"""
+                        <div style="
+                            background: linear-gradient(135deg, rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05));
+                            border: 1px solid rgba(0, 255, 255, 0.1);
+                            border-radius: 12px;
+                            padding: 20px;
+                            margin: 16px 0;
+                        ">
+                            <h4 style="color: #00FFFF; margin-bottom: 8px;">{icon} {title}</h4>
+                            <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-bottom: 16px;">{description}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Show content with copy functionality
+                        if len(str(content)) > 500:
+                            # Show preview for long content
+                            st.markdown(f"**Preview:** {str(content)[:300]}...")
+                            if st.button(f"📄 Show Full {title}", key=f"show_{section_key}_{i}"):
+                                st.text_area(f"Full {title}", content, height=200, key=f"full_{section_key}_{i}")
+                        else:
+                            st.markdown(content)
+                        
+                        # Copy button
+                        if st.button(f"📋 Copy {title}", key=f"copy_{section_key}_{i}", help=f"Copy {title} to clipboard"):
+                            st.code(content, language="markdown")
+                        
+                        st.markdown("---")
             else:
-                st.markdown(str(content))
+                # Fallback for non-dict content
+                st.markdown("### Raw Content")
+                st.markdown(str(content_data))
 
 def show_settings_page():
     """Settings page with clean layout"""
@@ -1099,7 +1192,10 @@ def show_settings_page():
             if st.button(f"Save {prompt_type.replace('_', ' ').title()}", key=f"save_{prompt_type}"):
                 if save_user_prompt_supabase(prompt_type, new_prompt):
                     st.success(f"Saved {prompt_type} prompt!")
+                    # Reload prompts from database to ensure persistence
+                    st.session_state.prompts = get_user_prompts_supabase()
                     st.session_state.prompts[prompt_type] = new_prompt
+                    st.rerun()  # Refresh to show updated state
     
     with tab4:
         st.markdown("#### Knowledge Base")
