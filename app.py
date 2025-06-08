@@ -387,8 +387,8 @@ def show_auth_page():
                     )
                     
                     if is_render:
-                        # For Render, use the known URL (will be whisperforge.ai once custom domain is set)
-                        redirect_url = "https://whisperforge.onrender.com"
+                        # Use custom domain if available, fallback to onrender.com
+                        redirect_url = "https://whisperforge.ai"
                     elif is_streamlit_cloud and streamlit_app_url:
                         redirect_url = streamlit_app_url
                     elif is_streamlit_cloud:
