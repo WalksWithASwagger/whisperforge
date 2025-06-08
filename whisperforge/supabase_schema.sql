@@ -8,7 +8,7 @@ ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret-here';
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
+    password TEXT, -- Nullable to support OAuth users
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     api_keys JSONB DEFAULT '{}',
