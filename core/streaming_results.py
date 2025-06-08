@@ -80,108 +80,468 @@ def show_streaming_results():
     if not results and not errors:
         return
     
-    # Ultra-compact Aurora completion header with debug info
+    # 🌌 AWARD-WINNING MINIMAL COMPLETION INTERFACE
     st.markdown(f"""
-    <div style="
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        border-radius: 12px;
-        padding: 16px 24px;
-        margin: 16px 0;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
-            animation: completion-glow 3s ease-in-out infinite;
-        "></div>
-        <h3 style="color: #00FFFF; margin: 0 0 4px 0; font-weight: 700;">Content Generated</h3>
-        <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 0.9rem;">Ready to transform the world • {len(results)} items • DB save: {"✅" if "database_storage" in results else "❌"}</p>
+    <div class="zen-completion">
+        <div class="aurora-orb"></div>
+        <div class="completion-content">
+            <div class="zen-title">∞</div>
+            <div class="zen-subtitle">transformation complete</div>
+            <div class="bio-dots">
+                <span class="dot active"></span>
+                <span class="dot active"></span>
+                <span class="dot active"></span>
+            </div>
+        </div>
+        <div class="aurora-pulse"></div>
+    </div>
+    
+    <div class="action-constellation">
+        <div class="action-orb primary" onclick="downloadAll()">
+            <div class="orb-icon">⬇</div>
+            <div class="orb-label">gather</div>
+        </div>
+        <div class="action-orb secondary" onclick="exportPDF()">
+            <div class="orb-icon">◐</div>
+            <div class="orb-label">PDF</div>
+        </div>
+        <div class="action-orb tertiary" onclick="sendNotion()">
+            <div class="orb-icon">◑</div>
+            <div class="orb-label">notion</div>
+        </div>
     </div>
     
     <style>
-    @keyframes completion-glow {{
+    .zen-completion {{
+        position: relative;
+        padding: 2rem 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 2rem 0;
+        min-height: 120px;
+    }}
+    
+    .aurora-orb {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.05), transparent);
+        animation: orb-breathe 4s ease-in-out infinite;
+        filter: blur(0.5px);
+    }}
+    
+    .completion-content {{
+        position: relative;
+        z-index: 2;
+        text-align: center;
+    }}
+    
+    .zen-title {{
+        font-size: 2.5rem;
+        font-weight: 200;
+        color: rgba(0, 255, 255, 0.9);
+        margin: 0;
+        letter-spacing: 0.1em;
+        text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        animation: zen-glow 3s ease-in-out infinite;
+    }}
+    
+    .zen-subtitle {{
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 0.5rem 0 1rem 0;
+        letter-spacing: 0.15em;
+        font-weight: 300;
+    }}
+    
+    .bio-dots {{
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }}
+    
+    .dot {{
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: rgba(0, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }}
+    
+    .dot.active {{
+        background: #00FFFF;
+        box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+        animation: bio-pulse 2s ease-in-out infinite;
+    }}
+    
+    .aurora-pulse {{
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.6), transparent);
+        animation: aurora-scan 6s ease-in-out infinite;
+    }}
+    
+    .action-constellation {{
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin: 2rem 0;
+        padding: 1rem 0;
+    }}
+    
+    .action-orb {{
+        position: relative;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        border: 1px solid rgba(0, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+    }}
+    
+    .action-orb.primary {{
+        background: radial-gradient(circle, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.03));
+        border-color: rgba(0, 255, 255, 0.2);
+    }}
+    
+    .action-orb.secondary {{
+        background: radial-gradient(circle, rgba(138, 43, 226, 0.06), rgba(148, 0, 211, 0.02));
+        border-color: rgba(138, 43, 226, 0.15);
+    }}
+    
+    .action-orb.tertiary {{
+        background: radial-gradient(circle, rgba(255, 20, 147, 0.06), rgba(255, 69, 0, 0.02));
+        border-color: rgba(255, 20, 147, 0.15);
+    }}
+    
+    .action-orb:hover {{
+        transform: translateY(-4px) scale(1.05);
+        box-shadow: 0 12px 30px rgba(0, 255, 255, 0.15);
+    }}
+    
+    .action-orb.primary:hover {{
+        border-color: rgba(0, 255, 255, 0.4);
+        box-shadow: 0 12px 30px rgba(0, 255, 255, 0.2);
+    }}
+    
+    .action-orb.secondary:hover {{
+        border-color: rgba(138, 43, 226, 0.3);
+        box-shadow: 0 12px 30px rgba(138, 43, 226, 0.15);
+    }}
+    
+    .action-orb.tertiary:hover {{
+        border-color: rgba(255, 20, 147, 0.3);
+        box-shadow: 0 12px 30px rgba(255, 20, 147, 0.15);
+    }}
+    
+    .orb-icon {{
+        font-size: 1.5rem;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 4px;
+        transition: all 0.3s ease;
+    }}
+    
+    .orb-label {{
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.6);
+        letter-spacing: 0.05em;
+        font-weight: 300;
+        transition: all 0.3s ease;
+    }}
+    
+    .action-orb:hover .orb-icon {{
+        color: white;
+        transform: scale(1.1);
+    }}
+    
+    .action-orb:hover .orb-label {{
+        color: rgba(255, 255, 255, 0.9);
+    }}
+    
+    @keyframes orb-breathe {{
+        0%, 100% {{ transform: translate(-50%, -50%) scale(1); opacity: 0.6; }}
+        50% {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }}
+    }}
+    
+    @keyframes zen-glow {{
+        0%, 100% {{ text-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }}
+        50% {{ text-shadow: 0 0 30px rgba(0, 255, 255, 0.6), 0 0 40px rgba(64, 224, 208, 0.3); }}
+    }}
+    
+    @keyframes bio-pulse {{
+        0%, 100% {{ opacity: 1; transform: scale(1); }}
+        50% {{ opacity: 0.6; transform: scale(1.2); }}
+    }}
+    
+    @keyframes aurora-scan {{
         0%, 100% {{ left: -100%; opacity: 0; }}
-        20% {{ opacity: 1; }}
-        80% {{ opacity: 1; }}
+        25% {{ opacity: 1; }}
+        75% {{ opacity: 1; }}
         100% {{ left: 100%; opacity: 0; }}
     }}
     </style>
     """, unsafe_allow_html=True)
     
-    # Compact export actions
-    col1, col2 = st.columns([1, 1])
+    # Hidden Streamlit buttons for functionality (triggered by JavaScript)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        if st.button("📥 Export PDF", type="secondary", use_container_width=True):
-            st.success("Feature coming soon!")
+        if st.button("Download All", key="hidden_download", help="Download all content"):
+            _show_download_options(results)
     with col2:
-        if st.button("📝 Send to Notion", type="primary", use_container_width=True):
-            st.success("Feature coming soon!")
+        if st.button("Export PDF", key="hidden_pdf", help="Export as PDF"):
+            st.info("✨ PDF export coming soon!")
+    with col3:
+        if st.button("Send to Notion", key="hidden_notion", help="Send to Notion"):
+            st.info("🔗 Notion integration coming soon!")
     
     st.markdown("<div style='margin: 16px 0;'></div>", unsafe_allow_html=True)
     
-    # Dynamic content display - no redundant tabs since we have streaming results above
+    # 🌸 ZEN CONTENT GARDEN - Japanese minimalism meets bioluminescence
     content_sections = [
-        ("article_creation", "📰 Blog Post", "Your full article content"),
-        ("social_content", "📱 Social Posts", "Platform-optimized social content"),
-        ("wisdom_extraction", "💎 Key Insights", "Extracted wisdom and takeaways"),
-        ("image_prompts", "🖼️ Visual Concepts", "AI image generation prompts"),
-        ("transcription", "🎙️ Transcript", "Full audio transcription")
+        ("article_creation", "○", "article", "Your comprehensive piece"),
+        ("social_content", "◐", "social", "Platform content"),
+        ("wisdom_extraction", "◑", "insights", "Core wisdom"),
+        ("image_prompts", "◒", "visuals", "Image concepts"),
+        ("transcription", "●", "transcript", "Source audio")
     ]
     
     available_content = []
-    for key, title, desc in content_sections:
+    for key, symbol, name, desc in content_sections:
         if key in results and results[key]:
-            available_content.append((key, title, desc, results[key]))
+            available_content.append((key, symbol, name, desc, results[key]))
     
     if available_content:
-        for key, title, desc, content in available_content:
-            # Ultra-sleek content card
+        st.markdown("""
+        <div class="content-garden">
+            <div class="garden-title">created essence</div>
+        </div>
+        
+        <style>
+        .content-garden {
+            text-align: center;
+            margin: 3rem 0 2rem 0;
+        }
+        
+        .garden-title {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.2em;
+            font-weight: 200;
+            margin-bottom: 2rem;
+        }
+        
+        .content-zen-card {
+            background: rgba(0, 255, 255, 0.01);
+            border: 1px solid rgba(0, 255, 255, 0.08);
+            border-radius: 16px;
+            margin: 1rem 0;
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .content-zen-card:hover {
+            border-color: rgba(0, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 255, 0.08);
+        }
+        
+        .content-zen-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        .content-zen-card:hover::before {
+            left: 100%;
+        }
+        
+        .zen-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+        
+        .zen-symbol {
+            font-size: 1.8rem;
+            color: rgba(0, 255, 255, 0.7);
+            transition: all 0.3s ease;
+            width: 40px;
+            text-align: center;
+        }
+        
+        .zen-info {
+            flex: 1;
+        }
+        
+        .zen-name {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+        
+        .zen-desc {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin: 0.2rem 0 0 0;
+            font-weight: 200;
+        }
+        
+        .zen-expand {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .content-zen-card:hover .zen-symbol {
+            color: #00FFFF;
+            transform: scale(1.1);
+        }
+        
+        .content-zen-card:hover .zen-expand {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        for key, symbol, name, desc, content in available_content:
+            # Zen content card
             st.markdown(f"""
-            <div style="
-                background: rgba(0, 255, 255, 0.03);
-                border: 1px solid rgba(0, 255, 255, 0.15);
-                border-radius: 8px;
-                margin: 8px 0;
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            ">
-                <div style="
-                    padding: 12px 16px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-                ">
-                    <div>
-                        <h5 style="color: #00FFFF; margin: 0; font-size: 0.95rem; font-weight: 600;">{title}</h5>
-                        <p style="color: rgba(255, 255, 255, 0.6); margin: 2px 0 0 0; font-size: 0.8rem;">{desc}</p>
+            <div class="content-zen-card">
+                <div class="zen-header">
+                    <div class="zen-symbol">{symbol}</div>
+                    <div class="zen-info">
+                        <div class="zen-name">{name}</div>
+                        <div class="zen-desc">{desc}</div>
                     </div>
-                    <div style="color: rgba(255, 255, 255, 0.5); font-size: 0.7rem;">▼</div>
+                    <div class="zen-expand">◦</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            # Show content in expandable section
-            with st.expander(f"View {title.split(' ', 1)[1]}", expanded=False):
+            # Minimalist expandable content
+            with st.expander(f"explore {name}", expanded=False):
                 if key == "social_content":
-                    _show_social_posts_beautiful(content)
+                    _show_social_posts_zen(content)
                 else:
-                    if len(content) > 800:
-                        st.markdown(f"**Preview:** {content[:800]}...")
-                        if st.button(f"Show Full Content", key=f"show_full_{key}_{hash(title)%1000}"):
-                            st.text_area(f"Full {title} Content", content, height=400, key=f"textarea_{key}_{hash(title)%1000}")
+                    # Clean content display
+                    if len(content) > 1000:
+                        st.markdown("**preview**")
+                        st.markdown(f"*{content[:500]}...*")
+                        
+                        if st.button(f"reveal all", key=f"show_full_{key}_{hash(name)%1000}"):
+                            st.markdown("**complete**")
+                            st.text_area("", content, height=300, key=f"textarea_{key}_{hash(name)%1000}")
                     else:
                         st.markdown(content)
                 
-                # Compact copy button
-                if st.button(f"📋 Copy", key=f"copy_{key}_{hash(title)%1000}", use_container_width=False):
-                    st.code(content, language="markdown")
+                # Zen copy action
+                if st.button(f"∞ capture", key=f"copy_{key}_{hash(name)%1000}", use_container_width=False):
+                    st.code(content, language="text")
+
+
+def _show_social_posts_zen(social_content: str):
+    """Display social posts with zen aesthetic"""
+    
+    # Parse the social content into individual posts
+    posts = []
+    if social_content:
+        # Try to split by common post separators
+        potential_posts = social_content.split('\n\n')
+        post_num = 1
+        for post in potential_posts:
+            if post.strip() and len(post.strip()) > 20:
+                posts.append((f"essence {post_num}", post.strip()))
+                post_num += 1
+    
+    if not posts:
+        posts = [("essence 1", social_content)]
+    
+    # Zen post display
+    st.markdown("""
+    <style>
+    .zen-post {
+        background: rgba(0, 255, 255, 0.005);
+        border: 1px solid rgba(0, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        transition: all 0.4s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .zen-post:hover {
+        border-color: rgba(0, 255, 255, 0.12);
+        transform: translateY(-1px);
+    }
+    
+    .zen-post::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    
+    .zen-post:hover::before {
+        opacity: 1;
+    }
+    
+    .zen-post-title {
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin-bottom: 1rem;
+        letter-spacing: 0.1em;
+        font-weight: 200;
+    }
+    
+    .zen-post-content {
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.7;
+        font-weight: 300;
+        font-size: 0.95rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    for post_title, post_content in posts[:5]:
+        st.markdown(f"""
+        <div class="zen-post">
+            <div class="zen-post-title">{post_title}</div>
+            <div class="zen-post-content">{post_content.replace(chr(10), '<br>')}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Minimal copy button
+        if st.button(f"◦ capture {post_title.split()[1]}", key=f"copy_{post_title.lower().replace(' ', '_')}", use_container_width=False):
+            st.code(post_content, language="text")
 
 
 def _show_social_posts_beautiful(social_content: str):
@@ -369,39 +729,148 @@ def show_processing_status():
     current_step = controller.current_step_index
     errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
     
-    # Compact Aurora processing header - FIXED string formatting
+    # 🧘‍♂️ ZEN PROCESSING MEDITATION
     st.markdown(f"""
-    <div style="
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
-        border: 1px solid rgba(0, 255, 255, 0.3);
-        border-radius: 12px;
-        padding: 16px 24px;
-        margin: 16px 0;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
-            animation: aurora-scan 4s ease-in-out infinite;
-        "></div>
-        <h3 style="color: #00FFFF; margin: 0; font-weight: 700; text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);">
-            Processing Pipeline
-        </h3>
-        <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">
-            Real-time transformation • Step {current_step + 1}/8
-        </p>
+    <div class="processing-zen">
+        <div class="zen-circle">
+            <div class="zen-inner-circle">
+                <div class="zen-progress" style="--progress: {(current_step / 8) * 100}%"></div>
+            </div>
+            <div class="zen-step-count">{current_step + 1}<span class="zen-total">/8</span></div>
+        </div>
+        <div class="zen-flow-text">
+            <div class="zen-main">transformation in motion</div>
+            <div class="zen-sub">essence emerging</div>
+        </div>
+        <div class="zen-particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
     </div>
     
     <style>
-    @keyframes aurora-scan {{
-        0%, 100% {{ left: -100%; }}
-        50% {{ left: 100%; }}
+    .processing-zen {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem 0;
+        margin: 2rem 0;
+        position: relative;
+    }}
+    
+    .zen-circle {{
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin-bottom: 1.5rem;
+    }}
+    
+    .zen-inner-circle {{
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 255, 255, 0.1);
+        position: relative;
+        overflow: hidden;
+    }}
+    
+    .zen-progress {{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: conic-gradient(
+            from 0deg,
+            rgba(0, 255, 255, 0.6) 0%,
+            rgba(64, 224, 208, 0.4) var(--progress),
+            rgba(0, 255, 255, 0.05) var(--progress),
+            rgba(0, 255, 255, 0.05) 100%
+        );
+        border-radius: 50%;
+        animation: zen-rotate 8s linear infinite;
+    }}
+    
+    .zen-step-count {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        color: rgba(0, 255, 255, 0.8);
+        font-weight: 200;
+        text-align: center;
+    }}
+    
+    .zen-total {{
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.4);
+    }}
+    
+    .zen-flow-text {{
+        text-align: center;
+    }}
+    
+    .zen-main {{
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 0.3rem;
+        letter-spacing: 0.1em;
+        font-weight: 300;
+    }}
+    
+    .zen-sub {{
+        font-size: 0.8rem;
+        color: rgba(255, 255, 255, 0.4);
+        letter-spacing: 0.15em;
+        font-weight: 200;
+    }}
+    
+    .zen-particles {{
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+    }}
+    
+    .particle {{
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: rgba(0, 255, 255, 0.4);
+        border-radius: 50%;
+        animation: zen-float 6s ease-in-out infinite;
+    }}
+    
+    .particle:nth-child(1) {{
+        top: 20%;
+        left: 20%;
+        animation-delay: 0s;
+    }}
+    
+    .particle:nth-child(2) {{
+        top: 60%;
+        right: 25%;
+        animation-delay: 2s;
+    }}
+    
+    .particle:nth-child(3) {{
+        bottom: 30%;
+        left: 70%;
+        animation-delay: 4s;
+    }}
+    
+    @keyframes zen-rotate {{
+        0% {{ transform: rotate(0deg); }}
+        100% {{ transform: rotate(360deg); }}
+    }}
+    
+    @keyframes zen-float {{
+        0%, 100% {{ opacity: 0.2; transform: translateY(0px); }}
+        50% {{ opacity: 0.8; transform: translateY(-10px); }}
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -454,68 +923,128 @@ def show_processing_status():
             progress = 0
             status_text = "Pending"
         
-        # Ultra-compact Aurora step container with expandable content
+        # 🌿 ZEN STEP STONES - Minimal pipeline visualization  
         expandable = has_result or has_error
-        expand_key = f"expand_step_{i}"
+        zen_symbol = "◯" if state == "pending" else "◐" if state == "processing" else "●" if state == "completed" else "✕"
         
-        # Step container
         st.markdown(f"""
-        <div style="
-            background: {bg_color};
-            border: 1px solid {border_color};
-            border-radius: 8px;
-            margin: 8px 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        ">
-            <div style="
-                padding: 12px 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            ">
-                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                    <span style="
-                        font-size: 1rem;
-                        animation: {'aurora-pulse 2s ease-in-out infinite' if state == 'processing' else 'none'};
-                    ">{icon}</span>
-                    <div style="flex: 1;">
-                        <h5 style="color: #00FFFF; margin: 0; font-size: 0.95rem; font-weight: 600;">{title}</h5>
-                        <p style="color: rgba(255, 255, 255, 0.6); margin: 2px 0 0 0; font-size: 0.8rem;">{description}</p>
-                    </div>
+        <div class="zen-step {state}">
+            <div class="zen-step-content">
+                <div class="zen-step-symbol">{zen_symbol}</div>
+                <div class="zen-step-info">
+                    <div class="zen-step-title">{title.lower()}</div>
+                    <div class="zen-step-desc">{description}</div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="color: rgba(255, 255, 255, 0.8); font-size: 0.85rem; font-weight: 600;">{status_text}</span>
-                    {f'<span style="color: rgba(255, 255, 255, 0.5); font-size: 0.7rem;">▼</span>' if expandable else ''}
-                </div>
+                <div class="zen-step-status">{status_text.lower()}</div>
             </div>
-            
             {f'''
-            <div style="margin-top: 8px; padding: 0 16px 8px;">
-                <div style="
-                    background: rgba(0, 0, 0, 0.3);
-                    border-radius: 6px;
-                    height: 4px;
-                    overflow: hidden;
-                ">
-                    <div style="
-                        background: linear-gradient(90deg, #00FFFF, #40E0D0);
-                        height: 100%;
-                        width: {progress}%;
-                        border-radius: 6px;
-                        box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
-                        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-                    "></div>
-                </div>
+            <div class="zen-progress-flow">
+                <div class="zen-flow-line" style="--flow-width: {progress}%"></div>
             </div>
             ''' if state == 'processing' else ''}
         </div>
         
         <style>
-        @keyframes aurora-pulse {{
-            0%, 100% {{ opacity: 1; transform: scale(1); }}
-            50% {{ opacity: 0.7; transform: scale(1.1); }}
+        .zen-step {{
+            margin: 0.8rem 0;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            border: 1px solid rgba(0, 255, 255, 0.04);
+            background: rgba(0, 255, 255, 0.005);
+        }}
+        
+        .zen-step.processing {{
+            border-color: rgba(0, 255, 255, 0.15);
+            background: rgba(0, 255, 255, 0.02);
+        }}
+        
+        .zen-step.completed {{
+            border-color: rgba(0, 255, 136, 0.12);
+            background: rgba(0, 255, 136, 0.01);
+        }}
+        
+        .zen-step.error {{
+            border-color: rgba(255, 68, 68, 0.2);
+            background: rgba(255, 68, 68, 0.02);
+        }}
+        
+        .zen-step:hover {{
+            transform: translateX(4px);
+            border-color: rgba(0, 255, 255, 0.1);
+        }}
+        
+        .zen-step-content {{
+            display: flex;
+            align-items: center;
+            padding: 1.2rem 1.5rem;
+            gap: 1rem;
+        }}
+        
+        .zen-step-symbol {{
+            font-size: 1.4rem;
+            color: rgba(0, 255, 255, 0.6);
+            min-width: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }}
+        
+        .zen-step.processing .zen-step-symbol {{
+            animation: zen-pulse 2s ease-in-out infinite;
+            color: rgba(0, 255, 255, 0.8);
+        }}
+        
+        .zen-step.completed .zen-step-symbol {{
+            color: rgba(0, 255, 136, 0.8);
+        }}
+        
+        .zen-step.error .zen-step-symbol {{
+            color: rgba(255, 68, 68, 0.8);
+        }}
+        
+        .zen-step-info {{
+            flex: 1;
+        }}
+        
+        .zen-step-title {{
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0 0 0.2rem 0;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }}
+        
+        .zen-step-desc {{
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin: 0;
+            font-weight: 200;
+        }}
+        
+        .zen-step-status {{
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.05em;
+            font-weight: 300;
+        }}
+        
+        .zen-progress-flow {{
+            height: 2px;
+            background: rgba(0, 0, 0, 0.2);
+            margin: 0 1.5rem 0.8rem 1.5rem;
+        }}
+        
+        .zen-flow-line {{
+            height: 100%;
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.6), rgba(64, 224, 208, 0.4));
+            width: var(--flow-width);
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+        }}
+        
+        @keyframes zen-pulse {{
+            0%, 100% {{ opacity: 0.6; transform: scale(1); }}
+            50% {{ opacity: 1; transform: scale(1.05); }}
         }}
         </style>
         """, unsafe_allow_html=True)
