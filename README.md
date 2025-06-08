@@ -1,204 +1,214 @@
-# 🎙️ WhisperForge - SATURDAY BAILOUT
+# 🌌 WhisperForge
 
-> **Transform spoken ideas into comprehensive content with AI assistance**
+**AI-Powered Audio Content Generation with Aurora Bioluminescent UI**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./whisperforge/VERSION)
-[![Python](https://img.shields.io/badge/python-3.8%2B-green.svg)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.38.0-red.svg)](https://streamlit.io)
+Transform your audio files into comprehensive digital content using advanced AI. WhisperForge features a real-time streaming pipeline with research enrichment, visible AI thinking bubbles, and a modern Aurora-styled interface.
 
-WhisperForge is an AI-powered audio transcription and content creation pipeline designed for streamlining the process of turning spoken thoughts into polished, publishable content. Built with OpenAI's Whisper for transcription and multiple LLM providers for content enhancement.
-
-## 🚀 Features
-
-### 🎯 Core Pipeline (6 Stages)
-1. **Audio Input Processing** - File validation, chunking for large files (>25MB), format support
-2. **Audio Transcription** - OpenAI Whisper integration with parallel processing
-3. **Content Generation** - AI-powered wisdom extraction, outlines, social content, image prompts, articles
-4. **Content Enhancement** - SEO metadata, tagging, token usage tracking
-5. **Export and Storage** - Notion database integration, structured organization
-6. **Results and Distribution** - Multi-tab display, copy/download functionality
-
-### 🤖 Multi-AI Provider Support
-- **OpenAI** - GPT-4, GPT-3.5-turbo, Whisper
-- **Anthropic** - Claude models
-- **Grok** - X.AI integration
-- **Configurable** - Easy to add new providers
-
-### 📊 Advanced Features
-- **Knowledge Base System** - Custom context injection
-- **Custom Prompts** - Personalized content generation
-- **Supabase Integration** - Complete database backend with analytics
-- **MCP Integration** - Model Context Protocol support
-- **Caching System** - Optimized performance
-- **Progress Tracking** - Real-time pipeline monitoring
-
-## 🏗️ Architecture
-
-### Modular Core System
-```
-whisperforge/
-├── core/                    # Modular architecture
-│   ├── __init__.py         # Core exports
-│   ├── config.py           # Configuration management
-│   ├── pipeline.py         # Main pipeline orchestration
-│   ├── processors.py       # Audio/content processing
-│   ├── integrations.py     # AI provider integrations
-│   ├── content_generation.py  # Content creation logic
-│   ├── supabase_integration.py  # Database operations
-│   ├── utils.py            # Utility functions
-│   └── styling.py          # UI components
-├── app.py                  # Main Streamlit application
-├── app_supabase.py        # Supabase-enabled version
-├── requirements.txt        # Dependencies
-└── *.sql                  # Database schemas
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8 or higher
-- API keys for your chosen AI providers
-- (Optional) Notion API key and database ID
-- (Optional) Supabase project for database backend
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd SATURDAY-BAILOUT/whisperforge
-```
-
-2. **Create virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure environment**
-```bash
-cp env.example .env
-# Edit .env with your API keys
-```
-
-5. **Run the application**
-```bash
-streamlit run app.py
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-Create a `.env` file with your API keys:
-
-```env
-# Required: AI Providers
-OPENAI_API_KEY=your_openai_key_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
-XAI_API_KEY=your_grok_key_here
-
-# Optional: Notion Integration
-NOTION_API_KEY=your_notion_key_here
-NOTION_DATABASE_ID=your_database_id
-
-# Optional: Supabase Integration
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Optional: JWT Authentication
-JWT_SECRET_KEY=your_jwt_secret_key
-```
-
-### Supabase Setup
-For full database functionality:
-
-1. Create a Supabase project
-2. Run the schema setup:
-```sql
--- Copy and run supabase_schema.sql in your Supabase SQL editor
-```
-3. Configure Row Level Security policies
-4. Update your `.env` with Supabase credentials
-
-## 📖 Usage Guide
-
-### Basic Workflow
-1. **Upload Audio** - Drop your audio file (MP3, WAV, OGG, M4A)
-2. **Select AI Provider** - Choose your preferred model
-3. **Transcribe** - Get AI-powered transcription
-4. **Generate Content** - Create wisdom, outlines, social posts, articles
-5. **Export** - Save to Notion or download locally
-
-### Advanced Features
-
-#### Custom Knowledge Base
-- Add domain-specific context
-- Enhance content generation with your expertise
-- Persistent storage across sessions
-
-#### Custom Prompts
-- Personalize content generation
-- Create templates for specific use cases
-- Version control for prompt iterations
-
-#### Batch Processing
-- Handle large audio files (auto-chunking)
-- Process multiple files
-- Progress tracking and error handling
-
-## 🗄️ Database Schema
-
-The project includes comprehensive database schemas:
-
-- **Users & Authentication** - JWT-based user management
-- **Content Storage** - Transcripts, generated content, metadata
-- **Knowledge Base** - Custom context and domain knowledge
-- **Custom Prompts** - User-defined generation templates
-- **Analytics** - Usage tracking, pipeline performance
-- **Audit Logs** - Complete activity tracking
-
-## 🧪 Testing
-
-Run the included tests:
-```bash
-python test_notion.py      # Test Notion integration
-python test_supabase.py    # Test Supabase connectivity
-```
-
-## 📋 Changelog
-
-See [CHANGELOG.md](./whisperforge/changelog.md) for version history and updates.
-
-## 📄 License
-
-See [LICENSE](./whisperforge/LICENSE) for details.
-
-## 🎯 Project Status: SATURDAY BAILOUT Ready
-
-This project is fully prepared for weekend refactoring with [Loveable](https://loveable.dev):
-
-### ✅ Audit Complete
-- [x] Code compilation verified
-- [x] Core modules tested
-- [x] Dependencies confirmed
-- [x] Architecture documented
-- [x] Git repository initialized
-- [x] Comprehensive documentation
-
-### 🎮 Ready for Refactoring
-- **Modular Architecture** - Clean separation of concerns
-- **Complete Pipeline** - 6-stage content generation system
-- **Multi-AI Support** - Provider abstraction layer
-- **Database Integration** - Full Supabase backend
-- **Documentation** - Comprehensive README and comments
-- **Version Control** - Ready for collaborative development
+🌐 **Live Production App**: [whisperforge.ai](https://whisperforge.ai)
 
 ---
 
-**🚀 Let's turn those weekend ideas into production-ready content! 🚀** 
+## ✨ **Current Features**
+
+### **🎙️ Audio Processing Pipeline**
+- **Upload**: MP3, WAV, M4A, FLAC, MP4, MOV, AVI support
+- **Transcription**: AI-powered speech-to-text
+- **Wisdom Extraction**: Key insights and actionable takeaways  
+- **Research Enrichment**: Entity extraction with supporting research links
+- **Content Outline**: Structured article frameworks
+- **Article Generation**: Full long-form content creation
+- **Social Content**: Platform-specific posts (Twitter, LinkedIn, Instagram, Facebook, YouTube)
+- **Image Prompts**: AI-generated visual concept descriptions
+
+### **🤖 Advanced AI Features**
+- **Visible Thinking**: Real-time AI thought bubbles during processing
+- **Research Enrichment**: Automatic entity research with curated links
+- **Multi-AI Support**: OpenAI, Anthropic, and Grok integration
+- **Custom Prompts**: Personalized AI generation templates
+- **Knowledge Base**: Upload context files to guide AI output
+
+### **🎨 Aurora UI System**
+- **Bioluminescent Design**: Cyan/teal Aurora theme throughout
+- **Real-time Streaming**: Live content generation with progress updates
+- **Integrated Navigation**: Seamless header with logout/settings
+- **Aurora Components**: Consistent styling system across all pages
+- **Mobile Optimized**: Responsive design for all devices
+
+### **🔐 Advanced Session Management**
+- **Persistent Authentication**: Sessions survive browser refreshes
+- **Secure Storage**: Encrypted API keys and user data
+- **Google OAuth**: Seamless authentication integration
+- **User Profiles**: Personal settings, prompts, and history
+
+---
+
+## 🏗️ **Architecture**
+
+### **Core Modules**
+```
+core/
+├── streaming_pipeline.py      # Real-time processing pipeline
+├── streaming_results.py       # Live content display system  
+├── research_enrichment.py     # Entity research & link generation
+├── visible_thinking.py        # AI thought bubble system
+├── session_manager.py         # Advanced session persistence
+├── styling.py                 # Aurora UI components & themes
+├── content_generation.py      # AI content creation functions
+├── supabase_integration.py    # Database & auth backend
+├── file_upload.py             # Audio file processing
+├── notifications.py           # User feedback system
+├── ui_components.py           # Reusable UI elements
+├── monitoring.py              # Error tracking & analytics
+└── utils.py                   # Shared utilities
+```
+
+### **Database (Supabase)**
+- **Users**: Authentication, profiles, API keys
+- **Content**: Generated content with full history
+- **Settings**: Custom prompts, knowledge base files
+- **Sessions**: Persistent user sessions across refreshes
+
+### **Frontend**
+- **Framework**: Streamlit (Python web app)
+- **Styling**: Custom CSS with modern UI components
+- **Deployment**: Render.com with automatic GitHub integration
+
+### **Backend**
+- **Database**: Supabase (PostgreSQL with real-time features)
+- **Authentication**: Supabase Auth + Google OAuth
+- **File Storage**: Temporary processing with automatic cleanup
+- **API Integration**: Multi-provider AI routing (OpenAI/Anthropic/Grok)
+
+### **Infrastructure**
+- **Hosting**: Render.com (auto-scaling, SSL, custom domain)
+- **Monitoring**: Sentry (error tracking, performance monitoring)
+- **CI/CD**: Automatic deployment on GitHub push
+- **Security**: Environment variables, encrypted API keys, bcrypt hashing
+
+---
+
+## 🚀 **Local Development**
+
+### **Prerequisites**
+```bash
+Python 3.11+
+Supabase account with project
+AI provider API keys (OpenAI/Anthropic/Grok)
+```
+
+### **Setup**
+```bash
+# Clone and setup
+git clone <repository-url>
+cd whisperforge--prime
+
+# Virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies  
+pip install -r requirements.txt
+
+# Environment variables
+cp .env.example .env
+# Edit .env with your keys
+
+# Run locally
+streamlit run app.py
+```
+
+### **Required Environment Variables**
+```bash
+# Supabase (Required)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
+
+# AI Providers (At least one required)
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key  
+GROK_API_KEY=your-grok-key
+
+# Optional
+SENTRY_DSN=your-sentry-dsn
+ENVIRONMENT=development
+```
+
+---
+
+## 🎯 **Key Technical Features**
+
+### **Streaming Pipeline**
+- Real-time step-by-step processing with live updates
+- Session state persistence across browser refreshes
+- Error handling with graceful fallbacks
+- Progress tracking with Aurora-styled indicators
+
+### **Research Enrichment**
+- Automatic entity extraction (people, organizations, methods)
+- AI-generated supporting research links
+- "Why this matters" explanations
+- Curated "gem" links per entity
+
+### **Visible Thinking**
+- Real-time AI thought bubbles during processing
+- Aurora-styled chat bubbles with mood colors
+- 90-character limit with smart truncation
+- Canned fallbacks for robust operation
+
+### **Aurora UI System**
+- Consistent bioluminescent design language
+- Integrated header with navigation and logout
+- Responsive Aurora components
+- Professional 2025-style interface
+
+---
+
+## 📊 **Production Status**
+
+### **✅ Fully Operational**
+- **Core Pipeline**: 8-step audio-to-content generation
+- **UI/UX**: Complete Aurora theme implementation
+- **Authentication**: Google OAuth + session persistence
+- **Database**: Supabase integration with full CRUD
+- **Error Handling**: Comprehensive error tracking and recovery
+- **Monitoring**: Sentry integration for production insights
+
+### **🚀 Ready for Deployment**
+- **Heroku**: Configured with Procfile
+- **Render**: Auto-deploy ready
+- **Streamlit Cloud**: Compatible deployment
+- **Docker**: Container-ready setup
+
+---
+
+## 🛠️ **Current Development Focus**
+
+Based on user feedback, active development is focused on:
+
+1. **Streaming UX Improvements**: Enhanced real-time content display
+2. **History Page Fixes**: Database schema and display improvements  
+3. **Processing Indicators**: Better visual feedback during generation
+4. **Content Layout**: Modern, engaging result presentation
+5. **Session Reliability**: Bulletproof authentication persistence
+
+---
+
+## 📝 **Contributing**
+
+The codebase is actively developed with a focus on:
+- Clean, modular architecture
+- Comprehensive error handling
+- Consistent Aurora design system
+- Real-time user experience
+- Production-ready deployment
+
+---
+
+## 📄 **License**
+
+See [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ using Python, Streamlit, Supabase, and Advanced AI** 
