@@ -1,7 +1,7 @@
 # Railway Configuration for WhisperForge Python App
 [build]
 builder = "nixpacks"
-nixpacksConfigPath = ".nixpacks"
+nixpacksConfigPath = "nixpacks.toml"
 
 [deploy]
 startCommand = "streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true"
