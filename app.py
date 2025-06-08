@@ -1077,7 +1077,7 @@ def show_main_app():
         show_home_page()  # Default fallback
 
 def show_home_page():
-    """Modern home page with clean, professional design"""
+    """Modern home page with integrated progress tracking and enhanced interactions"""
     
     # Page Header
     st.markdown("""
@@ -1086,6 +1086,12 @@ def show_home_page():
         <p class="aurora-page-subtitle">Transform your audio content into structured, actionable insights with AI-powered analysis.</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Initialize progress tracker in session state for persistence
+    if 'progress_tracker' not in st.session_state:
+        st.session_state.progress_tracker = None
+        st.session_state.processing_active = False
+        st.session_state.processing_results = None
     
     # AI Configuration Section
     st.markdown("""
@@ -1097,7 +1103,7 @@ def show_home_page():
     </div>
     """, unsafe_allow_html=True)
     
-    # AI Provider and Model Selection
+    # AI Provider and Model Selection in a clean grid
     col1, col2 = st.columns(2)
     with col1:
         st.session_state.ai_provider = st.selectbox(
@@ -1116,7 +1122,6 @@ def show_home_page():
                 "claude-3-sonnet-20240229",
                 "claude-3-haiku-20240307"
             ]
-            # Try to maintain current selection or default to first
             try:
                 current_index = available_models.index(st.session_state.ai_model)
             except ValueError:
@@ -1166,7 +1171,7 @@ def show_home_page():
             key="main_processing_mode"
         )
     
-    # File Upload Section
+    # File Upload Section with enhanced styling
     st.markdown("""
     <div class="aurora-section">
         <div class="aurora-section-title">
@@ -1183,76 +1188,88 @@ def show_home_page():
         help="Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB"
     )
     
-    # Process button and results
+    # Processing Section with integrated progress tracking
     if uploaded_file is not None:
-        st.success(f"✅ File uploaded: {uploaded_file.name}")
+        # File info display
+        file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+        st.success(f"✅ File uploaded: **{uploaded_file.name}** ({file_size_mb:.2f} MB)")
         
-        # Progress tracking
-        if 'progress_tracker' not in st.session_state:
-            from core.progress import AuroraProgressTracker
-            st.session_state.progress_tracker = AuroraProgressTracker()
+        # Processing control section
+        st.markdown("""
+        <div class="aurora-section">
+            <div class="aurora-section-title">
+                <span>🚀</span>
+                Processing Control
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if st.button("🚀 Start Processing", type="primary", use_container_width=True):
+        # Create columns for processing controls
+        proc_col1, proc_col2, proc_col3 = st.columns([2, 1, 1])
+        
+        with proc_col1:
+            # Main processing button with enhanced styling
+            processing_disabled = st.session_state.processing_active
+            button_text = "🔄 Processing..." if processing_disabled else "🚀 Start Processing"
+            
+            if st.button(button_text, 
+                        type="primary", 
+                        use_container_width=True, 
+                        disabled=processing_disabled,
+                        key="process_button"):
+                st.session_state.processing_active = True
+                st.session_state.processing_results = None
+                st.rerun()
+        
+        with proc_col2:
+            if st.session_state.processing_active and st.button("⏹️ Stop", use_container_width=True):
+                st.session_state.processing_active = False
+                st.session_state.progress_tracker = None
+                st.rerun()
+        
+        with proc_col3:
+            if st.session_state.processing_results and st.button("🔄 Reset", use_container_width=True):
+                st.session_state.processing_active = False
+                st.session_state.progress_tracker = None
+                st.session_state.processing_results = None
+                st.rerun()
+        
+        # Progress Tracking Section - Always visible when processing
+        if st.session_state.processing_active:
+            st.markdown("""
+            <div class="aurora-section">
+                <div class="aurora-section-title">
+                    <span>📊</span>
+                    Processing Progress
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Create and manage progress tracker
+            if st.session_state.progress_tracker is None:
+                from core.progress import create_whisperforge_progress_tracker
+                st.session_state.progress_tracker = create_whisperforge_progress_tracker()
+                st.session_state.progress_tracker.create_display_container()
+            
+            # Process the file with real-time updates
             try:
-                # Process the audio file
-                results = process_audio_pipeline(uploaded_file)
-                
+                results = process_audio_pipeline_with_progress(uploaded_file, st.session_state.progress_tracker)
                 if results:
-                    st.success("✅ Processing completed successfully!")
-                    
-                    # Display results in a clean layout
-                    st.markdown("""
-                    <div class="aurora-section">
-                        <div class="aurora-section-title">
-                            <span>📊</span>
-                            Results
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Create tabs for different result types
-                    result_tabs = []
-                    if 'wisdom' in results:
-                        result_tabs.append("💎 Wisdom")
-                    if 'outline' in results:
-                        result_tabs.append("📋 Outline")
-                    if 'social' in results:
-                        result_tabs.append("📱 Social")
-                    if 'images' in results:
-                        result_tabs.append("🖼️ Images")
-                    
-                    if result_tabs:
-                        tabs = st.tabs(result_tabs)
-                        
-                        tab_idx = 0
-                        if 'wisdom' in results and tab_idx < len(tabs):
-                            with tabs[tab_idx]:
-                                st.markdown(results['wisdom'], unsafe_allow_html=True)
-                            tab_idx += 1
-                        
-                        if 'outline' in results and tab_idx < len(tabs):
-                            with tabs[tab_idx]:
-                                st.markdown(results['outline'], unsafe_allow_html=True)
-                            tab_idx += 1
-                        
-                        if 'social' in results and tab_idx < len(tabs):
-                            with tabs[tab_idx]:
-                                st.markdown(results['social'], unsafe_allow_html=True)
-                            tab_idx += 1
-                        
-                        if 'images' in results and tab_idx < len(tabs):
-                            with tabs[tab_idx]:
-                                if isinstance(results['images'], list):
-                                    for idx, image_data in enumerate(results['images']):
-                                        st.image(image_data, caption=f"Generated Image {idx + 1}")
-                                else:
-                                    st.markdown(results['images'], unsafe_allow_html=True)
-                
+                    st.session_state.processing_results = results
+                    st.session_state.processing_active = False
+                    st.rerun()
             except Exception as e:
                 st.error(f"❌ Processing failed: {str(e)}")
+                st.session_state.processing_active = False
+                st.session_state.progress_tracker = None
+                st.rerun()
+        
+        # Results Section - Show when processing is complete
+        if st.session_state.processing_results:
+            show_processing_results(st.session_state.processing_results)
     
     else:
-        # Welcome section when no file is uploaded
+        # Welcome section with enhanced features showcase
         st.markdown("""
         <div class="aurora-section">
             <div class="aurora-section-title">
@@ -1262,54 +1279,133 @@ def show_home_page():
         </div>
         """, unsafe_allow_html=True)
         
+        # Feature showcase with beautiful styling
         st.markdown("""
-        **🎯 Key Features:**
+        <div class="aurora-features-grid">
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">🧠</div>
+                <div class="aurora-feature-title">Smart Content Extraction</div>
+                <div class="aurora-feature-desc">AI identifies key insights and wisdom from your audio with advanced language understanding</div>
+            </div>
+            
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">📋</div>
+                <div class="aurora-feature-title">Structured Outlines</div>
+                <div class="aurora-feature-desc">Organized content ready for presentations, articles, or educational material</div>
+            </div>
+            
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">📱</div>
+                <div class="aurora-feature-title">Social Media Ready</div>
+                <div class="aurora-feature-desc">Platform-optimized content for maximum engagement across all social networks</div>
+            </div>
+            
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">🎨</div>
+                <div class="aurora-feature-title">Image Prompts</div>
+                <div class="aurora-feature-desc">AI-generated prompts for creating compelling visual content with DALL-E, Midjourney, or Stable Diffusion</div>
+            </div>
+            
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">☁️</div>
+                <div class="aurora-feature-title">Cloud Storage</div>
+                <div class="aurora-feature-desc">All content automatically saved and accessible from anywhere, anytime</div>
+            </div>
+            
+            <div class="aurora-feature-card">
+                <div class="aurora-feature-icon">🔒</div>
+                <div class="aurora-feature-title">Secure Processing</div>
+                <div class="aurora-feature-desc">Your data is encrypted and protected with enterprise-grade security</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        • **Smart Content Extraction** - AI identifies key insights and wisdom  
-        • **Structured Outlines** - Organized content ready for use  
-        • **Social Media Ready** - Platform-optimized content generation  
-        • **Image Prompts** - AI-generated prompts for visual content  
-        • **Cloud Storage** - All content saved and accessible anytime  
-        • **Secure Processing** - Your data is protected and private
-        """)
+        # Add enhanced feature card styling
+        st.markdown("""
+        <style>
+        .aurora-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
         
-        st.info("👆 Upload an audio file above to get started with AI-powered content transformation!")
+        .aurora-feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid rgba(0, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .aurora-feature-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.4), transparent);
+            animation: aurora-scan 8s ease-in-out infinite;
+            animation-delay: calc(var(--card-index, 0) * 0.5s);
+        }
+        
+        .aurora-feature-card:hover {
+            border-color: rgba(0, 255, 255, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+        }
+        
+        .aurora-feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.3));
+        }
+        
+        .aurora-feature-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 12px;
+        }
+        
+        .aurora-feature-desc {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        
+        @keyframes aurora-scan {
+            0%, 100% { left: -100%; }
+            50% { left: 100%; }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.info("👆 **Upload an audio file above to get started** with AI-powered content transformation!")
 
-def process_audio_pipeline(audio_file):
-    """Process audio through the complete pipeline with aurora-themed progress tracking"""
-    
-    # Track pipeline execution
-    pipeline_start = datetime.now()
-    pipeline_data = {
-        "type": "full",
-        "ai_provider": st.session_state.ai_provider.lower(),
-        "model": st.session_state.ai_model,
-        "success": False,
-        "metadata": {"filename": audio_file.name}
-    }
-    
-    # Create aurora-themed progress tracker
-    progress_tracker = create_whisperforge_progress_tracker()
-    progress_tracker.create_display_container()
+
+def process_audio_pipeline_with_progress(audio_file, progress_tracker):
+    """Enhanced audio processing with real-time progress updates"""
     
     try:
         # Step 1: Upload Validation
         with progress_tracker.step_context("upload_validation"):
             file_size_mb = len(audio_file.getvalue()) / (1024 * 1024)
-            time.sleep(0.3)  # Brief validation simulation
+            if file_size_mb > 25:
+                raise Exception(f"File too large: {file_size_mb:.1f}MB (max 25MB)")
+            time.sleep(0.5)  # Validation simulation
         
         # Step 2: Transcription
         with progress_tracker.step_context("transcription"):
             transcript = transcribe_audio(audio_file)
-            st.session_state.transcription = transcript
-            
             if not transcript:
                 raise Exception("Failed to transcribe audio - transcript is empty")
-        
-        # Display transcript with aurora styling
-        st.markdown("### Transcript Generated")
-        with st.expander("View Full Transcript", expanded=False):
-            st.text_area("", transcript, height=200, key="transcript_display")
+            st.session_state.transcription = transcript
         
         # Step 3: Wisdom Extraction
         with progress_tracker.step_context("wisdom_extraction"):
@@ -1366,7 +1462,7 @@ def process_audio_pipeline(audio_file):
                 "metadata": {
                     "ai_provider": st.session_state.ai_provider,
                     "ai_model": st.session_state.ai_model,
-                    "file_size": audio_file.size if hasattr(audio_file, 'size') else len(audio_file.getvalue()),
+                    "file_size": len(audio_file.getvalue()),
                     "created_at": datetime.now().isoformat()
                 }
             }
@@ -1374,298 +1470,166 @@ def process_audio_pipeline(audio_file):
             content_id = save_generated_content_supabase(content_data)
             if not content_id:
                 raise Exception("Failed to save content to database")
-            time.sleep(0.2)  # Brief storage simulation
-                    
-        # Show success message with professional notification
-        st.success("Processing pipeline completed successfully!")
+            time.sleep(0.3)
         
-        # Display generated content in beautiful aurora-themed cards
-        st.markdown("### Generated Content")
-        st.markdown("*Your content is ready! Click on each tab to explore the results.*")
+        return {
+            'transcript': transcript,
+            'wisdom': wisdom,
+            'outline': outline,
+            'social': social,
+            'images': images
+        }
         
-        # Create tabs for each content type with enhanced styling
-        tab1, tab2, tab3, tab4 = st.tabs([
-            "Wisdom & Insights", 
-            "Content Outline", 
-            "Social Media", 
-            "Image Prompts"
-        ])
-        
-        with tab1:
-            st.markdown("#### Key Insights & Wisdom")
-            st.markdown("*AI-extracted insights and valuable takeaways from your content*")
-            
-            # Create a beautiful aurora content card with proper HTML escaping
+    except Exception as e:
+        st.error(f"Processing failed: {str(e)}")
+        return None
+
+
+def show_processing_results(results):
+    """Display processing results with beautiful aurora-themed cards"""
+    
+    st.markdown("""
+    <div class="aurora-section">
+        <div class="aurora-section-title">
+            <span>✨</span>
+            Generated Content
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.success("🎉 Processing completed successfully! Your content is ready.")
+    
+    # Create tabs for different result types
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "💎 Wisdom & Insights", 
+        "📋 Content Outline", 
+        "📱 Social Media", 
+        "🖼️ Image Prompts"
+    ])
+    
+    with tab1:
+        if 'wisdom' in results:
             import html
-            wisdom_escaped = html.escape(wisdom).replace('\n', '<br>')
-            wisdom_html = f"""
-            <div class="aurora-content-card aurora-wisdom-card">
+            wisdom_escaped = html.escape(results['wisdom'])
+            st.markdown(f"""
+            <div class="aurora-content-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-title">Wisdom & Insights</span>
+                    <span class="aurora-content-title">Key Insights & Wisdom</span>
                 </div>
                 <div class="aurora-content-body">
-                    {wisdom_escaped}
+                    {wisdom_escaped.replace(chr(10), '<br>')}
                 </div>
             </div>
-            """
-            st.markdown(wisdom_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            # Copy button
-            if st.button("Copy Wisdom", key="copy_wisdom"):
-                st.code(wisdom, language="markdown")
-            
-        with tab2:
-            st.markdown("#### Structured Content Outline")
-            st.markdown("*Organized structure ready for presentations, articles, or courses*")
-            
-            outline_escaped = html.escape(outline).replace('\n', '<br>')
-            outline_html = f"""
-            <div class="aurora-content-card aurora-outline-card">
+            if st.button("📋 Copy to Clipboard", key="copy_wisdom"):
+                st.code(results['wisdom'], language="markdown")
+    
+    with tab2:
+        if 'outline' in results:
+            import html
+            outline_escaped = html.escape(results['outline'])
+            st.markdown(f"""
+            <div class="aurora-content-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-title">Content Outline</span>
+                    <span class="aurora-content-title">Structured Content Outline</span>
                 </div>
                 <div class="aurora-content-body">
-                    {outline_escaped}
+                    {outline_escaped.replace(chr(10), '<br>')}
                 </div>
             </div>
-            """
-            st.markdown(outline_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            if st.button("Copy Outline", key="copy_outline"):
-                st.code(outline, language="markdown")
-            
-        with tab3:
-            st.markdown("#### Social Media Ready Content")
-            st.markdown("*Platform-optimized content for maximum engagement*")
-            
-            social_escaped = html.escape(social).replace('\n', '<br>')
-            social_html = f"""
-            <div class="aurora-content-card aurora-social-card">
+            if st.button("📋 Copy to Clipboard", key="copy_outline"):
+                st.code(results['outline'], language="markdown")
+    
+    with tab3:
+        if 'social' in results:
+            import html
+            social_escaped = html.escape(results['social'])
+            st.markdown(f"""
+            <div class="aurora-content-card">
                 <div class="aurora-content-header">
                     <span class="aurora-content-title">Social Media Content</span>
                 </div>
                 <div class="aurora-content-body">
-                    {social_escaped}
+                    {social_escaped.replace(chr(10), '<br>')}
                 </div>
             </div>
-            """
-            st.markdown(social_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            if st.button("Copy Social Content", key="copy_social"):
-                st.code(social, language="markdown")
-            
-        with tab4:
-            st.markdown("#### AI Image Generation Prompts")
-            st.markdown("*Ready-to-use prompts for creating visual content with AI tools*")
-            
-            images_escaped = html.escape(images).replace('\n', '<br>')
-            images_html = f"""
-            <div class="aurora-content-card aurora-images-card">
+            if st.button("📋 Copy to Clipboard", key="copy_social"):
+                st.code(results['social'], language="markdown")
+    
+    with tab4:
+        if 'images' in results:
+            import html
+            images_escaped = html.escape(results['images'])
+            st.markdown(f"""
+            <div class="aurora-content-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-title">Image Generation Prompts</span>
+                    <span class="aurora-content-title">AI Image Generation Prompts</span>
                 </div>
                 <div class="aurora-content-body">
-                    {images_escaped}
+                    {images_escaped.replace(chr(10), '<br>')}
                 </div>
             </div>
-            """
-            st.markdown(images_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
             
-            if st.button("Copy Image Prompts", key="copy_images"):
-                st.code(images, language="markdown")
-        
-        # Add award-winning aurora content card styling
-        aurora_content_css = """
-        <style>
-        /* Aurora Content Cards - Award-Winning Design */
-        :root {
-            --aurora-cyan: #00FFFF;
-            --aurora-turquoise: #40E0D0;
-            --aurora-electric-blue: #7DF9FF;
-            --aurora-spring-green: #00FF7F;
-        }
-        
-        .aurora-content-card {
-            background: linear-gradient(
-                135deg,
-                rgba(0, 255, 255, 0.03) 0%,
-                rgba(64, 224, 208, 0.04) 30%,
-                rgba(125, 249, 255, 0.03) 60%,
-                rgba(0, 255, 127, 0.02) 100%
-            );
-            backdrop-filter: blur(24px) saturate(180%);
-            border: 1px solid rgba(0, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 32px;
-            margin: 24px 0;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 
-                0 0 32px rgba(0, 255, 255, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.12),
-                0 16px 64px rgba(0, 0, 0, 0.12);
-        }
-        
-        .aurora-content-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(
-                90deg,
-                transparent 0%,
-                var(--aurora-cyan) 20%,
-                var(--aurora-electric-blue) 40%,
-                var(--aurora-turquoise) 60%,
-                var(--aurora-spring-green) 80%,
-                transparent 100%
-            );
-            animation: aurora-scan 5s ease-in-out infinite;
-        }
-        
-        .aurora-content-card:hover {
-            border-color: rgba(0, 255, 255, 0.25);
-            box-shadow: 
-                0 0 48px rgba(0, 255, 255, 0.12),
-                inset 0 1px 0 rgba(255, 255, 255, 0.18),
-                0 24px 96px rgba(0, 0, 0, 0.16);
-            transform: translateY(-4px);
-        }
-        
-        .aurora-content-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.12);
-        }
-        
-        .aurora-content-title {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            font-weight: 700;
-            font-size: 1.2rem;
-            letter-spacing: -0.03em;
-            background: linear-gradient(
-                120deg,
-                var(--aurora-cyan) 0%,
-                var(--aurora-electric-blue) 25%,
-                var(--aurora-turquoise) 50%,
-                var(--aurora-spring-green) 75%,
-                var(--aurora-cyan) 100%
-            );
-            background-size: 300% 100%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: aurora-text-flow 4s ease-in-out infinite;
-        }
-        
-        .aurora-content-body {
-            color: rgba(255, 255, 255, 0.92);
-            line-height: 1.7;
-            font-size: 1rem;
-            letter-spacing: -0.01em;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-        }
-        
-        .aurora-wisdom-card::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--aurora-cyan), var(--aurora-electric-blue));
-            opacity: 0.6;
-        }
-        
-        .aurora-outline-card::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--aurora-spring-green), var(--aurora-turquoise));
-            opacity: 0.6;
-        }
-        
-        .aurora-social-card::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--aurora-turquoise), var(--aurora-electric-blue));
-            opacity: 0.6;
-        }
-        
-        .aurora-images-card::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(180deg, var(--aurora-electric-blue), var(--aurora-cyan));
-            opacity: 0.6;
-        }
-        
-        @keyframes aurora-scan {
-            0% { transform: translateX(-100%); }
-            50% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
-        
-        @keyframes aurora-text-flow {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .aurora-content-card {
-                padding: 24px 20px;
-                margin: 16px 0;
-                border-radius: 16px;
-            }
-            
-            .aurora-content-title {
-                font-size: 1.1rem;
-            }
-            
-            .aurora-content-body {
-                font-size: 0.95rem;
-            }
-        }
-        </style>
-        """
-        
-        st.markdown(aurora_content_css, unsafe_allow_html=True)
-        
-        # Log successful pipeline execution
-        pipeline_end = datetime.now()
-        pipeline_data.update({
-            "success": True,
-            "duration": (pipeline_end - pipeline_start).total_seconds(),
-            "content_id": content_id if 'content_id' in locals() else None
-        })
-        
-        # Show completion notification
-        st.success(f"Pipeline completed successfully! Content saved with ID: {content_id if 'content_id' in locals() else 'N/A'}")
-        
-    except Exception as e:
-        st.error(f"Pipeline error: {e}")
-        pipeline_data["error"] = str(e)
-        logger.exception("Pipeline error")
+            if st.button("📋 Copy to Clipboard", key="copy_images"):
+                st.code(results['images'], language="markdown")
     
-    finally:
-        # Log pipeline execution
-        log_pipeline_execution_supabase(pipeline_data)
+    # Add enhanced content card styling
+    st.markdown("""
+    <style>
+    .aurora-content-card {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+        backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(0, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 16px 0;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+    
+    .aurora-content-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
+        animation: aurora-scan 6s ease-in-out infinite;
+    }
+    
+    .aurora-content-card:hover {
+        border-color: rgba(0, 255, 255, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
+    }
+    
+    .aurora-content-header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+    }
+    
+    .aurora-content-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+    }
+    
+    .aurora-content-body {
+        color: rgba(255, 255, 255, 0.85);
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 def show_content_history_page():
     """Show content history page with Aurora styling"""
