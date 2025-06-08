@@ -577,9 +577,6 @@ class AuroraProgressTracker:
             return
         
         with self.container:
-            # Clear any existing content first
-            st.empty()
-            
             # Apply award-winning CSS first
             st.markdown(self._get_aurora_css(), unsafe_allow_html=True)
             
