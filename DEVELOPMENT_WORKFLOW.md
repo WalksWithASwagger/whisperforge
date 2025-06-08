@@ -262,5 +262,228 @@ pre-commit run --all-files
 
 ---
 
+## **🛡️ Error Prevention & UI Stability Guidelines**
+
+### **1. Critical Component Protection**
+Never modify these working components without testing:
+```
+✅ OAuth Integration (Supabase auth flow)
+✅ Core Pipeline (streaming_pipeline.py)
+✅ Database Operations (Supabase CRUD)
+✅ File Upload/Processing
+✅ Session State Management
+```
+
+### **2. UI Container Architecture**
+```css
+/* Stable Base Layout */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    min-height: 100vh;
+}
+
+.auth-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+```
+
+### **3. Development Rules**
+
+#### **Before Making Changes:**
+1. **Test Current State**: `streamlit run app.py --server.port 8501`
+2. **Create Git Branch**: `git checkout -b feature/your-change`
+3. **Document What Works**: Note current functionality
+4. **Make Minimal Changes**: One feature at a time
+
+#### **During Development:**
+1. **Incremental Testing**: Test after each small change
+2. **Version Control**: Commit working states frequently
+3. **Rollback Ready**: `git stash` or `git reset --hard` if broken
+4. **Port Management**: Use consistent port (8501) to avoid confusion
+
+#### **UI Container Best Practices:**
+```python
+# ✅ GOOD - Stable Container Pattern
+def create_stable_container(content_type="default"):
+    """Create consistent, reliable containers"""
+    st.markdown(f"""
+    <div class="whisperforge-container {content_type}">
+    """, unsafe_allow_html=True)
+    
+    # Your content here
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ❌ BAD - Inline styles that break
+st.markdown('<div style="complex inline styles">')
+```
+
+### **4. Testing Checklist**
+
+#### **OAuth Testing:**
+- [ ] "Continue with Google" button appears
+- [ ] Clicking redirects to Google
+- [ ] After Google auth, returns to main app
+- [ ] User is authenticated and sees pipeline
+
+#### **UI Container Testing:**
+- [ ] All containers display properly
+- [ ] No content below fold on page load
+- [ ] Responsive design works on different screens
+- [ ] CSS doesn't conflict with Streamlit defaults
+
+#### **Core Functionality Testing:**
+- [ ] File upload works
+- [ ] Pipeline processes correctly
+- [ ] Results display properly
+- [ ] Navigation between pages works
+
+### **5. Emergency Procedures**
+
+#### **If OAuth Breaks:**
+```bash
+# Revert to last working commit
+git log --oneline -5
+git reset --hard [working_commit_hash]
+```
+
+#### **If UI Breaks:**
+```bash
+# Quick fix - remove custom CSS
+# Comment out st.markdown with CSS in show_auth_page()
+```
+
+#### **If App Won't Start:**
+```bash
+# Clean restart
+pkill -f streamlit
+source venv/bin/activate
+streamlit run app.py --server.port 8501
+```
+
+### **6. Stable UI Framework**
+
+#### **Core CSS Architecture:**
+```css
+/* Base Theme - Never Change */
+:root {
+    --primary-color: #00FFFF;
+    --secondary-color: #40E0D0;
+    --bg-dark: #0a0f1c;
+    --bg-darker: #0d1421;
+    --text-light: rgba(255,255,255,0.9);
+    --text-muted: rgba(255,255,255,0.6);
+}
+
+/* Stable Container Base */
+.whisperforge-base {
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+}
+
+/* Component Containers */
+.auth-container { /* Auth page specific */ }
+.main-container { /* Main app container */ }
+.results-container { /* Results display */ }
+```
+
+### **7. Component Isolation**
+
+Create separate, testable components:
+```python
+# components/auth.py
+def render_oauth_section():
+    """Isolated OAuth component"""
+    # OAuth logic here
+    
+# components/pipeline.py  
+def render_pipeline_section():
+    """Isolated pipeline component"""
+    # Pipeline logic here
+```
+
+### **8. Monitoring & Alerts**
+
+```python
+def health_check():
+    """Monitor critical functionality"""
+    checks = {
+        "supabase_connection": test_supabase(),
+        "oauth_url_generation": test_oauth_generation(),
+        "file_upload": test_file_upload(),
+        "pipeline_execution": test_pipeline()
+    }
+    return checks
+```
+
+## **⚡ Quick Recovery Commands**
+
+```bash
+# If multiple ports are running, kill all
+pkill -f streamlit
+
+# Clean start
+source venv/bin/activate
+streamlit run app.py --server.port 8501
+
+# If Git is messy
+git status
+git stash  # Save uncommitted changes
+git checkout main
+git pull origin main
+
+# Emergency reset to last known good state
+git reset --hard origin/main
+```
+
+## **🎯 UI Stability Principles**
+
+1. **Progressive Enhancement**: Start with basic functionality, add styling
+2. **Container Consistency**: Use standard container patterns
+3. **CSS Isolation**: Scope CSS to avoid conflicts
+4. **Mobile First**: Design for mobile, enhance for desktop
+5. **Fallback Ready**: Always have unstyled version working
+
+## **📋 Pre-Deploy Checklist**
+
+- [ ] OAuth flow complete end-to-end
+- [ ] All UI containers display correctly
+- [ ] No console errors in browser
+- [ ] Mobile responsive
+- [ ] All navigation works
+- [ ] File upload/processing works
+- [ ] Results display properly
+- [ ] Settings page functional
+
+## **🔄 Version Control Strategy**
+
+```bash
+# Feature development
+git checkout -b feature/new-feature
+# Make small changes
+git add .
+git commit -m "Small incremental change"
+# Test thoroughly
+# If works: continue
+# If breaks: git reset --hard HEAD~1
+
+# When feature complete
+git checkout main
+git merge feature/new-feature
+git push origin main
+```
+
+This workflow prevents the types of errors we encountered and ensures UI containers remain solid and reliable.
+
 *Last Updated: June 2024*
 *Version: 1.0* 

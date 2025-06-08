@@ -1,0 +1,412 @@
+/* WhisperForge UI Framework - Stable Container System */
+
+/* ==========================================
+   BASE THEME VARIABLES - NEVER CHANGE THESE
+   ========================================== */
+:root {
+    --primary-color: #00FFFF;
+    --secondary-color: #40E0D0;
+    --accent-color: #7F7FFF;
+    --bg-dark: #0a0f1c;
+    --bg-darker: #0d1421;
+    --bg-card: rgba(255, 255, 255, 0.02);
+    --border-primary: rgba(0, 255, 255, 0.1);
+    --border-hover: rgba(0, 255, 255, 0.3);
+    --text-light: rgba(255, 255, 255, 0.9);
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-dimmed: rgba(255, 255, 255, 0.4);
+    --success-color: #00FF88;
+    --warning-color: #FFB800;
+    --error-color: #FF4444;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ==========================================
+   GLOBAL APP STYLING - STABLE BASE
+   ========================================== */
+.stApp {
+    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-darker) 100%) !important;
+    font-family: var(--font-family) !important;
+    color: var(--text-light) !important;
+}
+
+/* Fix Streamlit default padding issues */
+.main .block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* ==========================================
+   STABLE CONTAINER SYSTEM
+   ========================================== */
+
+/* Base Container - Foundation for all content */
+.whisperforge-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    min-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Auth Container - Stable authentication layout */
+.auth-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Main App Container */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Content Sections */
+.content-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    backdrop-filter: blur(8px);
+}
+
+/* Upload Section */
+.upload-section {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.upload-section:hover {
+    border-color: var(--border-hover);
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+}
+
+/* Results Container */
+.results-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+/* ==========================================
+   COMPONENT STYLING - CONSISTENT PATTERNS
+   ========================================== */
+
+/* Buttons - Stable styling */
+.stButton > button {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+    border: 1px solid var(--border-primary) !important;
+    color: var(--text-light) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.75rem 1.5rem !important;
+    font-weight: 500 !important;
+    font-family: var(--font-family) !important;
+    transition: all 0.3s ease !important;
+    width: 100% !important;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+    border-color: var(--border-hover) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.stButton > button:active {
+    transform: translateY(0) !important;
+}
+
+/* Primary Button Variant */
+.stButton > button[data-testid="primary-button"] {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+    color: var(--bg-dark) !important;
+    font-weight: 600 !important;
+}
+
+/* Input Fields - Consistent styling */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div > select {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--border-primary) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-light) !important;
+    font-family: var(--font-family) !important;
+    padding: 0.75rem !important;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus,
+.stSelectbox > div > div > select:focus {
+    border-color: var(--border-hover) !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 255, 0.1) !important;
+}
+
+/* File Uploader */
+.stFileUploader > div {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 2px dashed var(--border-primary) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 2rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.stFileUploader > div:hover {
+    border-color: var(--border-hover) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Progress Bar */
+.stProgress > div > div > div {
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.25rem !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0.75rem 1.5rem !important;
+    font-weight: 500 !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+    color: var(--text-light) !important;
+}
+
+/* ==========================================
+   TYPOGRAPHY - CONSISTENT TEXT STYLING
+   ========================================== */
+
+/* Headers */
+.auth-logo {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-family);
+}
+
+.auth-tagline {
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-light);
+    margin-bottom: 1rem;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* ==========================================
+   STATUS & FEEDBACK - CONSISTENT STATES
+   ========================================== */
+
+/* Success State */
+.success-message {
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    color: var(--success-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin: 1rem 0;
+}
+
+/* Warning State */
+.warning-message {
+    background: rgba(255, 184, 0, 0.1);
+    border: 1px solid rgba(255, 184, 0, 0.2);
+    color: var(--warning-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin: 1rem 0;
+}
+
+/* Error State */
+.error-message {
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    color: var(--error-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin: 1rem 0;
+}
+
+/* ==========================================
+   RESPONSIVE DESIGN - MOBILE FIRST
+   ========================================== */
+
+/* Mobile (default) */
+@media (max-width: 768px) {
+    .whisperforge-container,
+    .main-container {
+        padding: 0.5rem;
+        gap: 1rem;
+    }
+    
+    .auth-container {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .content-section,
+    .upload-section {
+        padding: 1rem;
+    }
+}
+
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .whisperforge-container,
+    .main-container {
+        padding: 1rem;
+    }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+    .whisperforge-container,
+    .main-container {
+        padding: 1.5rem;
+    }
+}
+
+/* ==========================================
+   UTILITY CLASSES - HELPER STYLES
+   ========================================== */
+
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+
+.rounded { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+
+.border-primary { border: 1px solid var(--border-primary); }
+.bg-card { background: var(--bg-card); }
+
+/* ==========================================
+   ANIMATION & TRANSITIONS - SMOOTH UX
+   ========================================== */
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+    animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   CRITICAL OVERRIDES - STREAMLIT FIXES
+   ========================================== */
+
+/* Fix Streamlit sidebar */
+.css-1d391kg { background: var(--bg-darker) !important; }
+
+/* Fix Streamlit header */
+.css-18e3th9 { padding-top: 0 !important; }
+
+/* Fix Streamlit metric cards */
+.metric-container > div {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-primary) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 1rem !important;
+}
+
+/* Hide Streamlit menu and footer */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
+
+/* ==========================================
+   DARK MODE COMPATIBILITY
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+    /* Already optimized for dark mode */
+}
+
+/* ==========================================
+   PRINT STYLES - FOR DOCUMENTATION
+   ========================================== */
+
+@media print {
+    .stApp {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .whisperforge-container,
+    .auth-container,
+    .main-container {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+} 
