@@ -286,6 +286,10 @@ def handle_oauth_callback():
     """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
+    # Don't process OAuth callback if user is already authenticated (logout scenario)
+    if st.session_state.get('authenticated', False):
+        return False
+    
     # Check if we have an OAuth callback with code
     if 'code' in query_params:
         try:
@@ -497,6 +501,8 @@ def show_main_app():
         if st.button("Sign Out"):
             st.session_state.authenticated = False
             st.session_state.user_id = None
+            # Clear OAuth URL parameters to prevent callback errors
+            st.query_params.clear()
             st.rerun()
         
         st.markdown("---")
