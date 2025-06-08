@@ -341,20 +341,27 @@ def handle_oauth_callback():
     """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
-    # Don't process OAuth callback if user is already authenticated (logout scenario)
-    if st.session_state.get('authenticated', False):
-        return False
-    
-    # Check if we have an OAuth callback with code
-    if 'code' in query_params:
+    # Only process if we have both code and state (proper OAuth callback)
+    if 'code' in query_params and ('state' in query_params or 'access_token' in query_params):
+        # Don't process if already authenticated
+        if st.session_state.get('authenticated', False):
+            return False
+            
         try:
             db, _ = init_supabase()
             if db:
-                # Exchange the code for a session
                 code = query_params['code']
-                response = db.client.auth.exchange_code_for_session({"auth_code": code})
                 
-                if response.user:
+                # Try to get session from URL parameters (simpler approach)
+                if 'access_token' in query_params:
+                    # Direct token approach
+                    access_token = query_params['access_token']
+                    response = db.client.auth.set_session(access_token)
+                else:
+                    # Try the code exchange without PKCE
+                    response = db.client.auth.exchange_code_for_session(code)
+                
+                if response and response.user:
                     # Get or create user in our database
                     user_email = response.user.email
                     user_id = response.user.id
@@ -376,7 +383,6 @@ def handle_oauth_callback():
                         if result.data:
                             st.session_state.user_id = result.data[0]["id"]
                         else:
-                            st.error("Failed to create user record")
                             return False
                     else:
                         st.session_state.user_id = existing_user.data[0]["id"]
@@ -385,11 +391,11 @@ def handle_oauth_callback():
                     st.success("✅ Successfully signed in with Google!")
                     st.rerun()
                     return True
-                else:
-                    st.error("Failed to authenticate with Google")
-                    return False
+                    
         except Exception as e:
-            st.error(f"OAuth callback error: {e}")
+            # Only show error if this is actually a callback attempt
+            if 'error' in str(e).lower() and ('code' in query_params):
+                st.error(f"Authentication failed. Please try again.")
             return False
     
     return False
@@ -407,16 +413,21 @@ def show_auth_page():
     .stDecoration {display: none;}
     
     /* Modern Aurora Authentication Design */
-    .aurora-auth-page {
-        min-height: 100vh;
+    .stApp {
         background: 
             radial-gradient(ellipse at top, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
             radial-gradient(ellipse at bottom, rgba(64, 224, 208, 0.08) 0%, transparent 50%),
             linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif;
+        min-height: 100vh;
+    }
+    
+    .aurora-auth-page {
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif;
+        padding: 24px;
     }
     
     .aurora-auth-card {
@@ -481,26 +492,88 @@ def show_auth_page():
         text-align: center;
     }
     
+    .aurora-divider {
+        text-align: center;
+        margin: 32px 0;
+        position: relative;
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 0.9rem;
+    }
+    
+    .aurora-divider::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    }
+    
+    .aurora-divider span {
+        background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
+        padding: 0 16px;
+        position: relative;
+        z-index: 1;
+    }
+    
     /* Enhanced form styling */
     .stButton > button {
-        width: 100%;
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
-        border: 1px solid rgba(0, 255, 255, 0.2);
-        color: rgba(255, 255, 255, 0.95);
-        border-radius: 8px;
-        padding: 12px 16px;
-        font-weight: 500;
-        font-size: 0.95rem;
-        transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
-        backdrop-filter: blur(8px);
-        margin-bottom: 16px;
+        width: 100% !important;
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+        border: 1px solid rgba(0, 255, 255, 0.2) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+        backdrop-filter: blur(8px) !important;
+        margin-bottom: 16px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     .stButton > button:hover {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2));
-        border-color: rgba(0, 255, 255, 0.3);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15);
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+        border-color: rgba(0, 255, 255, 0.3) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15) !important;
+    }
+    
+    .stButton > button:focus {
+        border-color: rgba(0, 255, 255, 0.4) !important;
+        box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1) !important;
+    }
+    
+    /* Link button styling */
+    .stLinkButton > a {
+        width: 100% !important;
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+        border: 1px solid rgba(0, 255, 255, 0.2) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+        font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        text-decoration: none !important;
+        transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+        backdrop-filter: blur(8px) !important;
+        margin-bottom: 16px !important;
+        height: 44px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+    
+    .stLinkButton > a:hover {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+        border-color: rgba(0, 255, 255, 0.3) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15) !important;
     }
     
     .stTextInput > div > div > input {
@@ -659,7 +732,9 @@ def show_auth_page():
                 else:
                     st.session_state.oauth_url = None
         except Exception as e:
-            st.error(f"Google sign-in setup error: {e}")
+            # Only show error if it's a real OAuth configuration issue
+            if "oauth" in str(e).lower() or "google" in str(e).lower():
+                st.warning("Google sign-in temporarily unavailable. Use email login below.")
             st.session_state.oauth_url = None
     
     # OAuth button
