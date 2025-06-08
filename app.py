@@ -29,7 +29,7 @@ from core.supabase_integration import get_supabase_client, get_mcp_integration
 # Import utility functions (avoiding app.py imports)
 from core.utils import hash_password, DEFAULT_PROMPTS, get_prompt
 from core.content_generation import (
-    transcribe_audio, generate_wisdom, generate_outline, 
+    transcribe_audio, generate_wisdom, generate_outline, generate_article,
     generate_social_content, generate_image_prompts
 )
 from core.styling import local_css, add_production_css, create_custom_header, load_js
@@ -1145,6 +1145,34 @@ def show_home_page():
             key="main_selected_model"
         )
     
+    # Editor Persona Toggle
+    st.markdown("""
+    <div class="aurora-section">
+        <div class="aurora-section-title">
+            <span>✍️</span>
+            Editor Persona
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**Editor Persona Mode** - When enabled, an AI editor will critique each output and trigger one round of revision for improved quality.")
+    
+    with col2:
+        editor_enabled = st.toggle(
+            "Enable Editor", 
+            value=st.session_state.get("editor_enabled", False),
+            help="AI editor will review and refine each content generation step",
+            key="editor_toggle"
+        )
+        st.session_state.editor_enabled = editor_enabled
+    
+    if editor_enabled:
+        st.info("🤖 **Editor Persona ACTIVE** - Each content step will be reviewed and refined.")
+    else:
+        st.info("✅ **Standard Mode** - Direct content generation without editor review.")
+    
     # Pipeline Configuration
     st.markdown("""
     <div class="aurora-section">
@@ -1428,9 +1456,10 @@ def process_audio_pipeline_with_progress(audio_file, progress_tracker):
                 st.session_state.knowledge_base
             )
         
-        # Step 5: Social Media Content
-        with progress_tracker.step_context("social_content"):
-            social = generate_social_content(
+        # Step 5: Article Creation
+        with progress_tracker.step_context("article_creation"):
+            article = generate_article(
+                transcript,
                 wisdom, 
                 outline, 
                 st.session_state.ai_provider, 
@@ -1439,7 +1468,19 @@ def process_audio_pipeline_with_progress(audio_file, progress_tracker):
                 st.session_state.knowledge_base
             )
         
-        # Step 6: Image Prompts
+        # Step 6: Social Media Content
+        with progress_tracker.step_context("social_content"):
+            social = generate_social_content(
+                wisdom, 
+                outline,
+                article, 
+                st.session_state.ai_provider, 
+                st.session_state.ai_model, 
+                None, 
+                st.session_state.knowledge_base
+            )
+        
+        # Step 7: Image Prompts
         with progress_tracker.step_context("image_prompts"):
             images = generate_image_prompts(
                 wisdom, 
@@ -1450,13 +1491,14 @@ def process_audio_pipeline_with_progress(audio_file, progress_tracker):
                 st.session_state.knowledge_base
             )
         
-        # Step 7: Database Storage
+        # Step 8: Database Storage
         with progress_tracker.step_context("database_storage"):
             content_data = {
                 "title": f"Content from {audio_file.name}",
                 "transcript": transcript,
                 "wisdom_extraction": wisdom,
                 "outline_creation": outline,
+                "article": article,
                 "social_media": social,
                 "image_prompts": images,
                 "metadata": {
@@ -1476,6 +1518,7 @@ def process_audio_pipeline_with_progress(audio_file, progress_tracker):
             'transcript': transcript,
             'wisdom': wisdom,
             'outline': outline,
+            'article': article,
             'social': social,
             'images': images
         }
@@ -1500,9 +1543,10 @@ def show_processing_results(results):
     st.success("🎉 Processing completed successfully! Your content is ready.")
     
     # Create tabs for different result types
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "💎 Wisdom & Insights", 
-        "📋 Content Outline", 
+        "📋 Content Outline",
+        "📰 Article", 
         "📱 Social Media", 
         "🖼️ Image Prompts"
     ])
@@ -1544,6 +1588,24 @@ def show_processing_results(results):
                 st.code(results['outline'], language="markdown")
     
     with tab3:
+        if 'article' in results:
+            import html
+            article_escaped = html.escape(results['article'])
+            st.markdown(f"""
+            <div class="aurora-content-card">
+                <div class="aurora-content-header">
+                    <span class="aurora-content-title">Full Article</span>
+                </div>
+                <div class="aurora-content-body">
+                    {article_escaped.replace(chr(10), '<br>')}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("📋 Copy to Clipboard", key="copy_article"):
+                st.code(results['article'], language="markdown")
+    
+    with tab4:
         if 'social' in results:
             import html
             social_escaped = html.escape(results['social'])
@@ -1561,7 +1623,7 @@ def show_processing_results(results):
             if st.button("📋 Copy to Clipboard", key="copy_social"):
                 st.code(results['social'], language="markdown")
     
-    with tab4:
+    with tab5:
         if 'images' in results:
             import html
             images_escaped = html.escape(results['images'])

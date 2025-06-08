@@ -697,9 +697,14 @@ WHISPERFORGE_PIPELINE_STEPS = [
         "description": "Creating structured content outline and organization"
     },
     {
+        "id": "article_creation",
+        "name": "Article Writing",
+        "description": "Creating comprehensive article from transcript and insights"
+    },
+    {
         "id": "social_content",
         "name": "Social Media Content",
-        "description": "Generating platform-optimized social media posts"
+        "description": "Generating 5 platform-optimized social media posts"
     },
     {
         "id": "image_prompts",
