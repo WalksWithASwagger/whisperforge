@@ -358,18 +358,28 @@ def log_pipeline_execution_supabase(pipeline_data: dict) -> bool:
         return False
 
 def handle_oauth_callback():
-    """Handle OAuth callback from Supabase - FIXED"""
+    """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
-    # Only process if we have OAuth parameters and are not already authenticated
-    if not st.session_state.get('authenticated', False) and 'code' in query_params:
+    # Only process if we have both code and state (proper OAuth callback)
+    if 'code' in query_params and ('state' in query_params or 'access_token' in query_params):
+        # Don't process if already authenticated
+        if st.session_state.get('authenticated', False):
+            return False
+            
         try:
             db, _ = init_supabase()
             if db:
                 code = query_params['code']
                 
-                # Exchange code for session
-                response = db.client.auth.exchange_code_for_session(code)
+                # Try to get session from URL parameters (simpler approach)
+                if 'access_token' in query_params:
+                    # Direct token approach
+                    access_token = query_params['access_token']
+                    response = db.client.auth.set_session(access_token)
+                else:
+                    # Try the code exchange without PKCE
+                    response = db.client.auth.exchange_code_for_session(code)
                 
                 if response and response.user:
                     # Get or create user in our database
@@ -397,21 +407,15 @@ def handle_oauth_callback():
                     else:
                         st.session_state.user_id = existing_user.data[0]["id"]
                     
-                    # Set authentication state
                     st.session_state.authenticated = True
-                    
-                    # Clear OAuth parameters to prevent re-processing
-                    st.query_params.clear()
-                    
-                    # Navigate to main app
-                    st.success("Successfully signed in with Google!")
-                    time.sleep(1)  # Brief pause for user to see success message
+                    st.success("✅ Successfully signed in with Google!")
                     st.rerun()
                     return True
                     
         except Exception as e:
-            logger.error(f"OAuth callback error: {e}")
-            st.error("Authentication failed. Please try again.")
+            # Only show error if this is actually a callback attempt
+            if 'error' in str(e).lower() and ('code' in query_params):
+                st.error(f"Authentication failed. Please try again.")
             return False
     
     return False
@@ -495,14 +499,72 @@ def show_auth_page():
     st.markdown('<div class="auth-logo">WhisperForge</div>', unsafe_allow_html=True)
     st.markdown('<div class="auth-tagline">Transform audio into structured content</div>', unsafe_allow_html=True)
     
-    # OAuth section
+    # Handle OAuth callback first
+    if handle_oauth_callback():
+        return
+    
+    # Generate OAuth URL
+    if 'oauth_url' not in st.session_state:
+        try:
+            db, _ = init_supabase()
+            if db:
+                import os
+                redirect_url = os.getenv("OAUTH_REDIRECT_URL")
+                
+                if not redirect_url:
+                    render_service_name = os.getenv("RENDER_SERVICE_NAME")
+                    render_external_url = os.getenv("RENDER_EXTERNAL_URL")
+                    streamlit_app_url = os.getenv("STREAMLIT_APP_URL")
+                    
+                    is_streamlit_cloud = (
+                        os.getenv("STREAMLIT_SHARING") or 
+                        os.getenv("STREAMLIT_SERVER_PORT") or
+                        os.getenv("STREAMLIT_RUNTIME_CREDENTIALS") or
+                        "streamlit.app" in os.getenv("HOSTNAME", "") or
+                        streamlit_app_url
+                    )
+                    
+                    is_render = (
+                        render_service_name or
+                        render_external_url or
+                        os.getenv("RENDER") or
+                        "onrender.com" in os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+                    )
+                    
+                    if is_render:
+                        redirect_url = "https://whisperforge.ai"
+                    elif is_streamlit_cloud and streamlit_app_url:
+                        redirect_url = streamlit_app_url
+                    elif is_streamlit_cloud:
+                        st.error("STREAMLIT_APP_URL not set in secrets! Add it to your app settings.")
+                        redirect_url = None
+                    else:
+                        redirect_url = "http://localhost:8501"
+                
+                if redirect_url:
+                    auth_response = db.client.auth.sign_in_with_oauth({
+                        "provider": "google",
+                        "options": {"redirect_to": redirect_url}
+                    })
+                    
+                    if hasattr(auth_response, 'url') and auth_response.url:
+                        st.session_state.oauth_url = auth_response.url
+                    else:
+                        st.session_state.oauth_url = None
+                else:
+                    st.session_state.oauth_url = None
+        except Exception as e:
+            # Only show error if it's a real OAuth configuration issue
+            if "oauth" in str(e).lower() or "google" in str(e).lower():
+                st.warning("Google sign-in temporarily unavailable. Use email login below.")
+            st.session_state.oauth_url = None
+    
+    # OAuth button
     if st.session_state.get('oauth_url'):
-        if st.button("Continue with Google", type="primary", use_container_width=True):
-            # This will redirect to OAuth
-            pass
+        st.link_button("Continue with Google", st.session_state.oauth_url, type="primary", use_container_width=True)
     else:
         if st.button("Continue with Google", type="primary", use_container_width=True):
-            st.error("Google sign-in not configured")
+            st.error("Failed to generate Google sign-in URL. Please check your configuration.")
     
     # Divider
     st.markdown("---")
@@ -523,7 +585,6 @@ def show_auth_page():
                 st.error("Please enter both email and password")
             elif authenticate_user_supabase(email, password):
                 st.success("Welcome back!")
-                time.sleep(1)
                 st.rerun()
             else:
                 st.error("Invalid credentials")
@@ -544,7 +605,6 @@ def show_auth_page():
                 st.error("Passwords don't match")
             elif register_user_supabase(email, password):
                 st.success("Account created! Please sign in.")
-                time.sleep(1)
                 # Clear form
                 st.session_state.register_email = ""
                 st.session_state.register_password = ""
