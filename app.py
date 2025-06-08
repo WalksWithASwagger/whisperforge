@@ -83,26 +83,53 @@ def init_supabase():
 
 # Database operations using Supabase
 def authenticate_user_supabase(email: str, password: str) -> bool:
-    """Authenticate user using Supabase"""
+    """Authenticate user using Supabase with migration support"""
     try:
         db, _ = init_supabase()
         if not db:
             logger.error("Failed to initialize Supabase client")
             return False
             
-        hashed_password = hash_password(password)
         logger.info(f"Attempting to authenticate user: {email}")
         
-        result = db.client.table("users").select("id, email").eq("email", email).eq("password", hashed_password).execute()
+        # Get user record to check password format
+        result = db.client.table("users").select("id, email, password").eq("email", email).execute()
         
-        if result.data:
-            st.session_state.user_id = result.data[0]["id"]
-            st.session_state.authenticated = True
-            logger.info(f"User authenticated successfully: {email}")
-            return True
-        else:
-            logger.warning(f"Authentication failed for user: {email}")
+        if not result.data:
+            logger.warning(f"User not found: {email}")
             return False
+            
+        user = result.data[0]
+        stored_password = user["password"]
+        
+        # Check if password is bcrypt (starts with $2b$) or legacy SHA-256
+        if stored_password.startswith('$2b$'):
+            # New bcrypt password
+            from core.utils import verify_password
+            if verify_password(password, stored_password):
+                st.session_state.user_id = user["id"]
+                st.session_state.authenticated = True
+                logger.info(f"User authenticated successfully with bcrypt: {email}")
+                return True
+        else:
+            # Legacy SHA-256 password - check and migrate
+            from core.utils import legacy_hash_password, hash_password
+            legacy_hash = legacy_hash_password(password)
+            if legacy_hash == stored_password:
+                # Password correct, migrate to bcrypt
+                new_hash = hash_password(password)
+                db.client.table("users").update({
+                    "password": new_hash,
+                    "updated_at": "now()"
+                }).eq("id", user["id"]).execute()
+                
+                st.session_state.user_id = user["id"]
+                st.session_state.authenticated = True
+                logger.info(f"User authenticated and migrated to bcrypt: {email}")
+                return True
+        
+        logger.warning(f"Authentication failed for user: {email}")
+        return False
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         return False
