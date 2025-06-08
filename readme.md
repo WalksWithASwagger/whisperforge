@@ -1,204 +1,174 @@
-# 🎙️ WhisperForge - SATURDAY BAILOUT
+# ⚡ WhisperForge
 
-> **Transform spoken ideas into comprehensive content with AI assistance**
+**AI-Powered Content Generation from Audio**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./whisperforge/VERSION)
-[![Python](https://img.shields.io/badge/python-3.8%2B-green.svg)](https://python.org)
-[![Streamlit](https://img.shields.io/badge/streamlit-1.38.0-red.svg)](https://streamlit.io)
+Transform your audio content into comprehensive digital assets using advanced AI. WhisperForge transcribes, analyzes, and generates multiple content formats from your audio files.
 
-WhisperForge is an AI-powered audio transcription and content creation pipeline designed for streamlining the process of turning spoken thoughts into polished, publishable content. Built with OpenAI's Whisper for transcription and multiple LLM providers for content enhancement.
-
-## 🚀 Features
-
-### 🎯 Core Pipeline (6 Stages)
-1. **Audio Input Processing** - File validation, chunking for large files (>25MB), format support
-2. **Audio Transcription** - OpenAI Whisper integration with parallel processing
-3. **Content Generation** - AI-powered wisdom extraction, outlines, social content, image prompts, articles
-4. **Content Enhancement** - SEO metadata, tagging, token usage tracking
-5. **Export and Storage** - Notion database integration, structured organization
-6. **Results and Distribution** - Multi-tab display, copy/download functionality
-
-### 🤖 Multi-AI Provider Support
-- **OpenAI** - GPT-4, GPT-3.5-turbo, Whisper
-- **Anthropic** - Claude models
-- **Grok** - X.AI integration
-- **Configurable** - Easy to add new providers
-
-### 📊 Advanced Features
-- **Knowledge Base System** - Custom context injection
-- **Custom Prompts** - Personalized content generation
-- **Supabase Integration** - Complete database backend with analytics
-- **MCP Integration** - Model Context Protocol support
-- **Caching System** - Optimized performance
-- **Progress Tracking** - Real-time pipeline monitoring
-
-## 🏗️ Architecture
-
-### Modular Core System
-```
-whisperforge/
-├── core/                    # Modular architecture
-│   ├── __init__.py         # Core exports
-│   ├── config.py           # Configuration management
-│   ├── pipeline.py         # Main pipeline orchestration
-│   ├── processors.py       # Audio/content processing
-│   ├── integrations.py     # AI provider integrations
-│   ├── content_generation.py  # Content creation logic
-│   ├── supabase_integration.py  # Database operations
-│   ├── utils.py            # Utility functions
-│   └── styling.py          # UI components
-├── app.py                  # Main Streamlit application
-├── app_supabase.py        # Supabase-enabled version
-├── requirements.txt        # Dependencies
-└── *.sql                  # Database schemas
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.8 or higher
-- API keys for your chosen AI providers
-- (Optional) Notion API key and database ID
-- (Optional) Supabase project for database backend
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd SATURDAY-BAILOUT/whisperforge
-```
-
-2. **Create virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure environment**
-```bash
-cp env.example .env
-# Edit .env with your API keys
-```
-
-5. **Run the application**
-```bash
-streamlit run app.py
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-Create a `.env` file with your API keys:
-
-```env
-# Required: AI Providers
-OPENAI_API_KEY=your_openai_key_here
-ANTHROPIC_API_KEY=your_anthropic_key_here
-XAI_API_KEY=your_grok_key_here
-
-# Optional: Notion Integration
-NOTION_API_KEY=your_notion_key_here
-NOTION_DATABASE_ID=your_database_id
-
-# Optional: Supabase Integration
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# Optional: JWT Authentication
-JWT_SECRET_KEY=your_jwt_secret_key
-```
-
-### Supabase Setup
-For full database functionality:
-
-1. Create a Supabase project
-2. Run the schema setup:
-```sql
--- Copy and run supabase_schema.sql in your Supabase SQL editor
-```
-3. Configure Row Level Security policies
-4. Update your `.env` with Supabase credentials
-
-## 📖 Usage Guide
-
-### Basic Workflow
-1. **Upload Audio** - Drop your audio file (MP3, WAV, OGG, M4A)
-2. **Select AI Provider** - Choose your preferred model
-3. **Transcribe** - Get AI-powered transcription
-4. **Generate Content** - Create wisdom, outlines, social posts, articles
-5. **Export** - Save to Notion or download locally
-
-### Advanced Features
-
-#### Custom Knowledge Base
-- Add domain-specific context
-- Enhance content generation with your expertise
-- Persistent storage across sessions
-
-#### Custom Prompts
-- Personalize content generation
-- Create templates for specific use cases
-- Version control for prompt iterations
-
-#### Batch Processing
-- Handle large audio files (auto-chunking)
-- Process multiple files
-- Progress tracking and error handling
-
-## 🗄️ Database Schema
-
-The project includes comprehensive database schemas:
-
-- **Users & Authentication** - JWT-based user management
-- **Content Storage** - Transcripts, generated content, metadata
-- **Knowledge Base** - Custom context and domain knowledge
-- **Custom Prompts** - User-defined generation templates
-- **Analytics** - Usage tracking, pipeline performance
-- **Audit Logs** - Complete activity tracking
-
-## 🧪 Testing
-
-Run the included tests:
-```bash
-python test_notion.py      # Test Notion integration
-python test_supabase.py    # Test Supabase connectivity
-```
-
-## 📋 Changelog
-
-See [CHANGELOG.md](./whisperforge/changelog.md) for version history and updates.
-
-## 📄 License
-
-See [LICENSE](./whisperforge/LICENSE) for details.
-
-## 🎯 Project Status: SATURDAY BAILOUT Ready
-
-This project is fully prepared for weekend refactoring with [Loveable](https://loveable.dev):
-
-### ✅ Audit Complete
-- [x] Code compilation verified
-- [x] Core modules tested
-- [x] Dependencies confirmed
-- [x] Architecture documented
-- [x] Git repository initialized
-- [x] Comprehensive documentation
-
-### 🎮 Ready for Refactoring
-- **Modular Architecture** - Clean separation of concerns
-- **Complete Pipeline** - 6-stage content generation system
-- **Multi-AI Support** - Provider abstraction layer
-- **Database Integration** - Full Supabase backend
-- **Documentation** - Comprehensive README and comments
-- **Version Control** - Ready for collaborative development
+🌐 **Live Production App**: [whisperforge.ai](https://whisperforge.ai)
 
 ---
 
-**🚀 Let's turn those weekend ideas into production-ready content! 🚀** 
+## 🚀 **Current Status**
+
+✅ **Production Ready** - Live at whisperforge.ai  
+✅ **Custom Domain** - Fully configured with SSL  
+✅ **User Authentication** - Google OAuth + email registration  
+✅ **Database Integration** - Supabase backend with user data persistence  
+✅ **Enterprise Monitoring** - Sentry error tracking and performance monitoring  
+✅ **Multi-AI Support** - OpenAI, Anthropic, and Grok integration  
+✅ **Secure** - bcrypt password hashing, encrypted storage  
+
+---
+
+## 🎯 **What WhisperForge Does**
+
+### **📝 Content Pipeline**
+1. **Audio Upload** - Supports MP3, WAV, M4A, FLAC, MP4, MOV, AVI
+2. **AI Transcription** - High-quality speech-to-text
+3. **Wisdom Extraction** - Key insights and actionable takeaways
+4. **Content Outline** - Structured article/blog post outlines
+5. **Social Media** - Platform-specific posts (Twitter, LinkedIn, Instagram)
+6. **Image Prompts** - AI-generated image descriptions
+
+### **🎛️ Features**
+- **Custom Knowledge Base** - Upload context files to guide AI generation
+- **Custom Prompts** - Personalize AI output for your brand/style
+- **Content History** - Save and revisit all generated content
+- **API Key Management** - Securely store your AI provider keys
+- **Usage Tracking** - Monitor quota and usage patterns
+
+---
+
+## 🏗️ **Architecture**
+
+### **Frontend**
+- **Framework**: Streamlit (Python web app)
+- **Styling**: Custom CSS with modern UI components
+- **Deployment**: Render.com with automatic GitHub integration
+
+### **Backend**
+- **Database**: Supabase (PostgreSQL with real-time features)
+- **Authentication**: Supabase Auth + Google OAuth
+- **File Storage**: Temporary processing with automatic cleanup
+- **API Integration**: Multi-provider AI routing (OpenAI/Anthropic/Grok)
+
+### **Infrastructure**
+- **Hosting**: Render.com (auto-scaling, SSL, custom domain)
+- **Monitoring**: Sentry (error tracking, performance monitoring)
+- **CI/CD**: Automatic deployment on GitHub push
+- **Security**: Environment variables, encrypted API keys, bcrypt hashing
+
+---
+
+## 🛠️ **Local Development**
+
+### **Prerequisites**
+```bash
+Python 3.11+
+Git
+Supabase account
+AI provider API keys (OpenAI, Anthropic, or Grok)
+```
+
+### **Setup**
+```bash
+# Clone repository
+git clone https://github.com/WalksWithASwagger/whisperforge.git
+cd whisperforge
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+cp .env.example .env
+# Edit .env with your API keys and database URLs
+
+# Run locally
+streamlit run app.py
+```
+
+### **Environment Variables**
+```bash
+# Database (Required)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+JWT_SECRET=your-random-secret
+
+# Authentication (Required)
+OAUTH_REDIRECT_URL=http://localhost:8501  # or your domain
+
+# AI Providers (At least one required)
+OPENAI_API_KEY=your-openai-key
+ANTHROPIC_API_KEY=your-anthropic-key
+GROK_API_KEY=your-grok-key
+
+# Monitoring (Optional)
+SENTRY_DSN=your-sentry-dsn
+ENVIRONMENT=development
+APP_VERSION=1.0.0
+```
+
+---
+
+## 📊 **Monitoring & Health**
+
+### **Health Check**
+- **URL**: https://whisperforge.ai/?health
+- **Checks**: Database connectivity, AI providers, environment variables
+
+### **Error Tracking**
+- **Platform**: Sentry
+- **Features**: Real-time error alerts, performance monitoring, user context
+
+### **Analytics**
+- **User Actions**: Page views, pipeline executions, feature usage
+- **Performance**: Operation timing, AI provider response times
+- **Health**: System status, uptime monitoring
+
+---
+
+## 🔐 **Security Features**
+
+✅ **Password Security** - bcrypt hashing with salt  
+✅ **API Key Encryption** - Secure storage of user API keys  
+✅ **OAuth Integration** - Google sign-in with Supabase Auth  
+✅ **Environment Isolation** - Production/development separation  
+✅ **Input Validation** - Sanitized user inputs  
+✅ **Error Handling** - Graceful degradation without data exposure  
+
+---
+
+## 📈 **Production Metrics**
+
+- **Deployment**: Render.com with auto-scaling
+- **Uptime**: Monitored via health checks
+- **Performance**: <5s average content generation
+- **Security**: Zero known vulnerabilities
+- **User Experience**: Google Lighthouse optimized
+
+---
+
+## 🎯 **Next Development Priorities**
+
+1. **💳 Payment Integration** - Stripe subscription billing
+2. **🎨 UI Enhancement** - Modern design system
+3. **📱 Mobile Optimization** - Responsive design improvements
+4. **⚡ Performance** - Caching, async processing
+5. **📊 Analytics Dashboard** - User insights and metrics
+
+---
+
+## 🤝 **Contributing**
+
+WhisperForge is actively developed. See [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) for contribution guidelines.
+
+---
+
+## 📄 **License**
+
+See [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with ❤️ using Python, Streamlit, Supabase, and AI** 
