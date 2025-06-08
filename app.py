@@ -718,9 +718,9 @@ def show_auth_page():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Main application with top menu design
+# Main application with modern SaaS design
 def show_main_app():
-    """Modern main application interface with premium SaaS design"""
+    """Modern main application interface with premium SaaS design that actually works"""
     
     # Initialize session state
     if 'transcription' not in st.session_state:
@@ -738,167 +738,186 @@ def show_main_app():
     st.session_state.prompts = get_user_prompts_supabase()
     st.session_state.knowledge_base = get_user_knowledge_base_supabase()
     
-    # Global Aurora styling for main app
+    # Modern Aurora styling that works with Streamlit
     st.markdown("""
     <style>
-    /* Hide Streamlit defaults */
+    /* Hide Streamlit defaults for clean look */
     .stApp > header {display: none;}
     .stDeployButton {display: none;}
     footer {display: none;}
     .stDecoration {display: none;}
-    .stSidebar {display: none !important;}
     
-    /* Modern SaaS App Layout */
-    .aurora-app {
+    /* Modern Aurora App Background */
+    .stApp {
         background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
-        min-height: 100vh;
         font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', system-ui, sans-serif;
     }
     
-    /* Top Header Bar */
-    .aurora-header {
+    /* Clean, modern header */
+    .aurora-modern-header {
         background: rgba(255, 255, 255, 0.02);
         backdrop-filter: blur(24px) saturate(180%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 16px 24px;
+        border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+        padding: 16px 0;
+        margin-bottom: 24px;
+        position: relative;
+    }
+    
+    .aurora-modern-header::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.4), transparent);
+        animation: aurora-flow 6s ease-in-out infinite;
+    }
+    
+    .aurora-header-content {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        position: sticky;
-        top: 0;
-        z-index: 100;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
     }
     
-    .aurora-logo-header {
-        font-size: 1.25rem;
+    .aurora-logo {
+        font-size: 1.5rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #00FFFF, #40E0D0);
+        background: linear-gradient(135deg, #00FFFF, #40E0D0, #7DF9FF);
+        background-size: 200% 100%;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        animation: aurora-flow 6s ease-in-out infinite;
     }
     
-    .aurora-user-menu {
+    .aurora-user-info {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
         display: flex;
         align-items: center;
         gap: 16px;
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 0.9rem;
     }
     
-    .aurora-sign-out {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.8);
-        border-radius: 6px;
-        padding: 6px 12px;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
+    .aurora-status-dot {
+        width: 8px;
+        height: 8px;
+        background: #00FF7F;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(0, 255, 127, 0.6);
+        animation: aurora-pulse 2s ease-in-out infinite;
     }
     
-    .aurora-sign-out:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.95);
+    /* Streamlit sidebar styling for modern look */
+    .stSidebar {
+        background: rgba(255, 255, 255, 0.01) !important;
+        border-right: 1px solid rgba(0, 255, 255, 0.1) !important;
     }
     
-    /* Main Content Layout */
-    .aurora-main-layout {
-        display: flex;
-        min-height: calc(100vh - 72px);
+    .stSidebar .stMarkdown {
+        background: transparent !important;
     }
     
-    /* Left Sidebar */
-    .aurora-sidebar {
-        width: 280px;
-        background: rgba(255, 255, 255, 0.01);
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-        padding: 24px;
-        flex-shrink: 0;
-    }
-    
-    .aurora-nav-section {
-        margin-bottom: 32px;
-    }
-    
-    .aurora-nav-title {
-        font-size: 0.8rem;
-        font-weight: 600;
+    /* Navigation section headers */
+    .aurora-nav-header {
         color: rgba(255, 255, 255, 0.5);
+        font-size: 0.75rem;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.1em;
-        margin-bottom: 12px;
+        margin: 20px 16px 8px 16px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
     
-    .aurora-nav-item {
-        display: flex;
-        align-items: center;
-        padding: 12px 16px;
-        border-radius: 8px;
-        color: rgba(255, 255, 255, 0.7);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-bottom: 4px;
-        text-decoration: none;
-        border: 1px solid transparent;
+    /* Modern button styling for sidebar */
+    .stButton > button {
+        width: 100% !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        color: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 8px !important;
+        padding: 12px 16px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+        backdrop-filter: blur(8px) !important;
+        margin-bottom: 4px !important;
+        text-align: left !important;
+        font-size: 0.9rem !important;
     }
     
-    .aurora-nav-item:hover {
-        background: rgba(0, 255, 255, 0.08);
-        color: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(0, 255, 255, 0.2);
+    .stButton > button:hover {
+        background: rgba(0, 255, 255, 0.08) !important;
+        border-color: rgba(0, 255, 255, 0.2) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        transform: translateX(2px) !important;
+        box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1) !important;
     }
     
-    .aurora-nav-item.active {
-        background: rgba(0, 255, 255, 0.1);
-        color: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(0, 255, 255, 0.3);
+    .stButton > button:focus:not(:active) {
+        background: rgba(0, 255, 255, 0.1) !important;
+        border-color: rgba(0, 255, 255, 0.3) !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.15) !important;
     }
     
-    .aurora-nav-icon {
-        margin-right: 12px;
-        font-size: 1rem;
+    /* Main content area styling */
+    .main .block-container {
+        max-width: 1200px;
+        padding: 32px 24px;
     }
     
-    /* Main Content Area */
-    .aurora-content {
-        flex: 1;
-        padding: 32px;
-        max-width: calc(100vw - 280px);
-        overflow-x: hidden;
-    }
-    
-    /* Page Headers */
+    /* Page headers */
     .aurora-page-header {
         margin-bottom: 32px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
     
     .aurora-page-title {
-        font-size: 2rem;
+        font-size: 2.5rem;
         font-weight: 700;
         color: rgba(255, 255, 255, 0.95);
         margin-bottom: 8px;
         letter-spacing: -0.02em;
+        line-height: 1.2;
     }
     
     .aurora-page-subtitle {
         color: rgba(255, 255, 255, 0.6);
-        font-size: 1rem;
+        font-size: 1.1rem;
         font-weight: 400;
+        line-height: 1.5;
     }
     
-    /* Control Cards */
-    .aurora-control-section {
+    /* Control sections */
+    .aurora-section {
         background: rgba(255, 255, 255, 0.02);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid rgba(0, 255, 255, 0.08);
+        border-radius: 16px;
         padding: 24px;
         margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
     }
     
-    .aurora-control-title {
-        font-size: 1rem;
+    .aurora-section::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.3), transparent);
+        animation: aurora-scan 8s ease-in-out infinite;
+    }
+    
+    .aurora-section-title {
+        font-size: 1.1rem;
         font-weight: 600;
         color: rgba(255, 255, 255, 0.9);
         margin-bottom: 16px;
@@ -907,160 +926,145 @@ def show_main_app():
         gap: 8px;
     }
     
-    .aurora-control-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-    }
-    
-    /* Enhanced Streamlit Components */
-    .stButton > button {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
-        border: 1px solid rgba(0, 255, 255, 0.2);
-        color: rgba(255, 255, 255, 0.95);
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        backdrop-filter: blur(8px);
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2));
-        border-color: rgba(0, 255, 255, 0.3);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15);
-    }
-    
+    /* Enhanced form controls */
     .stSelectbox > div > div > div {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        color: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(0, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+        backdrop-filter: blur(8px) !important;
     }
     
     .stSelectbox > div > div > div:focus-within {
-        border-color: rgba(0, 255, 255, 0.4);
-        box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1);
+        border-color: rgba(0, 255, 255, 0.4) !important;
+        box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1) !important;
+    }
+    
+    .stMultiSelect > div > div > div {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(0, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+    
+    .stFileUploader > div > div {
+        background: rgba(255, 255, 255, 0.015) !important;
+        border: 2px dashed rgba(0, 255, 255, 0.2) !important;
+        border-radius: 12px !important;
+        padding: 24px !important;
+        text-align: center !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stFileUploader > div > div:hover {
+        border-color: rgba(0, 255, 255, 0.4) !important;
+        background: rgba(255, 255, 255, 0.025) !important;
+    }
+    
+    /* Animations */
+    @keyframes aurora-flow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    @keyframes aurora-scan {
+        0%, 100% { left: -100%; }
+        50% { left: 100%; }
+    }
+    
+    @keyframes aurora-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
     }
     
     /* Mobile responsive */
-    @media (max-width: 1024px) {
-        .aurora-sidebar {
-            width: 240px;
-        }
-        .aurora-content {
-            max-width: calc(100vw - 240px);
-        }
-    }
-    
     @media (max-width: 768px) {
-        .aurora-main-layout {
-            flex-direction: column;
+        .aurora-header-content {
+            padding: 0 16px;
         }
-        .aurora-sidebar {
-            width: 100%;
-            border-right: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        
+        .aurora-logo {
+            font-size: 1.25rem;
         }
-        .aurora-content {
-            max-width: 100%;
+        
+        .aurora-page-title {
+            font-size: 2rem;
+        }
+        
+        .main .block-container {
             padding: 24px 16px;
         }
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Main app container
-    st.markdown('<div class="aurora-app">', unsafe_allow_html=True)
-    
-    # Header
-    user_email = st.session_state.get("user_email", "Unknown User")
+    # Modern header
+    user_email = st.session_state.get("user_email", "user@example.com")
     st.markdown(f"""
-    <div class="aurora-header">
-        <div class="aurora-logo-header">WhisperForge</div>
-        <div class="aurora-user-menu">
-            <span>{user_email}</span>
-            <span>•</span>
-            <button class="aurora-sign-out" onclick="window.location.reload()">Sign Out</button>
+    <div class="aurora-modern-header">
+        <div class="aurora-header-content">
+            <div class="aurora-logo">WhisperForge</div>
+            <div class="aurora-user-info">
+                <div class="aurora-status-dot"></div>
+                <span>{user_email}</span>
+            </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Main layout
-    st.markdown('<div class="aurora-main-layout">', unsafe_allow_html=True)
-    
-    # Sidebar Navigation with buttons
-    st.markdown('<div class="aurora-sidebar">', unsafe_allow_html=True)
-    
-    current_page = st.session_state.get("current_page", "Home")
-    
-    # Main navigation
-    st.markdown("""
-    <div class="aurora-nav-section">
-        <div class="aurora-nav-title">Main</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Home button
-    home_class = "active" if current_page == "Home" else ""
-    if st.button("🏠 Home", key="nav_home", use_container_width=True):
-        st.session_state.current_page = "Home"
-        st.rerun()
-    
-    # Analytics placeholder
-    if st.button("📊 Analytics", key="nav_analytics", use_container_width=True):
-        st.info("Analytics coming soon!")
-    
-    # Projects placeholder  
-    if st.button("📁 Projects", key="nav_projects", use_container_width=True):
-        st.info("Projects coming soon!")
-    
-    st.markdown("""
-    <div class="aurora-nav-section">
-        <div class="aurora-nav-title">Content</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # History button
-    if st.button("📝 History", key="nav_history", use_container_width=True):
-        st.session_state.current_page = "Content History"
-        st.rerun()
-    
-    # Insights placeholder
-    if st.button("💡 Insights", key="nav_insights", use_container_width=True):
-        st.info("Advanced insights coming soon!")
-    
-    # Images placeholder
-    if st.button("🖼️ Images", key="nav_images", use_container_width=True):
-        st.info("Image gallery coming soon!")
-    
-    st.markdown("""
-    <div class="aurora-nav-section">
-        <div class="aurora-nav-title">Settings</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Settings button
-    if st.button("⚙️ Configuration", key="nav_settings", use_container_width=True):
-        st.session_state.current_page = "Settings"
-        st.rerun()
-    
-    # API Keys placeholder (redirect to settings)
-    if st.button("🔑 API Keys", key="nav_api_keys", use_container_width=True):
-        st.session_state.current_page = "Settings"
-        st.rerun()
-    
-    # Health button
-    if st.button("❤️ Health", key="nav_health", use_container_width=True):
-        st.session_state.current_page = "System Health"
-        st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Main Content Area
-    st.markdown('<div class="aurora-content">', unsafe_allow_html=True)
+    # Use Streamlit's sidebar properly
+    with st.sidebar:
+        st.markdown('<div class="aurora-nav-header">MAIN</div>', unsafe_allow_html=True)
+        
+        # Navigation buttons
+        if st.button("🏠 Home", key="nav_home"):
+            st.session_state.current_page = "Home"
+            st.rerun()
+        
+        if st.button("📊 Analytics", key="nav_analytics"):
+            st.info("📊 Advanced analytics coming soon!")
+        
+        if st.button("📁 Projects", key="nav_projects"):
+            st.info("📁 Project management coming soon!")
+        
+        st.markdown('<div class="aurora-nav-header">CONTENT</div>', unsafe_allow_html=True)
+        
+        if st.button("📝 History", key="nav_history"):
+            st.session_state.current_page = "Content History"
+            st.rerun()
+        
+        if st.button("💡 Insights", key="nav_insights"):
+            st.info("💡 Advanced insights coming soon!")
+        
+        if st.button("🖼️ Images", key="nav_images"):
+            st.info("🖼️ Image gallery coming soon!")
+        
+        st.markdown('<div class="aurora-nav-header">SETTINGS</div>', unsafe_allow_html=True)
+        
+        if st.button("⚙️ Configuration", key="nav_settings"):
+            st.session_state.current_page = "Settings"
+            st.rerun()
+        
+        if st.button("🔑 API Keys", key="nav_api_keys"):
+            st.session_state.current_page = "Settings"
+            st.rerun()
+        
+        if st.button("❤️ Health", key="nav_health"):
+            st.session_state.current_page = "System Health"
+            st.rerun()
+        
+        # Sign out section
+        st.markdown('<div class="aurora-nav-header">ACCOUNT</div>', unsafe_allow_html=True)
+        if st.button("🚪 Sign Out", key="nav_signout"):
+            # Clear session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.session_state.authenticated = False
+            st.rerun()
     
     # Route to appropriate page
+    current_page = st.session_state.get("current_page", "Home")
+    
     if current_page == "Home":
         show_home_page()
     elif current_page == "Content History":
@@ -1069,11 +1073,8 @@ def show_main_app():
         show_settings_page()
     elif current_page == "System Health":
         show_health_page()
-    
-    # Close main content and layout
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        show_home_page()  # Default fallback
 
 def show_home_page():
     """Modern home page with clean, professional design"""
@@ -1088,12 +1089,12 @@ def show_home_page():
     
     # AI Configuration Section
     st.markdown("""
-    <div class="aurora-control-section">
-        <div class="aurora-control-title">
+    <div class="aurora-section">
+        <div class="aurora-section-title">
             <span>⚡</span>
             AI Configuration
         </div>
-        <div class="aurora-control-grid">
+    </div>
     """, unsafe_allow_html=True)
     
     # AI Provider and Model Selection
@@ -1139,16 +1140,14 @@ def show_home_page():
             key="main_selected_model"
         )
     
-    st.markdown('</div></div>', unsafe_allow_html=True)
-    
     # Pipeline Configuration
     st.markdown("""
-    <div class="aurora-control-section">
-        <div class="aurora-control-title">
+    <div class="aurora-section">
+        <div class="aurora-section-title">
             <span>🔄</span>
             Pipeline Configuration
         </div>
-        <div class="aurora-control-grid">
+    </div>
     """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -1167,34 +1166,12 @@ def show_home_page():
             key="main_processing_mode"
         )
     
-    st.markdown('</div></div>', unsafe_allow_html=True)
-    
     # File Upload Section
     st.markdown("""
-    <div class="aurora-control-section">
-        <div class="aurora-control-title">
+    <div class="aurora-section">
+        <div class="aurora-section-title">
             <span>📁</span>
             Upload Audio Content
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # Upload Zone
-    st.markdown("""
-    <div style="
-        background: rgba(255, 255, 255, 0.015);
-        border: 2px dashed rgba(0, 255, 255, 0.2);
-        border-radius: 12px;
-        padding: 48px 24px;
-        text-align: center;
-        transition: all 0.3s ease;
-        margin-bottom: 24px;
-    ">
-        <div style="font-size: 3rem; color: rgba(0, 255, 255, 0.6); margin-bottom: 16px;">📁</div>
-        <div style="color: rgba(255, 255, 255, 0.8); font-size: 1.1rem; font-weight: 500; margin-bottom: 8px;">
-            Drop your audio files here
-        </div>
-        <div style="color: rgba(255, 255, 255, 0.5); font-size: 0.9rem;">
-            Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1203,147 +1180,100 @@ def show_home_page():
         "Choose audio file",
         type=['mp3', 'wav', 'm4a', 'flac', 'mp4'],
         key="main_file_upload",
-        label_visibility="collapsed"
+        help="Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB"
     )
     
-    if uploaded_file:
-        # File Info Section
-        st.markdown("#### File Information")
-        col1, col2, col3 = st.columns(3)
+    # Process button and results
+    if uploaded_file is not None:
+        st.success(f"✅ File uploaded: {uploaded_file.name}")
         
-        file_size = len(uploaded_file.getvalue())
-        file_size_mb = file_size / (1024 * 1024)
+        # Progress tracking
+        if 'progress_tracker' not in st.session_state:
+            from core.progress import AuroraProgressTracker
+            st.session_state.progress_tracker = AuroraProgressTracker()
         
-        with col1:
-            st.metric("File Size", f"{file_size_mb:.2f} MB")
-        
-        with col2:
-            st.metric("Format", uploaded_file.type.split('/')[-1].upper())
-        
-        with col3:
-            est_time = max(1, file_size_mb * 0.5)
-            st.metric("Est. Processing Time", f"~{est_time:.0f}min")
-        
-        # Processing Section
-        st.markdown("#### Ready to Process")
-        
-        if st.button("🚀 Start Processing", type="primary", use_container_width=True, key="process_button"):
-            # Process the audio file using existing pipeline
-            process_audio_pipeline(uploaded_file)
+        if st.button("🚀 Start Processing", type="primary", use_container_width=True):
+            try:
+                # Process the audio file
+                results = process_audio_pipeline(uploaded_file)
+                
+                if results:
+                    st.success("✅ Processing completed successfully!")
+                    
+                    # Display results in a clean layout
+                    st.markdown("""
+                    <div class="aurora-section">
+                        <div class="aurora-section-title">
+                            <span>📊</span>
+                            Results
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Create tabs for different result types
+                    result_tabs = []
+                    if 'wisdom' in results:
+                        result_tabs.append("💎 Wisdom")
+                    if 'outline' in results:
+                        result_tabs.append("📋 Outline")
+                    if 'social' in results:
+                        result_tabs.append("📱 Social")
+                    if 'images' in results:
+                        result_tabs.append("🖼️ Images")
+                    
+                    if result_tabs:
+                        tabs = st.tabs(result_tabs)
+                        
+                        tab_idx = 0
+                        if 'wisdom' in results and tab_idx < len(tabs):
+                            with tabs[tab_idx]:
+                                st.markdown(results['wisdom'], unsafe_allow_html=True)
+                            tab_idx += 1
+                        
+                        if 'outline' in results and tab_idx < len(tabs):
+                            with tabs[tab_idx]:
+                                st.markdown(results['outline'], unsafe_allow_html=True)
+                            tab_idx += 1
+                        
+                        if 'social' in results and tab_idx < len(tabs):
+                            with tabs[tab_idx]:
+                                st.markdown(results['social'], unsafe_allow_html=True)
+                            tab_idx += 1
+                        
+                        if 'images' in results and tab_idx < len(tabs):
+                            with tabs[tab_idx]:
+                                if isinstance(results['images'], list):
+                                    for idx, image_data in enumerate(results['images']):
+                                        st.image(image_data, caption=f"Generated Image {idx + 1}")
+                                else:
+                                    st.markdown(results['images'], unsafe_allow_html=True)
+                
+            except Exception as e:
+                st.error(f"❌ Processing failed: {str(e)}")
     
     else:
-        # Empty state with helpful information
-        st.markdown("#### How It Works")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **📤 Upload**
-            
-            Upload your audio or video file in any supported format. We handle the rest automatically.
-            """)
-        
-        with col2:
-            st.markdown("""
-            **🔄 Process**
-            
-            Our AI transcribes and analyzes your content with high accuracy and speaker recognition.
-            """)
-        
-        with col3:
-            st.markdown("""
-            **✨ Generate**
-            
-            Extract insights, create outlines, social content, and image prompts automatically.
-            """)
-        
-        # Feature highlights
-        st.markdown("#### Key Features")
-        
-        features = [
-            "**Smart Content Extraction** - AI identifies key insights and wisdom from your audio",
-            "**Structured Outlines** - Organized content ready for immediate use", 
-            "**Social Media Ready** - Platform-optimized content generation",
-            "**Image Prompts** - AI-generated prompts for visual content creation",
-            "**Secure Processing** - Your data is protected and private",
-            "**Multiple Formats** - Support for audio and video files"
-        ]
-        
-        for feature in features:
-            st.markdown(f"• {feature}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Results Section (if available)
-    if 'results' in st.session_state and st.session_state.results:
+        # Welcome section when no file is uploaded
         st.markdown("""
-        <div class="aurora-control-section">
-            <div class="aurora-control-title">
-                <span>✨</span>
-                Generated Results
+        <div class="aurora-section">
+            <div class="aurora-section-title">
+                <span>🌟</span>
+                Welcome to WhisperForge
             </div>
+        </div>
         """, unsafe_allow_html=True)
         
-        # Display results in modern tabs
-        results = st.session_state.results
+        st.markdown("""
+        **🎯 Key Features:**
         
-        # Create tabs for different result types
-        result_tabs = []
-        if 'wisdom' in results:
-            result_tabs.append("💡 Insights")
-        if 'outline' in results:
-            result_tabs.append("📋 Outline")
-        if 'social' in results:
-            result_tabs.append("📱 Social")
-        if 'images' in results:
-            result_tabs.append("🖼️ Images")
+        • **Smart Content Extraction** - AI identifies key insights and wisdom  
+        • **Structured Outlines** - Organized content ready for use  
+        • **Social Media Ready** - Platform-optimized content generation  
+        • **Image Prompts** - AI-generated prompts for visual content  
+        • **Cloud Storage** - All content saved and accessible anytime  
+        • **Secure Processing** - Your data is protected and private
+        """)
         
-        if result_tabs:
-            tabs = st.tabs(result_tabs)
-            
-            tab_idx = 0
-            if 'wisdom' in results and tab_idx < len(tabs):
-                with tabs[tab_idx]:
-                    st.markdown(results['wisdom'], unsafe_allow_html=True)
-                tab_idx += 1
-            
-            if 'outline' in results and tab_idx < len(tabs):
-                with tabs[tab_idx]:
-                    st.markdown(results['outline'], unsafe_allow_html=True)
-                tab_idx += 1
-            
-            if 'social' in results and tab_idx < len(tabs):
-                with tabs[tab_idx]:
-                    st.markdown(results['social'], unsafe_allow_html=True)
-                tab_idx += 1
-            
-            if 'images' in results and tab_idx < len(tabs):
-                with tabs[tab_idx]:
-                    if isinstance(results['images'], list):
-                        for idx, image_data in enumerate(results['images']):
-                            st.image(image_data, caption=f"Generated Image {idx + 1}")
-                    else:
-                        st.markdown(results['images'], unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
-        
-        features = [
-            "**Smart Content Extraction** - AI identifies key insights and wisdom",
-            "**Structured Outlines** - Organized content ready for use", 
-            "**Social Media Ready** - Platform-optimized content generation",
-            "**Image Prompts** - AI-generated prompts for visual content",
-            "**Cloud Storage** - All content saved and accessible anytime",
-            "**Secure Processing** - Your data is protected and private"
-        ]
-        
-        for feature in features:
-            st.markdown(feature)
-    
-    # Close main container
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.info("👆 Upload an audio file above to get started with AI-powered content transformation!")
 
 def process_audio_pipeline(audio_file):
     """Process audio through the complete pipeline with aurora-themed progress tracking"""
