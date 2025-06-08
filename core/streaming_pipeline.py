@@ -443,7 +443,7 @@ Please provide improved versions that address the feedback."""
         
         try:
             # Direct database insert to avoid circular imports
-            result = db.client.table("generated_content").insert({
+            result = db.client.table("content").insert({
                 "user_id": st.session_state.user_id,
                 "content_data": content_data,
                 "created_at": "now()"

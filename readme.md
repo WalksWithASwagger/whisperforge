@@ -1,45 +1,72 @@
-# ⚡ WhisperForge
+# 🌌 WhisperForge
 
-**AI-Powered Content Generation from Audio**
+**AI-Powered Audio Content Generation with Aurora Bioluminescent UI**
 
-Transform your audio content into comprehensive digital assets using advanced AI. WhisperForge transcribes, analyzes, and generates multiple content formats from your audio files.
+Transform your audio files into comprehensive digital content using advanced AI. WhisperForge features a real-time streaming pipeline with research enrichment, visible AI thinking bubbles, and a modern Aurora-styled interface.
 
 🌐 **Live Production App**: [whisperforge.ai](https://whisperforge.ai)
 
 ---
 
-## 🚀 **Current Status**
+## ✨ **Current Features**
 
-✅ **Production Ready** - Live at whisperforge.ai  
-✅ **Custom Domain** - Fully configured with SSL  
-✅ **User Authentication** - Google OAuth + email registration  
-✅ **Database Integration** - Supabase backend with user data persistence  
-✅ **Enterprise Monitoring** - Sentry error tracking and performance monitoring  
-✅ **Multi-AI Support** - OpenAI, Anthropic, and Grok integration  
-✅ **Secure** - bcrypt password hashing, encrypted storage  
+### **🎙️ Audio Processing Pipeline**
+- **Upload**: MP3, WAV, M4A, FLAC, MP4, MOV, AVI support
+- **Transcription**: AI-powered speech-to-text
+- **Wisdom Extraction**: Key insights and actionable takeaways  
+- **Research Enrichment**: Entity extraction with supporting research links
+- **Content Outline**: Structured article frameworks
+- **Article Generation**: Full long-form content creation
+- **Social Content**: Platform-specific posts (Twitter, LinkedIn, Instagram, Facebook, YouTube)
+- **Image Prompts**: AI-generated visual concept descriptions
 
----
+### **🤖 Advanced AI Features**
+- **Visible Thinking**: Real-time AI thought bubbles during processing
+- **Research Enrichment**: Automatic entity research with curated links
+- **Multi-AI Support**: OpenAI, Anthropic, and Grok integration
+- **Custom Prompts**: Personalized AI generation templates
+- **Knowledge Base**: Upload context files to guide AI output
 
-## 🎯 **What WhisperForge Does**
+### **🎨 Aurora UI System**
+- **Bioluminescent Design**: Cyan/teal Aurora theme throughout
+- **Real-time Streaming**: Live content generation with progress updates
+- **Integrated Navigation**: Seamless header with logout/settings
+- **Aurora Components**: Consistent styling system across all pages
+- **Mobile Optimized**: Responsive design for all devices
 
-### **📝 Content Pipeline**
-1. **Audio Upload** - Supports MP3, WAV, M4A, FLAC, MP4, MOV, AVI
-2. **AI Transcription** - High-quality speech-to-text
-3. **Wisdom Extraction** - Key insights and actionable takeaways
-4. **Content Outline** - Structured article/blog post outlines
-5. **Social Media** - Platform-specific posts (Twitter, LinkedIn, Instagram)
-6. **Image Prompts** - AI-generated image descriptions
-
-### **🎛️ Features**
-- **Custom Knowledge Base** - Upload context files to guide AI generation
-- **Custom Prompts** - Personalize AI output for your brand/style
-- **Content History** - Save and revisit all generated content
-- **API Key Management** - Securely store your AI provider keys
-- **Usage Tracking** - Monitor quota and usage patterns
+### **🔐 Advanced Session Management**
+- **Persistent Authentication**: Sessions survive browser refreshes
+- **Secure Storage**: Encrypted API keys and user data
+- **Google OAuth**: Seamless authentication integration
+- **User Profiles**: Personal settings, prompts, and history
 
 ---
 
 ## 🏗️ **Architecture**
+
+### **Core Modules**
+```
+core/
+├── streaming_pipeline.py      # Real-time processing pipeline
+├── streaming_results.py       # Live content display system  
+├── research_enrichment.py     # Entity research & link generation
+├── visible_thinking.py        # AI thought bubble system
+├── session_manager.py         # Advanced session persistence
+├── styling.py                 # Aurora UI components & themes
+├── content_generation.py      # AI content creation functions
+├── supabase_integration.py    # Database & auth backend
+├── file_upload.py             # Audio file processing
+├── notifications.py           # User feedback system
+├── ui_components.py           # Reusable UI elements
+├── monitoring.py              # Error tracking & analytics
+└── utils.py                   # Shared utilities
+```
+
+### **Database (Supabase)**
+- **Users**: Authentication, profiles, API keys
+- **Content**: Generated content with full history
+- **Settings**: Custom prompts, knowledge base files
+- **Sessions**: Persistent user sessions across refreshes
 
 ### **Frontend**
 - **Framework**: Streamlit (Python web app)
@@ -60,108 +87,121 @@ Transform your audio content into comprehensive digital assets using advanced AI
 
 ---
 
-## 🛠️ **Local Development**
+## 🚀 **Local Development**
 
 ### **Prerequisites**
 ```bash
 Python 3.11+
-Git
-Supabase account
-AI provider API keys (OpenAI, Anthropic, or Grok)
+Supabase account with project
+AI provider API keys (OpenAI/Anthropic/Grok)
 ```
 
 ### **Setup**
 ```bash
-# Clone repository
-git clone https://github.com/WalksWithASwagger/whisperforge.git
-cd whisperforge
+# Clone and setup
+git clone <repository-url>
+cd whisperforge--prime
 
-# Install dependencies
+# Virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies  
 pip install -r requirements.txt
 
-# Set environment variables
+# Environment variables
 cp .env.example .env
-# Edit .env with your API keys and database URLs
+# Edit .env with your keys
 
 # Run locally
 streamlit run app.py
 ```
 
-### **Environment Variables**
+### **Required Environment Variables**
 ```bash
-# Database (Required)
+# Supabase (Required)
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-JWT_SECRET=your-random-secret
-
-# Authentication (Required)
-OAUTH_REDIRECT_URL=http://localhost:8501  # or your domain
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
 
 # AI Providers (At least one required)
 OPENAI_API_KEY=your-openai-key
-ANTHROPIC_API_KEY=your-anthropic-key
+ANTHROPIC_API_KEY=your-anthropic-key  
 GROK_API_KEY=your-grok-key
 
-# Monitoring (Optional)
+# Optional
 SENTRY_DSN=your-sentry-dsn
 ENVIRONMENT=development
-APP_VERSION=1.0.0
 ```
 
 ---
 
-## 📊 **Monitoring & Health**
+## 🎯 **Key Technical Features**
 
-### **Health Check**
-- **URL**: https://whisperforge.ai/?health
-- **Checks**: Database connectivity, AI providers, environment variables
+### **Streaming Pipeline**
+- Real-time step-by-step processing with live updates
+- Session state persistence across browser refreshes
+- Error handling with graceful fallbacks
+- Progress tracking with Aurora-styled indicators
 
-### **Error Tracking**
-- **Platform**: Sentry
-- **Features**: Real-time error alerts, performance monitoring, user context
+### **Research Enrichment**
+- Automatic entity extraction (people, organizations, methods)
+- AI-generated supporting research links
+- "Why this matters" explanations
+- Curated "gem" links per entity
 
-### **Analytics**
-- **User Actions**: Page views, pipeline executions, feature usage
-- **Performance**: Operation timing, AI provider response times
-- **Health**: System status, uptime monitoring
+### **Visible Thinking**
+- Real-time AI thought bubbles during processing
+- Aurora-styled chat bubbles with mood colors
+- 90-character limit with smart truncation
+- Canned fallbacks for robust operation
 
----
-
-## 🔐 **Security Features**
-
-✅ **Password Security** - bcrypt hashing with salt  
-✅ **API Key Encryption** - Secure storage of user API keys  
-✅ **OAuth Integration** - Google sign-in with Supabase Auth  
-✅ **Environment Isolation** - Production/development separation  
-✅ **Input Validation** - Sanitized user inputs  
-✅ **Error Handling** - Graceful degradation without data exposure  
-
----
-
-## 📈 **Production Metrics**
-
-- **Deployment**: Render.com with auto-scaling
-- **Uptime**: Monitored via health checks
-- **Performance**: <5s average content generation
-- **Security**: Zero known vulnerabilities
-- **User Experience**: Google Lighthouse optimized
+### **Aurora UI System**
+- Consistent bioluminescent design language
+- Integrated header with navigation and logout
+- Responsive Aurora components
+- Professional 2025-style interface
 
 ---
 
-## 🎯 **Next Development Priorities**
+## 📊 **Production Status**
 
-1. **💳 Payment Integration** - Stripe subscription billing
-2. **🎨 UI Enhancement** - Modern design system
-3. **📱 Mobile Optimization** - Responsive design improvements
-4. **⚡ Performance** - Caching, async processing
-5. **📊 Analytics Dashboard** - User insights and metrics
+### **✅ Fully Operational**
+- **Core Pipeline**: 8-step audio-to-content generation
+- **UI/UX**: Complete Aurora theme implementation
+- **Authentication**: Google OAuth + session persistence
+- **Database**: Supabase integration with full CRUD
+- **Error Handling**: Comprehensive error tracking and recovery
+- **Monitoring**: Sentry integration for production insights
+
+### **🚀 Ready for Deployment**
+- **Heroku**: Configured with Procfile
+- **Render**: Auto-deploy ready
+- **Streamlit Cloud**: Compatible deployment
+- **Docker**: Container-ready setup
 
 ---
 
-## 🤝 **Contributing**
+## 🛠️ **Current Development Focus**
 
-WhisperForge is actively developed. See [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) for contribution guidelines.
+Based on user feedback, active development is focused on:
+
+1. **Streaming UX Improvements**: Enhanced real-time content display
+2. **History Page Fixes**: Database schema and display improvements  
+3. **Processing Indicators**: Better visual feedback during generation
+4. **Content Layout**: Modern, engaging result presentation
+5. **Session Reliability**: Bulletproof authentication persistence
+
+---
+
+## 📝 **Contributing**
+
+The codebase is actively developed with a focus on:
+- Clean, modular architecture
+- Comprehensive error handling
+- Consistent Aurora design system
+- Real-time user experience
+- Production-ready deployment
 
 ---
 
@@ -171,4 +211,4 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ using Python, Streamlit, Supabase, and AI** 
+**Built with ❤️ using Python, Streamlit, Supabase, and Advanced AI** 

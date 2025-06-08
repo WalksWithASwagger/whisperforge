@@ -277,7 +277,7 @@ def save_generated_content_supabase(content_data: dict) -> str:
         if not db:
             return ""
             
-        result = db.client.table("generated_content").insert({
+        result = db.client.table("content").insert({
             "user_id": st.session_state.user_id,
             "content_data": content_data,
             "created_at": "now()"
@@ -309,7 +309,7 @@ def get_user_content_history_supabase(limit: int = 20) -> list:
         logger.info(f"Fetching content history for user_id: {user_id}")
         
         # Enhanced query with better error handling
-        result = db.client.table("generated_content")\
+        result = db.client.table("content")\
             .select("id, content_data, created_at")\
             .eq("user_id", user_id)\
             .order("created_at", desc=True)\
@@ -1091,7 +1091,7 @@ def show_content_history_page():
                 st.success("✅ Database connection successful")
                 
                 # Test query with count
-                count_result = db.client.table("generated_content").select("id", count="exact").eq("user_id", st.session_state.get("user_id", "")).execute()
+                count_result = db.client.table("content").select("id", count="exact").eq("user_id", st.session_state.get("user_id", "")).execute()
                 st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
             else:
                 st.error("❌ Database connection failed")
