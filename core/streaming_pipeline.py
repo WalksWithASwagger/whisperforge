@@ -47,6 +47,14 @@ class StreamingPipelineController:
             "size": len(audio_file.getvalue()),
             "size_mb": len(audio_file.getvalue()) / (1024 * 1024)
         }
+        
+        # Ensure prompts are loaded for custom prompt usage
+        if not hasattr(st.session_state, 'prompts') or not st.session_state.prompts:
+            try:
+                from ..app import get_user_prompts_supabase
+                st.session_state.prompts = get_user_prompts_supabase()
+            except ImportError:
+                st.session_state.prompts = {}
     
     def process_next_step(self):
         """Process the next step in the pipeline"""
@@ -135,11 +143,14 @@ class StreamingPipelineController:
         """Step 3: Extract wisdom"""
         transcript = st.session_state.pipeline_transcript
         
+        # Get custom prompt if available
+        custom_prompt = st.session_state.prompts.get("wisdom_extraction") if hasattr(st.session_state, 'prompts') else None
+        
         wisdom = generate_wisdom(
             transcript, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
-            None, 
+            custom_prompt, 
             st.session_state.knowledge_base
         )
         
@@ -182,12 +193,15 @@ Please provide an improved version that addresses the feedback while maintaining
         transcript = st.session_state.pipeline_transcript
         wisdom = st.session_state.pipeline_wisdom
         
+        # Get custom prompt if available
+        custom_prompt = st.session_state.prompts.get("outline_creation") if hasattr(st.session_state, 'prompts') else None
+        
         outline = generate_outline(
             transcript, 
             wisdom, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
-            None, 
+            custom_prompt, 
             st.session_state.knowledge_base
         )
         
@@ -230,13 +244,16 @@ Please provide an improved version that addresses the feedback."""
         wisdom = st.session_state.pipeline_wisdom
         outline = st.session_state.pipeline_outline
         
+        # Get custom prompt if available  
+        custom_prompt = st.session_state.prompts.get("article_creation") if hasattr(st.session_state, 'prompts') else None
+        
         article = generate_article(
             transcript,
             wisdom, 
             outline, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
-            None, 
+            custom_prompt, 
             st.session_state.knowledge_base
         )
         
@@ -280,13 +297,16 @@ Please provide an improved version that addresses the feedback."""
         outline = st.session_state.pipeline_outline
         article = st.session_state.pipeline_article
         
+        # Get custom prompt if available
+        custom_prompt = st.session_state.prompts.get("social_media") if hasattr(st.session_state, 'prompts') else None
+        
         social = generate_social_content(
             wisdom, 
             outline,
             article, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
-            None, 
+            custom_prompt, 
             st.session_state.knowledge_base
         )
         
@@ -329,12 +349,15 @@ Please provide improved versions that address the feedback."""
         wisdom = st.session_state.pipeline_wisdom
         outline = st.session_state.pipeline_outline
         
+        # Get custom prompt if available
+        custom_prompt = st.session_state.prompts.get("image_prompts") if hasattr(st.session_state, 'prompts') else None
+        
         images = generate_image_prompts(
             wisdom, 
             outline, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
-            None, 
+            custom_prompt, 
             st.session_state.knowledge_base
         )
         
@@ -343,13 +366,15 @@ Please provide improved versions that address the feedback."""
     
     def _step_database_storage(self) -> str:
         """Step 8: Store content in database"""
-        # Import here to avoid circular imports
+        # Direct database access to avoid circular imports
+        import streamlit as st
         try:
-            from ..app import save_generated_content_supabase
+            from ..app import init_supabase
+            db, _ = init_supabase()
+            if not db:
+                return "Database connection failed"
         except ImportError:
-            # Fallback if circular import occurs
-            def save_generated_content_supabase(data):
-                return "mock_content_id"
+            return "Database import failed"
         
         content_data = {
             "title": f"Content from {st.session_state.pipeline_file_info['name']}",
@@ -369,12 +394,19 @@ Please provide improved versions that address the feedback."""
         }
         
         try:
-            content_id = save_generated_content_supabase(content_data)
+            # Direct database insert to avoid circular imports
+            result = db.client.table("generated_content").insert({
+                "user_id": st.session_state.user_id,
+                "content_data": content_data,
+                "created_at": "now()"
+            }).execute()
+            
+            content_id = result.data[0]["id"] if result.data else ""
             if not content_id:
-                raise Exception("Failed to save content to database")
+                return "Failed to save content to database"
             
             time.sleep(0.3)  # Simulate save time
-            return content_id
+            return f"Content saved with ID: {content_id}"
         except Exception as e:
             # Don't fail the pipeline for database errors
             return f"Database save failed: {str(e)}"

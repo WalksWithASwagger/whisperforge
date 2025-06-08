@@ -23,8 +23,8 @@ def show_streaming_results():
     if not results and not errors:
         return
     
-    # Ultra-compact Aurora completion header
-    st.markdown("""
+    # Ultra-compact Aurora completion header with debug info
+    st.markdown(f"""
     <div style="
         background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
         border: 1px solid rgba(0, 255, 255, 0.3);
@@ -45,16 +45,16 @@ def show_streaming_results():
             animation: completion-glow 3s ease-in-out infinite;
         "></div>
         <h3 style="color: #00FFFF; margin: 0 0 4px 0; font-weight: 700;">Content Generated</h3>
-        <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 0.9rem;">Ready to transform the world</p>
+        <p style="color: rgba(255, 255, 255, 0.7); margin: 0; font-size: 0.9rem;">Ready to transform the world • {len(results)} items • DB save: {"✅" if "database_storage" in results else "❌"}</p>
     </div>
     
     <style>
-    @keyframes completion-glow {
-        0%, 100% { left: -100%; opacity: 0; }
-        20% { opacity: 1; }
-        80% { opacity: 1; }
-        100% { left: 100%; opacity: 0; }
-    }
+    @keyframes completion-glow {{
+        0%, 100% {{ left: -100%; opacity: 0; }}
+        20% {{ opacity: 1; }}
+        80% {{ opacity: 1; }}
+        100% {{ left: 100%; opacity: 0; }}
+    }}
     </style>
     """, unsafe_allow_html=True)
     
