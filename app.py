@@ -859,6 +859,20 @@ def show_health_page():
                 st.warning(f"⚠️ **{check.title()}:** {status}")
             else:
                 st.success(f"✅ **{check.title()}:** {status}")
+    
+    # Temporary test button for Sentry verification
+    st.markdown("---")
+    st.subheader("🧪 Monitoring Test")
+    st.warning("⚠️ **Admin Only**: Test error tracking (will be removed)")
+    
+    if st.button("🚨 Test Sentry Error Tracking"):
+        try:
+            # This will intentionally cause an error to test Sentry
+            test_error = 1 / 0
+        except Exception as e:
+            track_error(e, {"test": True, "location": "health_check"})
+            st.error("✅ Test error sent to Sentry! Check your Sentry dashboard.")
+            st.info("You should receive an email notification and see the error in your Sentry project.")
 
 # Main app logic
 def main():
