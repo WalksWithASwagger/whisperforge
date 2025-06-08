@@ -361,30 +361,26 @@ def handle_oauth_callback():
     """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
-    # Only process if we have both code and state (proper OAuth callback)
-    if 'code' in query_params and ('state' in query_params or 'access_token' in query_params):
-        # Don't process if already authenticated
-        if st.session_state.get('authenticated', False):
-            return False
-            
+    # Only process if we have OAuth parameters
+    if 'code' in query_params:
+        # Add debug info to sidebar
+        st.sidebar.write(f"Debug - Processing OAuth callback")
+        st.sidebar.write(f"Debug - Code received: {query_params['code'][:20]}...")
+        
         try:
             db, _ = init_supabase()
             if db:
                 code = query_params['code']
                 
-                # Try to get session from URL parameters (simpler approach)
-                if 'access_token' in query_params:
-                    # Direct token approach
-                    access_token = query_params['access_token']
-                    response = db.client.auth.set_session(access_token)
-                else:
-                    # Try the code exchange without PKCE
-                    response = db.client.auth.exchange_code_for_session(code)
+                # Exchange code for session
+                response = db.client.auth.exchange_code_for_session(code)
                 
-                if response and response.user:
+                if response and hasattr(response, 'user') and response.user:
                     # Get or create user in our database
                     user_email = response.user.email
                     user_id = response.user.id
+                    
+                    st.sidebar.write(f"Debug - OAuth user: {user_email}")
                     
                     # Check if user exists in our users table
                     existing_user = db.client.table("users").select("id").eq("email", user_email).execute()
@@ -403,19 +399,37 @@ def handle_oauth_callback():
                         if result.data:
                             st.session_state.user_id = result.data[0]["id"]
                         else:
+                            st.sidebar.error("Failed to create user record")
                             return False
                     else:
                         st.session_state.user_id = existing_user.data[0]["id"]
                     
+                    # Set authentication state
                     st.session_state.authenticated = True
-                    st.success("✅ Successfully signed in with Google!")
+                    st.session_state.user_email = user_email
+                    
+                    st.sidebar.write("Debug - Authentication state set successfully")
+                    
+                    # Clear OAuth parameters to prevent re-processing
+                    st.query_params.clear()
+                    
+                    # Show success message in main area
+                    st.success("✅ Successfully signed in with Google! Redirecting...")
+                    
+                    # Force rerun to show main app
+                    time.sleep(1)
                     st.rerun()
                     return True
+                else:
+                    st.sidebar.error("Failed to get user from OAuth response")
+                    if response:
+                        st.sidebar.write(f"Debug - Response type: {type(response)}")
+                    return False
                     
         except Exception as e:
-            # Only show error if this is actually a callback attempt
-            if 'error' in str(e).lower() and ('code' in query_params):
-                st.error(f"Authentication failed. Please try again.")
+            st.sidebar.error(f"OAuth error: {str(e)}")
+            import traceback
+            st.sidebar.write(f"Debug - Full error: {traceback.format_exc()}")
             return False
     
     return False
@@ -423,84 +437,92 @@ def handle_oauth_callback():
 def show_auth_page():
     """Clean, modern authentication page"""
     
-    # Clean authentication styling
-    st.markdown("""
-    <style>
-    /* Clean auth page */
-    .stApp {
-        background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
-        font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    }
-    
-    /* Remove default padding */
-    .main .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
-        max-width: 500px !important;
-        margin: 0 auto !important;
-    }
-    
-    /* Auth card styling */
-    .auth-card {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(0, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 2rem;
-        backdrop-filter: blur(16px);
-    }
-    
-    .auth-logo {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #00FFFF;
-        text-align: center;
-        margin-bottom: 0.5rem;
-    }
-    
-    .auth-tagline {
-        color: rgba(255, 255, 255, 0.7);
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    /* Clean button styling */
-    .stButton > button {
-        width: 100% !important;
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
-        border: 1px solid rgba(0, 255, 255, 0.2) !important;
-        color: white !important;
-        border-radius: 8px !important;
-        padding: 12px !important;
-        font-weight: 500 !important;
-    }
-    
-    .stButton > button:hover {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
-        border-color: rgba(0, 255, 255, 0.3) !important;
-    }
-    
-    .stTextInput > div > div > input {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
-        color: white !important;
-    }
-    
-    .stTextInput > div > div > input:focus {
-        border-color: rgba(0, 255, 255, 0.4) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # Load the stable CSS framework
+    try:
+        from core.ui_components import load_css
+        load_css()
+    except:
+        # Fallback CSS if ui_components not available
+        st.markdown("""
+        <style>
+        /* Clean auth page */
+        .stApp {
+            background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        }
+        
+        /* Remove default padding */
+        .main .block-container {
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+            max-width: 500px !important;
+            margin: 0 auto !important;
+        }
+        
+        /* Auth card styling */
+        .auth-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+        }
+        
+        .auth-logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #00FFFF;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .auth-tagline {
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Clean button styling */
+        .stButton > button {
+            width: 100% !important;
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+            border: 1px solid rgba(0, 255, 255, 0.2) !important;
+            color: white !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+            font-weight: 500 !important;
+        }
+        
+        .stButton > button:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+            border-color: rgba(0, 255, 255, 0.3) !important;
+        }
+        
+        .stTextInput > div > div > input {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            color: white !important;
+        }
+        
+        .stTextInput > div > div > input:focus {
+            border-color: rgba(0, 255, 255, 0.4) !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
     
     # Center the auth form
     st.markdown('<div class="auth-card">', unsafe_allow_html=True)
     
-    # Logo and tagline
+    # Logo and tagline - FIXED HEADER
     st.markdown('<div class="auth-logo">WhisperForge</div>', unsafe_allow_html=True)
     st.markdown('<div class="auth-tagline">Transform audio into structured content</div>', unsafe_allow_html=True)
     
     # Handle OAuth callback first
     if handle_oauth_callback():
+        st.markdown('</div>', unsafe_allow_html=True)
         return
     
     # Generate OAuth URL
@@ -512,34 +534,8 @@ def show_auth_page():
                 redirect_url = os.getenv("OAUTH_REDIRECT_URL")
                 
                 if not redirect_url:
-                    render_service_name = os.getenv("RENDER_SERVICE_NAME")
-                    render_external_url = os.getenv("RENDER_EXTERNAL_URL")
-                    streamlit_app_url = os.getenv("STREAMLIT_APP_URL")
-                    
-                    is_streamlit_cloud = (
-                        os.getenv("STREAMLIT_SHARING") or 
-                        os.getenv("STREAMLIT_SERVER_PORT") or
-                        os.getenv("STREAMLIT_RUNTIME_CREDENTIALS") or
-                        "streamlit.app" in os.getenv("HOSTNAME", "") or
-                        streamlit_app_url
-                    )
-                    
-                    is_render = (
-                        render_service_name or
-                        render_external_url or
-                        os.getenv("RENDER") or
-                        "onrender.com" in os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
-                    )
-                    
-                    if is_render:
-                        redirect_url = "https://whisperforge.ai"
-                    elif is_streamlit_cloud and streamlit_app_url:
-                        redirect_url = streamlit_app_url
-                    elif is_streamlit_cloud:
-                        st.error("STREAMLIT_APP_URL not set in secrets! Add it to your app settings.")
-                        redirect_url = None
-                    else:
-                        redirect_url = "http://localhost:8501"
+                    # For local development, use the current port
+                    redirect_url = "http://localhost:8501"
                 
                 if redirect_url:
                     auth_response = db.client.auth.sign_in_with_oauth({
@@ -1052,7 +1048,7 @@ def show_health_page():
                 st.success(f"✅ **{check.title()}:** {status}")
 
 def main():
-    """Main application entry point - FIXED ROUTING"""
+    """Main application entry point - FIXED OAUTH ROUTING"""
     try:
         # Initialize session tracking
         init_session_tracking()
@@ -1069,17 +1065,23 @@ def main():
             show_health_page()
             return
         
-        # Handle OAuth callback FIRST
-        if handle_oauth_callback():
-            # OAuth success - user is now authenticated, show main app
-            show_main_app()
-            return
+        # Debug session state
+        st.sidebar.write(f"Debug - Authenticated: {st.session_state.get('authenticated', False)}")
+        st.sidebar.write(f"Debug - User ID: {st.session_state.get('user_id', 'None')}")
+        
+        # Handle OAuth callback FIRST - but don't redirect yet
+        oauth_success = False
+        if 'code' in query_params and not st.session_state.get('authenticated', False):
+            oauth_success = handle_oauth_callback()
+            if oauth_success:
+                # Don't call show_main_app here, let the authentication check below handle it
+                pass
         
         # Check authentication and route accordingly
-        if not st.session_state.authenticated:
-            show_auth_page()
-        else:
+        if st.session_state.get('authenticated', False):
             show_main_app()
+        else:
+            show_auth_page()
     
     except Exception as e:
         track_error(e, {"location": "main_app"})

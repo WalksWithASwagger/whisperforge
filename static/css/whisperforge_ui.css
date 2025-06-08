@@ -213,19 +213,26 @@
 
 /* Headers */
 .auth-logo {
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: 700;
     color: var(--primary-color);
     text-align: center;
     margin-bottom: 0.5rem;
     font-family: var(--font-family);
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    letter-spacing: 0.5px;
+    display: block;
+    padding: 1rem 0;
 }
 
 .auth-tagline {
     color: var(--text-muted);
     text-align: center;
     margin-bottom: 2rem;
-    font-size: 1rem;
+    font-size: 1.1rem;
+    font-weight: 400;
+    display: block;
+    padding: 0.5rem 0;
 }
 
 .section-title {
