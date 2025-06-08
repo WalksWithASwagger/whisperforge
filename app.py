@@ -930,6 +930,7 @@ def process_audio_pipeline(audio_file):
             st.markdown("*AI-extracted insights and valuable takeaways from your content*")
             
             # Create a beautiful content card
+            wisdom_formatted = wisdom.replace('\n', '<br>')
             wisdom_html = f"""
             <div class="content-card wisdom-card">
                 <div class="content-header">
@@ -937,7 +938,7 @@ def process_audio_pipeline(audio_file):
                     <span class="content-title">Wisdom & Insights</span>
                 </div>
                 <div class="content-body">
-                    {wisdom.replace('\n', '<br>')}
+                    {wisdom_formatted}
                 </div>
             </div>
             """
@@ -951,6 +952,7 @@ def process_audio_pipeline(audio_file):
             st.markdown("#### 📊 Structured Content Outline")
             st.markdown("*Organized structure ready for presentations, articles, or courses*")
             
+            outline_formatted = outline.replace('\n', '<br>')
             outline_html = f"""
             <div class="content-card outline-card">
                 <div class="content-header">
@@ -958,7 +960,7 @@ def process_audio_pipeline(audio_file):
                     <span class="content-title">Content Outline</span>
                 </div>
                 <div class="content-body">
-                    {outline.replace('\n', '<br>')}
+                    {outline_formatted}
                 </div>
             </div>
             """
@@ -971,6 +973,7 @@ def process_audio_pipeline(audio_file):
             st.markdown("#### 📲 Social Media Ready Content")
             st.markdown("*Platform-optimized content for maximum engagement*")
             
+            social_formatted = social.replace('\n', '<br>')
             social_html = f"""
             <div class="content-card social-card">
                 <div class="content-header">
@@ -978,7 +981,7 @@ def process_audio_pipeline(audio_file):
                     <span class="content-title">Social Media Content</span>
                 </div>
                 <div class="content-body">
-                    {social.replace('\n', '<br>')}
+                    {social_formatted}
                 </div>
             </div>
             """
@@ -991,6 +994,7 @@ def process_audio_pipeline(audio_file):
             st.markdown("#### 🎭 AI Image Generation Prompts")
             st.markdown("*Ready-to-use prompts for creating visual content with AI tools*")
             
+            images_formatted = images.replace('\n', '<br>')
             images_html = f"""
             <div class="content-card images-card">
                 <div class="content-header">
@@ -998,7 +1002,7 @@ def process_audio_pipeline(audio_file):
                     <span class="content-title">Image Generation Prompts</span>
                 </div>
                 <div class="content-body">
-                    {images.replace('\n', '<br>')}
+                    {images_formatted}
                 </div>
             </div>
             """
