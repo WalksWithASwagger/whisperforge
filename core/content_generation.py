@@ -8,32 +8,15 @@ import time
 import logging
 import requests
 from typing import Dict, Optional, Any
-from .utils import get_openai_client, get_anthropic_client, get_grok_api_key, get_prompt, DEFAULT_PROMPTS
+from .utils import get_openai_client, get_anthropic_client, get_grok_api_key, get_prompt, DEFAULT_PROMPTS, get_enhanced_prompt
 
 logger = logging.getLogger(__name__)
 
 def generate_wisdom(transcript: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Extract key insights and wisdom from a transcript"""
     try:
-        # Use the custom prompt if provided, otherwise get from defaults
-        prompt = custom_prompt or DEFAULT_PROMPTS.get("wisdom_extraction", "")
-        
-        # Include knowledge base context if available
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When analyzing the content, please incorporate these perspectives and guidelines.
-
-Original Prompt:
-{prompt}"""
-        else:
-            system_prompt = prompt
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = custom_prompt or get_enhanced_prompt("wisdom_extraction", knowledge_base)
         
         # Use the selected AI provider and model
         if ai_provider == "OpenAI":
@@ -101,23 +84,8 @@ Original Prompt:
 def generate_outline(transcript: str, wisdom: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Create a structured outline based on transcript and wisdom"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS.get("outline_creation", "")
-        
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When creating the outline, please incorporate these perspectives and guidelines.
-
-Original Prompt:
-{prompt}"""
-        else:
-            system_prompt = prompt
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = custom_prompt or get_enhanced_prompt("outline_creation", knowledge_base)
         
         content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
         
@@ -186,23 +154,8 @@ Original Prompt:
 def generate_article(transcript: str, wisdom: str, outline: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Generate a comprehensive article based on transcript, wisdom, and outline"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS.get("article_writing", "")
-        
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When writing the article, please incorporate these perspectives and guidelines.
-
-Original Prompt:
-{prompt}"""
-        else:
-            system_prompt = prompt
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = custom_prompt or get_enhanced_prompt("article_writing", knowledge_base)
         
         # Limit transcript length to avoid token limits
         transcript_excerpt = transcript[:2000] if len(transcript) > 2000 else transcript
@@ -273,38 +226,8 @@ Original Prompt:
 def generate_social_content(wisdom: str, outline: str, article: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Generate 5 distinct social media posts"""
     try:
-        # Enhanced prompt for 5 distinct social posts
-        enhanced_prompt = custom_prompt or """Generate exactly 5 distinct social media posts based on the content provided. Each post should:
-
-1. Target different platforms and audiences
-2. Highlight different key insights from the content
-3. Use varied formats (question, statement, quote, etc.)
-4. Be platform-optimized in length and style
-5. Include relevant hashtags
-
-Format:
-🐦 TWITTER/X POST 1: [280 characters max, engaging hook]
-📱 INSTAGRAM POST: [Longer caption with hashtags] 
-💼 LINKEDIN POST: [Professional tone, thought leadership]
-🐦 TWITTER/X POST 2: [Different angle/insight, 280 chars]
-🎯 GENERAL SOCIAL: [Versatile post for any platform]
-
-Make each post unique and valuable on its own."""
-        
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When creating social content, please incorporate these perspectives and guidelines.
-
-{enhanced_prompt}"""
-        else:
-            system_prompt = enhanced_prompt
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = custom_prompt or get_enhanced_prompt("social_media", knowledge_base)
         
         # Include article in content for richer context
         article_excerpt = article[:1500] if len(article) > 1500 else article
@@ -375,23 +298,8 @@ When creating social content, please incorporate these perspectives and guidelin
 def generate_image_prompts(wisdom: str, outline: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Generate image generation prompts"""
     try:
-        prompt = custom_prompt or DEFAULT_PROMPTS.get("image_prompts", "")
-        
-        if knowledge_base:
-            knowledge_context = "\n\n".join([
-                f"## {name}\n{content}" 
-                for name, content in knowledge_base.items()
-            ])
-            system_prompt = f"""Use the following knowledge base to inform your analysis:
-
-{knowledge_context}
-
-When creating image prompts, please incorporate these perspectives and guidelines.
-
-Original Prompt:
-{prompt}"""
-        else:
-            system_prompt = prompt
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = custom_prompt or get_enhanced_prompt("image_prompts", knowledge_base)
         
         content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
         
@@ -456,6 +364,76 @@ Original Prompt:
     except Exception as e:
         logger.exception("Error in image prompt generation:")
         return f"Error generating image prompts: {str(e)}"
+
+def editor_critique(content: str, content_type: str, ai_provider: str, model: str, knowledge_base: Dict[str, str] = None) -> str:
+    """Generate editorial feedback using editor persona"""
+    try:
+        # Use enhanced prompt system with automatic KB concatenation
+        system_prompt = get_enhanced_prompt("editor_persona", knowledge_base)
+        
+        user_content = f"Content Type: {content_type}\n\nContent to Review:\n{content}"
+        
+        if ai_provider == "OpenAI":
+            openai_client = get_openai_client()
+            if not openai_client:
+                return "Error: OpenAI API key is not configured."
+                
+            response = openai_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ],
+                max_tokens=1500
+            )
+            
+            return response.choices[0].message.content
+            
+        elif ai_provider == "Anthropic":
+            anthropic_client = get_anthropic_client()
+            if not anthropic_client:
+                return "Error: Anthropic API key is not configured."
+                
+            response = anthropic_client.messages.create(
+                model=model,
+                max_tokens=1500,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_content}
+                ]
+            )
+            
+            return response.content[0].text
+            
+        elif ai_provider == "Grok":
+            grok_api_key = get_grok_api_key()
+            if not grok_api_key:
+                return "Error: Grok API key is not configured."
+
+            headers = {
+                "Authorization": f"Bearer {grok_api_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ]
+            }
+            
+            response = requests.post(
+                "https://api.grok.x.ai/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            return response.json()["choices"][0]["message"]["content"]
+        
+        return "Error: Unsupported AI provider"
+        
+    except Exception as e:
+        logger.exception("Error in editor critique:")
+        return f"Error generating editorial feedback: {str(e)}"
 
 def transcribe_audio(audio_file) -> str:
     """Transcribe audio file using OpenAI Whisper"""

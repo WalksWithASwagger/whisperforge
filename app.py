@@ -30,7 +30,7 @@ from core.supabase_integration import get_supabase_client, get_mcp_integration
 from core.utils import hash_password, DEFAULT_PROMPTS, get_prompt
 from core.content_generation import (
     transcribe_audio, generate_wisdom, generate_outline, generate_article,
-    generate_social_content, generate_image_prompts
+    generate_social_content, generate_image_prompts, editor_critique
 )
 from core.styling import local_css, add_production_css, create_custom_header, load_js
 from core.monitoring import (
