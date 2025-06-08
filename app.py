@@ -1091,46 +1091,28 @@ def show_main_app():
     with st.sidebar:
         st.markdown('<div class="aurora-nav-header">MAIN</div>', unsafe_allow_html=True)
         
-        # Navigation buttons
-        if st.button("🏠 Home", key="nav_home"):
+        # Navigation buttons - clean without emojis
+        if st.button("Content Pipeline", key="nav_home"):
             st.session_state.current_page = "Home"
             st.rerun()
         
-        if st.button("📊 Analytics", key="nav_analytics"):
-            st.info("📊 Advanced analytics coming soon!")
-        
-        if st.button("📁 Projects", key="nav_projects"):
-            st.info("📁 Project management coming soon!")
-        
-        st.markdown('<div class="aurora-nav-header">CONTENT</div>', unsafe_allow_html=True)
-        
-        if st.button("📝 History", key="nav_history"):
+        if st.button("Content History", key="nav_history"):
             st.session_state.current_page = "Content History"
             st.rerun()
         
-        if st.button("💡 Insights", key="nav_insights"):
-            st.info("💡 Advanced insights coming soon!")
-        
-        if st.button("🖼️ Images", key="nav_images"):
-            st.info("🖼️ Image gallery coming soon!")
-        
         st.markdown('<div class="aurora-nav-header">SETTINGS</div>', unsafe_allow_html=True)
         
-        if st.button("⚙️ Configuration", key="nav_settings"):
+        if st.button("Configuration", key="nav_settings"):
             st.session_state.current_page = "Settings"
             st.rerun()
         
-        if st.button("🔑 API Keys", key="nav_api_keys"):
-            st.session_state.current_page = "Settings"
-            st.rerun()
-        
-        if st.button("❤️ Health", key="nav_health"):
+        if st.button("System Health", key="nav_health"):
             st.session_state.current_page = "System Health"
             st.rerun()
         
         # Sign out section
         st.markdown('<div class="aurora-nav-header">ACCOUNT</div>', unsafe_allow_html=True)
-        if st.button("🚪 Sign Out", key="nav_signout"):
+        if st.button("Sign Out", key="nav_signout"):
             # Clear session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
@@ -1162,60 +1144,61 @@ def show_home_page():
     if 'editor_enabled' not in st.session_state:
         st.session_state.editor_enabled = False
     
-    # Page Header - Clean and focused
+    # Clean page header without emojis
     st.markdown("""
-    <div class="aurora-page-header">
-        <h1 class="aurora-page-title">Audio Content Pipeline</h1>
-        <p class="aurora-page-subtitle">Upload your audio file and transform it into actionable content with AI</p>
+    <div style="text-align: center; padding: 24px 0;">
+        <h1 style="color: #00FFFF; font-size: 2.5rem; font-weight: 700; margin-bottom: 8px;">Content Pipeline</h1>
+        <p style="color: rgba(255, 255, 255, 0.7); font-size: 1.1rem;">Transform your audio content into structured, actionable insights</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # CSS for clean upload section
+    # Clean upload section CSS and HTML
     st.markdown("""
     <style>
-    .aurora-upload-section {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
-        border: 2px dashed rgba(0, 255, 255, 0.3);
-        border-radius: 20px;
-        padding: 40px 30px;
-        margin: 30px 0;
+    .upload-zone {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+        border: 2px dashed rgba(0, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 32px;
+        margin: 24px 0;
         text-align: center;
-        backdrop-filter: blur(16px);
+        backdrop-filter: blur(8px);
     }
-    .aurora-upload-header h2 {
+    .upload-text {
         color: #00FFFF;
-        margin-bottom: 10px;
+        font-size: 1.2rem;
         font-weight: 600;
+        margin-bottom: 8px;
     }
-    .aurora-upload-header p {
-        color: rgba(255, 255, 255, 0.8);
-        margin-bottom: 0;
+    .upload-subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
     }
     </style>
-    
-    <div class="aurora-upload-section">
-        <div class="aurora-upload-header">
-            <h2>🎵 Upload Your Audio File</h2>
-            <p>Drag and drop or browse to select your audio file</p>
-        </div>
-    </div>
     """, unsafe_allow_html=True)
+    
+    # Upload zone with clean styling
+    st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
+    st.markdown('<div class="upload-text">Upload Audio File</div>', unsafe_allow_html=True)
+    st.markdown('<div class="upload-subtitle">Choose MP3, WAV, M4A, FLAC, or MP4 files up to 25MB</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader(
         "Choose audio file",
         type=['mp3', 'wav', 'm4a', 'flac', 'mp4'],
         key="main_file_upload",
-        help="Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB"
+        label_visibility="collapsed"
     )
     
-    # Minimal options - Just editor toggle in a clean, small section
+    # Clean editor toggle
     if uploaded_file is not None:
+        st.markdown("---")
         col1, col2 = st.columns([3, 1])
         with col1:
-            st.markdown("**Optional:** Enable AI Editor for enhanced content quality")
+            st.markdown("**AI Editor:** Enhance content quality with AI review and revision")
         with col2:
             editor_enabled = st.toggle(
-                "AI Editor", 
+                "Enable", 
                 value=st.session_state.get("editor_enabled", False),
                 key="editor_toggle"
             )
@@ -1232,32 +1215,33 @@ def show_home_page():
         
         controller = get_pipeline_controller()
         
-        # File info display
+        # File info display - clean without emoji
         file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
-        st.success(f"✅ File uploaded: **{uploaded_file.name}** ({file_size_mb:.2f} MB)")
+        st.info(f"**File uploaded:** {uploaded_file.name} ({file_size_mb:.2f} MB)")
         
-        # Clean processing section without bulky headers
+        # Processing controls - clean and professional
+        st.markdown("### Processing Pipeline")
         
         # Create columns for processing controls
         proc_col1, proc_col2, proc_col3 = st.columns([2, 1, 1])
         
         with proc_col1:
-            # Main processing button
+            # Main processing button - no emojis
             if not controller.is_active and not controller.is_complete:
-                if st.button("🚀 Start Processing", 
+                if st.button("Start Processing", 
                             type="primary", 
                             use_container_width=True,
                             key="start_processing"):
                     controller.start_pipeline(uploaded_file)
                     st.rerun()
             elif controller.is_active:
-                st.button("🔄 Processing...", 
+                st.button("Processing...", 
                          type="primary", 
                          use_container_width=True,
                          disabled=True,
                          key="processing_active")
             else:
-                st.button("✅ Processing Complete", 
+                st.button("Processing Complete", 
                          type="primary", 
                          use_container_width=True,
                          disabled=True,
@@ -1265,13 +1249,13 @@ def show_home_page():
         
         with proc_col2:
             if controller.is_active:
-                if st.button("⏹️ Stop", use_container_width=True, key="stop_btn"):
+                if st.button("Stop", use_container_width=True, key="stop_btn"):
                     controller.reset_pipeline()
                     st.rerun()
         
         with proc_col3:
             if controller.is_complete:
-                if st.button("🔄 Reset", use_container_width=True, key="reset_btn"):
+                if st.button("Reset", use_container_width=True, key="reset_btn"):
                     controller.reset_pipeline()
                     st.rerun()
         
@@ -1293,124 +1277,33 @@ def show_home_page():
         show_streaming_results()
     
     else:
-        # Welcome section with enhanced features showcase
-        st.markdown("""
-        <div class="aurora-section">
-            <div class="aurora-section-title">
-                <span>🌟</span>
-                Welcome to WhisperForge
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Clean welcome section without HTML code showing
+        st.markdown("---")
+        st.markdown("### Key Features")
         
-        # Feature showcase with beautiful styling
-        st.markdown("""
-        <div class="aurora-features-grid">
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">🧠</div>
-                <div class="aurora-feature-title">Smart Content Extraction</div>
-                <div class="aurora-feature-desc">AI identifies key insights and wisdom from your audio with advanced language understanding</div>
-            </div>
-            
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">📋</div>
-                <div class="aurora-feature-title">Structured Outlines</div>
-                <div class="aurora-feature-desc">Organized content ready for presentations, articles, or educational material</div>
-            </div>
-            
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">📱</div>
-                <div class="aurora-feature-title">Social Media Ready</div>
-                <div class="aurora-feature-desc">Platform-optimized content for maximum engagement across all social networks</div>
-            </div>
-            
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">🎨</div>
-                <div class="aurora-feature-title">Image Prompts</div>
-                <div class="aurora-feature-desc">AI-generated prompts for creating compelling visual content with DALL-E, Midjourney, or Stable Diffusion</div>
-            </div>
-            
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">☁️</div>
-                <div class="aurora-feature-title">Cloud Storage</div>
-                <div class="aurora-feature-desc">All content automatically saved and accessible from anywhere, anytime</div>
-            </div>
-            
-            <div class="aurora-feature-card">
-                <div class="aurora-feature-icon">🔒</div>
-                <div class="aurora-feature-title">Secure Processing</div>
-                <div class="aurora-feature-desc">Your data is encrypted and protected with enterprise-grade security</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Features in clean columns
+        col1, col2, col3 = st.columns(3)
         
-        # Add enhanced feature card styling
-        st.markdown("""
-        <style>
-        .aurora-features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 24px 0;
-        }
+        with col1:
+            st.markdown("""
+            **Structured Outlines**  
+            Organized content ready for publication
+            """)
         
-        .aurora-feature-card {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(16px) saturate(180%);
-            border: 1px solid rgba(0, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+        with col2:
+            st.markdown("""
+            **Social Media Ready**  
+            Platform-optimized content generation
+            """)
         
-        .aurora-feature-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.4), transparent);
-            animation: aurora-scan 8s ease-in-out infinite;
-            animation-delay: calc(var(--card-index, 0) * 0.5s);
-        }
+        with col3:
+            st.markdown("""
+            **Image Prompts**  
+            AI-generated prompts for visual content
+            """)
         
-        .aurora-feature-card:hover {
-            border-color: rgba(0, 255, 255, 0.2);
-            transform: translateY(-4px);
-            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1);
-        }
-        
-        .aurora-feature-icon {
-            font-size: 2.5rem;
-            margin-bottom: 16px;
-            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.3));
-        }
-        
-        .aurora-feature-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 12px;
-        }
-        
-        .aurora-feature-desc {
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.5;
-            font-size: 0.9rem;
-        }
-        
-        @keyframes aurora-scan {
-            0%, 100% { left: -100%; }
-            50% { left: 100%; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        st.info("👆 **Upload an audio file above to get started** with AI-powered content transformation!")
+        st.markdown("---")
+        st.markdown("**Get started by uploading an audio file above to transform it into structured content.**")
 
 
 def process_audio_pipeline_with_progress(audio_file, progress_tracker):
