@@ -135,7 +135,7 @@ def create_custom_header():
     """Create a custom header for the app"""
     st.markdown("""
     <div class="main-header">
-        <h1>⚡ WhisperForge - Supabase Edition</h1>
+        <h1>WhisperForge - Aurora Edition</h1>
         <p>Transform Audio into Actionable Content with AI</p>
     </div>
     """, unsafe_allow_html=True)

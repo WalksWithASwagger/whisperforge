@@ -6,7 +6,7 @@ import streamlit as st
 # Page config MUST be first
 st.set_page_config(
     page_title="WhisperForge",
-    page_icon="⚡",
+    page_icon="🌌",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -396,7 +396,7 @@ def handle_oauth_callback():
 
 def show_auth_page():
     """Show authentication page"""
-    st.title("🔐 WhisperForge - Sign In")
+    st.title("WhisperForge - Sign In")
     
     # Handle OAuth callback first
     if handle_oauth_callback():
@@ -476,18 +476,18 @@ def show_auth_page():
     
     # Show the OAuth button
     if st.session_state.get('oauth_url'):
-        st.link_button(
-            "🔵 Sign in with Google", 
-            st.session_state.oauth_url, 
-            type="primary", 
-            use_container_width=True
-        )
+                    st.link_button(
+                "Sign in with Google", 
+                st.session_state.oauth_url, 
+                type="primary", 
+                use_container_width=True
+            )
     else:
-        if st.button("🔵 Sign in with Google", type="primary", use_container_width=True):
+        if st.button("Sign in with Google", type="primary", use_container_width=True):
             st.error("Failed to generate Google sign-in URL. Please check your configuration.")
     
     st.markdown("---")
-    st.markdown("### 📧 Or sign in with email")
+    st.markdown("### Or sign in with email")
     
     tab1, tab2 = st.tabs(["Sign In", "Register"])
     
@@ -553,7 +553,57 @@ def show_main_app():
     
     # Sidebar
     with st.sidebar:
-        st.markdown("### 👤 Account")
+        # Apply aurora styling to sidebar
+        st.markdown("""
+        <style>
+        /* Aurora Sidebar Styling */
+        .stSidebar {
+            background: linear-gradient(
+                180deg,
+                rgba(0, 255, 255, 0.02) 0%,
+                rgba(64, 224, 208, 0.03) 50%,
+                rgba(125, 249, 255, 0.02) 100%
+            );
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 255, 255, 0.1);
+        }
+        
+        .stSidebar .stMarkdown h3 {
+            color: #00FFFF;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+        }
+        
+        .stSidebar .stProgress > div > div {
+            background: linear-gradient(90deg, #00FFFF, #7DF9FF, #40E0D0, #00FF7F);
+        }
+        
+        .stSidebar .stButton > button {
+            background: linear-gradient(135deg, #00FFFF 0%, #7DF9FF 100%);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 0 16px rgba(0, 255, 255, 0.2);
+        }
+        
+        .stSidebar .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 24px rgba(0, 255, 255, 0.4);
+        }
+        
+        .stSidebar .stSelectbox > div > div {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("### Account")
         db, _ = init_supabase()
         if db:
             user = db.get_user(st.session_state.user_id)
@@ -597,7 +647,105 @@ def show_main_app():
 
 def show_home_page():
     """Show main content generation page with beautiful file upload"""
-    st.title("⚡ WhisperForge Content Pipeline")
+    
+    # Apply comprehensive aurora styling to main page
+    st.markdown("""
+    <style>
+    /* Aurora Main Page Styling */
+    .main .stMarkdown h1 {
+        background: linear-gradient(
+            120deg,
+            #00FFFF 0%,
+            #7DF9FF 25%,
+            #40E0D0 50%,
+            #00FF7F 75%,
+            #00FFFF 100%
+        );
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: aurora-text-flow 4s ease-in-out infinite;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .main .stMarkdown h3 {
+        color: #00FFFF;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        text-shadow: 0 0 8px rgba(0, 255, 255, 0.3);
+    }
+    
+    .main .stMarkdown h4 {
+        color: #7DF9FF;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+    }
+    
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #00FFFF 0%, #7DF9FF 50%, #40E0D0 100%);
+        color: #000;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding: 0.75rem 2rem;
+        transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+        box-shadow: 0 0 24px rgba(0, 255, 255, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0 32px rgba(0, 255, 255, 0.5);
+        background: linear-gradient(135deg, #7DF9FF 0%, #00FFFF 50%, #00FF7F 100%);
+    }
+    
+    .stSelectbox > div > div {
+        background: rgba(0, 255, 255, 0.05);
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 12px;
+        backdrop-filter: blur(8px);
+    }
+    
+    .stTextInput > div > div > input {
+        background: rgba(0, 255, 255, 0.03);
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 8px;
+        color: #fff;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #00FFFF;
+        box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
+    }
+    
+    .stAlert > div {
+        border-radius: 12px;
+        backdrop-filter: blur(8px);
+    }
+    
+    .stExpander {
+        border: 1px solid rgba(0, 255, 255, 0.1);
+        border-radius: 12px;
+        background: rgba(0, 255, 255, 0.02);
+    }
+    
+    @keyframes aurora-text-flow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.title("WhisperForge Content Pipeline")
     st.markdown("Transform your audio content into structured, actionable insights with AI-powered analysis.")
     
     # Initialize file upload manager
@@ -621,14 +769,14 @@ def show_home_page():
             return
         
         if validation['warnings']:
-            st.warning("⚠️ Warnings:")
+            st.warning("Warnings:")
             for warning in validation['warnings']:
                 st.warning(f"• {warning}")
         
         st.session_state.audio_file = uploaded_file
         
         # Configuration section with beautiful styling
-        st.markdown("### ⚙️ Processing Configuration")
+        st.markdown("### Processing Configuration")
         
         config_container = st.container()
         with config_container:
@@ -644,7 +792,7 @@ def show_home_page():
                 )
             
             with col2:
-                st.markdown("#### 🧠 Model Selection")
+                st.markdown("#### Model Selection")
                 models = {
                     "Anthropic": ["claude-3-7-sonnet-20250219", "claude-3-sonnet-20240229"],
                     "OpenAI": ["gpt-4", "gpt-3.5-turbo"],
@@ -747,7 +895,7 @@ def show_home_page():
         
         with col1:
             st.markdown("""
-            **📤 Upload**
+            **Upload**
             
             Upload your audio or video file in any supported format. We handle the rest!
             """)
@@ -770,10 +918,10 @@ def show_home_page():
         st.markdown("### 🌟 Features")
         
         features = [
-            "🎯 **Smart Content Extraction** - AI identifies key insights and wisdom",
+            "**Smart Content Extraction** - AI identifies key insights and wisdom",
             "**Structured Outlines** - Organized content ready for use", 
-            "📱 **Social Media Ready** - Platform-optimized content generation",
-            "🎨 **Image Prompts** - AI-generated prompts for visual content",
+            "**Social Media Ready** - Platform-optimized content generation",
+            "**Image Prompts** - AI-generated prompts for visual content",
             "💾 **Cloud Storage** - All content saved and accessible anytime",
             "🔒 **Secure Processing** - Your data is protected and private"
         ]
@@ -1184,7 +1332,7 @@ def show_content_history_page():
     
     # Display content history
     for content in content_history:
-        with st.expander(f"📄 {content.get('title', 'Untitled')} - {content.get('created_at', '')[:10]}"):
+        with st.expander(f"{content.get('title', 'Untitled')} - {content.get('created_at', '')[:10]}"):
             
             col1, col2 = st.columns([3, 1])
             with col1:
@@ -1205,7 +1353,7 @@ def show_content_history_page():
 
 def show_settings_page():
     """Show settings page"""
-    st.title("⚙️ Settings")
+    st.title("Settings")
     
     tab1, tab2, tab3 = st.tabs(["API Keys", "Custom Prompts", "Knowledge Base"])
     
@@ -1287,7 +1435,7 @@ def show_settings_page():
         if kb:
             st.write("**Your knowledge base files:**")
             for name, content in kb.items():
-                with st.expander(f"📄 {name}"):
+                with st.expander(f"{name}"):
                     st.text_area("Content", content, height=200, key=f"kb_{name}")
         else:
             st.info("No knowledge base files yet.")
@@ -1313,7 +1461,7 @@ def show_health_page():
     if health["status"] == "healthy":
         st.success("✅ System is healthy")
     elif health["status"] == "degraded":
-        st.warning("⚠️ System is degraded")
+        st.warning("System is degraded")
     else:
         st.error("System is unhealthy")
     
@@ -1328,7 +1476,7 @@ def show_health_page():
             if "error" in str(status).lower() or "unhealthy" in str(status).lower():
                 st.error(f"**{check.title()}:** {status}")
             elif "missing" in str(status).lower():
-                st.warning(f"⚠️ **{check.title()}:** {status}")
+                st.warning(f"**{check.title()}:** {status}")
             else:
                 st.success(f"✅ **{check.title()}:** {status}")
     

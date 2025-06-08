@@ -577,10 +577,13 @@ class AuroraProgressTracker:
             return
         
         with self.container:
-            # Apply award-winning CSS
+            # Clear any existing content first
+            st.empty()
+            
+            # Apply award-winning CSS first
             st.markdown(self._get_aurora_css(), unsafe_allow_html=True)
             
-            # Create main progress container
+            # Create main progress container with proper escaping
             progress_html = f"""
             <div class="aurora-progress-container">
                 <div class="aurora-progress-header">
@@ -600,7 +603,7 @@ class AuroraProgressTracker:
                 <div class="aurora-progress-steps">
             """
             
-            # Add each step
+            # Add each step with proper HTML escaping
             for step in self.steps:
                 step_class = f"aurora-progress-step {step.status}"
                 
@@ -613,7 +616,13 @@ class AuroraProgressTracker:
                 
                 error_html = ""
                 if step.error_message:
-                    error_html = f'<div class="aurora-step-error">{step.error_message}</div>'
+                    # Escape error message for safe HTML
+                    escaped_error = step.error_message.replace('<', '&lt;').replace('>', '&gt;')
+                    error_html = f'<div class="aurora-step-error">{escaped_error}</div>'
+                
+                # Escape step name and description for safe HTML
+                escaped_name = step.name.replace('<', '&lt;').replace('>', '&gt;')
+                escaped_desc = step.description.replace('<', '&lt;').replace('>', '&gt;')
                 
                 progress_html += f"""
                 <div class="{step_class}">
@@ -621,8 +630,8 @@ class AuroraProgressTracker:
                         {self._get_step_icon(step)}
                     </div>
                     <div class="aurora-step-content">
-                        <div class="aurora-step-name">{step.name}</div>
-                        <div class="aurora-step-description">{step.description}</div>
+                        <div class="aurora-step-name">{escaped_name}</div>
+                        <div class="aurora-step-description">{escaped_desc}</div>
                         {duration_html}
                         {error_html}
                     </div>
@@ -634,11 +643,16 @@ class AuroraProgressTracker:
             </div>
             """
             
+            # Render the HTML
             st.markdown(progress_html, unsafe_allow_html=True)
     
     def create_display_container(self) -> None:
         """Create the Streamlit container for progress display"""
         self.container = st.empty()
+        # Initial display to ensure container is created
+        with self.container:
+            st.markdown("Initializing aurora progress system...")
+        # Update with actual progress
         self._update_display()
     
     @contextmanager

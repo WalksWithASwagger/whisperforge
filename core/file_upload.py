@@ -340,7 +340,7 @@ def create_upload_progress_indicator(filename: str, progress: float = 0.0):
     progress_html = f"""
     <div class="upload-progress-container">
         <div class="upload-progress-header">
-            <span class="upload-filename">📤 {filename}</span>
+            <span class="upload-filename">{filename}</span>
             <span class="upload-percentage">{progress:.0f}%</span>
         </div>
         <div class="upload-progress-bar">
