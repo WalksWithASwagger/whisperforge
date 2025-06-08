@@ -403,7 +403,7 @@ def show_auth_page():
         return
     
     # Google OAuth Sign-In (Clean Supabase Implementation)
-    st.markdown("### 🚀 Quick Sign-In")
+    st.markdown("### Quick Sign-In")
     
     # Generate OAuth URL once and store it
     if 'oauth_url' not in st.session_state:
@@ -578,7 +578,7 @@ def show_main_app():
         st.markdown("---")
         
         # Navigation
-        st.markdown("### 📋 Navigation")
+        st.markdown("### Navigation")
         page = st.selectbox("Go to", ["Home", "Content History", "Settings"], key="nav_select")
         
         if page != st.session_state.get("current_page", "Home"):
@@ -615,7 +615,7 @@ def show_home_page():
         validation = file_manager.validate_file(uploaded_file)
         
         if not validation['valid']:
-            st.error("❌ File validation failed:")
+            st.error("File validation failed:")
             for error in validation['errors']:
                 st.error(f"• {error}")
             return
@@ -685,7 +685,7 @@ def show_home_page():
             )
         
         # Beautiful process button
-        st.markdown("### 🚀 Ready to Process")
+        st.markdown("### Ready to Process")
         
         process_button_html = """
         <div style="text-align: center; margin: 20px 0;">
@@ -736,12 +736,12 @@ def show_home_page():
         
         st.markdown(process_button_html, unsafe_allow_html=True)
         
-        if st.button("🚀 Start Processing Pipeline", type="primary", use_container_width=True):
+        if st.button("Start Processing Pipeline", type="primary", use_container_width=True):
             process_audio_pipeline(uploaded_file)
     
     else:
         # Show helpful information when no file is uploaded
-        st.markdown("### 💡 How It Works")
+        st.markdown("### How It Works")
         
         col1, col2, col3 = st.columns(3)
         
@@ -771,7 +771,7 @@ def show_home_page():
         
         features = [
             "🎯 **Smart Content Extraction** - AI identifies key insights and wisdom",
-            "📋 **Structured Outlines** - Organized content ready for use", 
+            "**Structured Outlines** - Organized content ready for use", 
             "📱 **Social Media Ready** - Platform-optimized content generation",
             "🎨 **Image Prompts** - AI-generated prompts for visual content",
             "💾 **Cloud Storage** - All content saved and accessible anytime",
@@ -813,7 +813,7 @@ def process_audio_pipeline(audio_file):
                 raise Exception("Failed to transcribe audio - transcript is empty")
         
         # Display transcript with aurora styling
-        st.markdown("### 📄 Transcript Generated")
+        st.markdown("### Transcript Generated")
         with st.expander("View Full Transcript", expanded=False):
             st.text_area("", transcript, height=200, key="transcript_display")
         
@@ -882,23 +882,23 @@ def process_audio_pipeline(audio_file):
                 raise Exception("Failed to save content to database")
             time.sleep(0.2)  # Brief storage simulation
                     
-        # Show success message with animation
-        st.balloons()
+        # Show success message with professional notification
+        st.success("Processing pipeline completed successfully!")
         
         # Display generated content in beautiful aurora-themed cards
-        st.markdown("### ✨ Generated Content")
+        st.markdown("### Generated Content")
         st.markdown("*Your content is ready! Click on each tab to explore the results.*")
         
         # Create tabs for each content type with enhanced styling
         tab1, tab2, tab3, tab4 = st.tabs([
-            "💡 Wisdom & Insights", 
-            "📋 Content Outline", 
-            "📱 Social Media", 
-            "🎨 Image Prompts"
+            "Wisdom & Insights", 
+            "Content Outline", 
+            "Social Media", 
+            "Image Prompts"
         ])
         
         with tab1:
-            st.markdown("#### 🧠 Key Insights & Wisdom")
+            st.markdown("#### Key Insights & Wisdom")
             st.markdown("*AI-extracted insights and valuable takeaways from your content*")
             
             # Create a beautiful aurora content card
@@ -906,7 +906,6 @@ def process_audio_pipeline(audio_file):
             wisdom_html = f"""
             <div class="aurora-content-card aurora-wisdom-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-icon">💡</span>
                     <span class="aurora-content-title">Wisdom & Insights</span>
                 </div>
                 <div class="aurora-content-body">
@@ -917,18 +916,17 @@ def process_audio_pipeline(audio_file):
             st.markdown(wisdom_html, unsafe_allow_html=True)
             
             # Copy button
-            if st.button("📋 Copy Wisdom", key="copy_wisdom"):
+            if st.button("Copy Wisdom", key="copy_wisdom"):
                 st.code(wisdom, language="markdown")
             
         with tab2:
-            st.markdown("#### 📊 Structured Content Outline")
+            st.markdown("#### Structured Content Outline")
             st.markdown("*Organized structure ready for presentations, articles, or courses*")
             
             outline_formatted = outline.replace('\n', '<br>')
             outline_html = f"""
             <div class="aurora-content-card aurora-outline-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-icon">📋</span>
                     <span class="aurora-content-title">Content Outline</span>
                 </div>
                 <div class="aurora-content-body">
@@ -938,18 +936,17 @@ def process_audio_pipeline(audio_file):
             """
             st.markdown(outline_html, unsafe_allow_html=True)
             
-            if st.button("📋 Copy Outline", key="copy_outline"):
+            if st.button("Copy Outline", key="copy_outline"):
                 st.code(outline, language="markdown")
             
         with tab3:
-            st.markdown("#### 📲 Social Media Ready Content")
+            st.markdown("#### Social Media Ready Content")
             st.markdown("*Platform-optimized content for maximum engagement*")
             
             social_formatted = social.replace('\n', '<br>')
             social_html = f"""
             <div class="aurora-content-card aurora-social-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-icon">📱</span>
                     <span class="aurora-content-title">Social Media Content</span>
                 </div>
                 <div class="aurora-content-body">
@@ -959,18 +956,17 @@ def process_audio_pipeline(audio_file):
             """
             st.markdown(social_html, unsafe_allow_html=True)
             
-            if st.button("📋 Copy Social Content", key="copy_social"):
+            if st.button("Copy Social Content", key="copy_social"):
                 st.code(social, language="markdown")
             
         with tab4:
-            st.markdown("#### 🎭 AI Image Generation Prompts")
+            st.markdown("#### AI Image Generation Prompts")
             st.markdown("*Ready-to-use prompts for creating visual content with AI tools*")
             
             images_formatted = images.replace('\n', '<br>')
             images_html = f"""
             <div class="aurora-content-card aurora-images-card">
                 <div class="aurora-content-header">
-                    <span class="aurora-content-icon">🎨</span>
                     <span class="aurora-content-title">Image Generation Prompts</span>
                 </div>
                 <div class="aurora-content-body">
@@ -980,118 +976,176 @@ def process_audio_pipeline(audio_file):
             """
             st.markdown(images_html, unsafe_allow_html=True)
             
-            if st.button("📋 Copy Image Prompts", key="copy_images"):
+            if st.button("Copy Image Prompts", key="copy_images"):
                 st.code(images, language="markdown")
         
-        # Add aurora content card styling
+        # Add award-winning aurora content card styling
         aurora_content_css = """
         <style>
+        /* Aurora Content Cards - Award-Winning Design */
+        :root {
+            --aurora-cyan: #00FFFF;
+            --aurora-turquoise: #40E0D0;
+            --aurora-electric-blue: #7DF9FF;
+            --aurora-spring-green: #00FF7F;
+        }
+        
         .aurora-content-card {
             background: linear-gradient(
                 135deg,
-                rgba(0, 255, 255, 0.02) 0%,
-                rgba(64, 224, 208, 0.03) 50%,
-                rgba(125, 249, 255, 0.02) 100%
+                rgba(0, 255, 255, 0.03) 0%,
+                rgba(64, 224, 208, 0.04) 30%,
+                rgba(125, 249, 255, 0.03) 60%,
+                rgba(0, 255, 127, 0.02) 100%
             );
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            margin: 20px 0;
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 32px;
+            margin: 24px 0;
             position: relative;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
             box-shadow: 
-                0 0 8px rgba(0, 255, 255, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1),
-                0 8px 32px rgba(0, 0, 0, 0.12);
+                0 0 32px rgba(0, 255, 255, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                0 16px 64px rgba(0, 0, 0, 0.12);
+        }
+        
+        .aurora-content-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                var(--aurora-cyan) 20%,
+                var(--aurora-electric-blue) 40%,
+                var(--aurora-turquoise) 60%,
+                var(--aurora-spring-green) 80%,
+                transparent 100%
+            );
+            animation: aurora-scan 5s ease-in-out infinite;
         }
         
         .aurora-content-card:hover {
-            border-color: rgba(0, 255, 255, 0.3);
+            border-color: rgba(0, 255, 255, 0.25);
             box-shadow: 
-                0 0 16px rgba(0, 255, 255, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                0 12px 48px rgba(0, 0, 0, 0.16);
-            transform: translateY(-2px);
+                0 0 48px rgba(0, 255, 255, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                0 24px 96px rgba(0, 0, 0, 0.16);
+            transform: translateY(-4px);
         }
         
         .aurora-content-header {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-        }
-        
-        .aurora-content-icon {
-            font-size: 20px;
-            filter: drop-shadow(0 0 4px currentColor);
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.12);
         }
         
         .aurora-content-title {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
-            font-weight: 600;
-            font-size: 1.1rem;
-            letter-spacing: -0.02em;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: -0.03em;
             background: linear-gradient(
-                90deg,
-                var(--aurora-cyan),
-                var(--aurora-electric-blue),
-                var(--aurora-turquoise)
+                120deg,
+                var(--aurora-cyan) 0%,
+                var(--aurora-electric-blue) 25%,
+                var(--aurora-turquoise) 50%,
+                var(--aurora-spring-green) 75%,
+                var(--aurora-cyan) 100%
             );
-            background-size: 200% 100%;
+            background-size: 300% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            animation: aurora-text-flow 4s ease-in-out infinite;
         }
         
         .aurora-content-body {
-            color: rgba(255, 255, 255, 0.9);
-            line-height: 1.6;
-            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.92);
+            line-height: 1.7;
+            font-size: 1rem;
             letter-spacing: -0.01em;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
         }
         
-        .aurora-wisdom-card::before {
+        .aurora-wisdom-card::after {
             content: "";
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--aurora-cyan), var(--aurora-electric-blue));
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--aurora-cyan), var(--aurora-electric-blue));
+            opacity: 0.6;
         }
         
-        .aurora-outline-card::before {
+        .aurora-outline-card::after {
             content: "";
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--aurora-spring-green), var(--aurora-turquoise));
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--aurora-spring-green), var(--aurora-turquoise));
+            opacity: 0.6;
         }
         
-        .aurora-social-card::before {
+        .aurora-social-card::after {
             content: "";
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--aurora-turquoise), var(--aurora-electric-blue));
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--aurora-turquoise), var(--aurora-electric-blue));
+            opacity: 0.6;
         }
         
-        .aurora-images-card::before {
+        .aurora-images-card::after {
             content: "";
             position: absolute;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, var(--aurora-electric-blue), var(--aurora-cyan));
+            right: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--aurora-electric-blue), var(--aurora-cyan));
+            opacity: 0.6;
+        }
+        
+        @keyframes aurora-scan {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        
+        @keyframes aurora-text-flow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .aurora-content-card {
+                padding: 24px 20px;
+                margin: 16px 0;
+                border-radius: 16px;
+            }
+            
+            .aurora-content-title {
+                font-size: 1.1rem;
+            }
+            
+            .aurora-content-body {
+                font-size: 0.95rem;
+            }
         }
         </style>
         """
@@ -1107,10 +1161,10 @@ def process_audio_pipeline(audio_file):
         })
         
         # Show completion notification
-        st.success(f"🎉 Pipeline completed successfully! Content saved with ID: {content_id if 'content_id' in locals() else 'N/A'}")
+        st.success(f"Pipeline completed successfully! Content saved with ID: {content_id if 'content_id' in locals() else 'N/A'}")
         
     except Exception as e:
-        st.error(f"❌ Pipeline error: {e}")
+        st.error(f"Pipeline error: {e}")
         pipeline_data["error"] = str(e)
         logger.exception("Pipeline error")
     
@@ -1261,7 +1315,7 @@ def show_health_page():
     elif health["status"] == "degraded":
         st.warning("⚠️ System is degraded")
     else:
-        st.error("❌ System is unhealthy")
+        st.error("System is unhealthy")
     
     # Detailed checks
     st.subheader("System Checks")
@@ -1272,7 +1326,7 @@ def show_health_page():
                 st.write(f"  - {key}: {value}")
         else:
             if "error" in str(status).lower() or "unhealthy" in str(status).lower():
-                st.error(f"❌ **{check.title()}:** {status}")
+                st.error(f"**{check.title()}:** {status}")
             elif "missing" in str(status).lower():
                 st.warning(f"⚠️ **{check.title()}:** {status}")
             else:
