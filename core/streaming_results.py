@@ -5,48 +5,133 @@ Shows content as it's generated with beautiful Aurora styling
 
 import streamlit as st
 import html
+import time
 from typing import Dict, Any, Optional
 from .streaming_pipeline import get_pipeline_controller
 
 
 def show_streaming_results():
-    """Display results as they become available during processing - streaming in individual containers"""
+    """Display beautiful final results when processing is complete"""
     controller = get_pipeline_controller()
     results = controller.get_results()
     errors = controller.get_errors()
     
+    # Only show final results when pipeline is complete
+    if not controller.is_complete:
+        return
+        
     if not results and not errors:
         return
     
-    # Results header
-    st.markdown("### ✨ Generated Content")
-    st.markdown("Each step streams in real-time as processing completes:")
+    # Beautiful final results header
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 24px 0;
+        text-align: center;
+    ">
+        <h2 style="color: #00FFFF; margin: 0 0 8px 0;">Content Generated</h2>
+        <p style="color: rgba(255, 255, 255, 0.7); margin: 0;">Your luminous wisdom, ready to share</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Define the order and display info for each step
-    step_order = [
-        ("upload_validation", "📤 Upload Validation", "File validation and pre-processing"),
-        ("transcription", "🎙️ Audio Transcription", "Converting speech to text"),
-        ("wisdom_extraction", "💎 Wisdom Extraction", "Key insights and takeaways"),
-        ("outline_creation", "📋 Content Outline", "Structured organization"),
-        ("article_creation", "📰 Full Article", "Comprehensive content piece"),
-        ("social_content", "📱 Social Media", "Platform-optimized posts"),
-        ("image_prompts", "🖼️ Image Prompts", "AI-generated visual concepts"),
-        ("database_storage", "💾 Content Storage", "Saving to secure database")
-    ]
+    # Export options
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("📤 Export PDF", type="secondary", use_container_width=True):
+            st.info("PDF export feature coming soon!")
+    with col2:
+        if st.button("📝 Send to Notion", type="primary", use_container_width=True):
+            st.info("Notion integration coming soon!")
     
-    # Show each step in its own container as it becomes available
-    for step_id, step_title, step_description in step_order:
-        if step_id in results or step_id in errors:
-            _show_content_stream_card(step_id, step_title, step_description, 
-                                    results.get(step_id, ""), errors.get(step_id))
+    # Content tabs like in your screenshot
+    if "social_content" in results:
+        tabs = st.tabs(["📰 Blog Post", "📱 Social Posts", "💎 Wisdom", "🖼️ Images", "🎙️ Transcript"])
+        
+        with tabs[0]:
+            if "article_creation" in results:
+                st.markdown("### Full Article")
+                st.markdown(results["article_creation"])
+                if st.button("📋 Copy Article", key="copy_article"):
+                    st.code(results["article_creation"], language="markdown")
+        
+        with tabs[1]:
+            if "social_content" in results:
+                _show_social_posts_beautiful(results["social_content"])
+                
+        with tabs[2]:
+            if "wisdom_extraction" in results:
+                st.markdown("### Key Insights")
+                st.markdown(results["wisdom_extraction"])
+                if st.button("📋 Copy Wisdom", key="copy_wisdom"):
+                    st.code(results["wisdom_extraction"], language="markdown")
+        
+        with tabs[3]:
+            if "image_prompts" in results:
+                st.markdown("### Image Generation Prompts")
+                st.markdown(results["image_prompts"])
+                if st.button("📋 Copy Prompts", key="copy_images"):
+                    st.code(results["image_prompts"], language="markdown")
+                    
+        with tabs[4]:
+            if "transcription" in results:
+                st.markdown("### Full Transcript")
+                st.markdown(results["transcription"])
+                if st.button("📋 Copy Transcript", key="copy_transcript"):
+                    st.code(results["transcription"], language="markdown")
+
+
+def _show_social_posts_beautiful(social_content: str):
+    """Show social posts in beautiful individual cards like the screenshot"""
     
-    # Show editor feedback separately if available
-    if st.session_state.get("editor_enabled", False):
-        critique_keys = [k for k in results.keys() if k.endswith("_critique")]
-        if critique_keys:
-            st.markdown("---")
-            st.markdown("### ✍️ Editorial Review")
-            _show_editor_feedback(results)
+    # Parse the social content into individual posts
+    posts = []
+    if social_content:
+        # Try to split by common post separators
+        potential_posts = social_content.split('\n\n')
+        post_num = 1
+        for post in potential_posts:
+            if post.strip() and len(post.strip()) > 20:  # Filter out empty or very short lines
+                posts.append((f"Social Post #{post_num}", post.strip()))
+                post_num += 1
+    
+    if not posts:
+        posts = [("Social Post #1", social_content)]  # Fallback to single post
+    
+    # Show each post in a beautiful card
+    for post_title, post_content in posts[:5]:  # Limit to 5 posts max
+        st.markdown(f"""
+        <div style="
+            background: rgba(0, 255, 255, 0.03);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 12px 0;
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="color: #00FFFF; margin: 0;">{post_title}</h4>
+                <button style="
+                    background: transparent;
+                    border: 1px solid rgba(0, 255, 255, 0.3);
+                    color: #00FFFF;
+                    border-radius: 6px;
+                    padding: 4px 8px;
+                    font-size: 0.8rem;
+                    cursor: pointer;
+                ">📋</button>
+            </div>
+            <div style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
+                {post_content.replace(chr(10), '<br>')}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Individual copy button for each post
+        if st.button(f"📋 Copy {post_title}", key=f"copy_{post_title.lower().replace(' ', '_').replace('#', '')}", use_container_width=False):
+            st.code(post_content, language="text")
 
 
 def _show_content_stream_card(step_id: str, step_title: str, step_description: str, content: str, error: Optional[str] = None):
@@ -175,75 +260,156 @@ def _show_editor_feedback(results: Dict[str, Any]):
 
 
 def show_processing_status():
-    """Show current processing status with beautiful Aurora progress bars"""
+    """Show pipeline status with individual step containers like in the screenshots"""
     controller = get_pipeline_controller()
     
     if not controller.is_active and not controller.is_complete:
         return
     
-    # Beautiful Aurora Progress Bar
-    st.markdown("### 📊 Processing Pipeline")
-    
-    # Get current step info
+    # Overall progress header
     current_step = controller.current_step_index
     total_steps = 8
-    progress_percentage = (current_step / total_steps) * 100
+    overall_progress = (current_step / total_steps) * 100
     
-    # Create Aurora progress bar with HTML
-    aurora_progress_html = f"""
-    <div style="
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
-        backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid rgba(0, 255, 255, 0.15);
-        border-radius: 16px;
-        padding: 24px;
-        margin: 16px 0;
-        position: relative;
-        overflow: hidden;
-    ">
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        ">
-            <h4 style="color: #00FFFF; margin: 0;">WhisperForge Pipeline</h4>
-            <span style="color: rgba(255, 255, 255, 0.8);">{current_step}/{total_steps} steps • {progress_percentage:.1f}%</span>
+    st.markdown(f"""
+    <div style="margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="color: #00FFFF; margin: 0;">Overall Progress</h3>
+            <span style="color: rgba(255, 255, 255, 0.8); font-size: 1.2rem; font-weight: bold;">{overall_progress:.0f}%</span>
         </div>
-        
         <div style="
-            background: rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 12px;
-            height: 12px;
+            height: 8px;
             overflow: hidden;
-            margin: 16px 0;
         ">
             <div style="
                 background: linear-gradient(90deg, #00FFFF, #7DF9FF, #40E0D0);
                 height: 100%;
-                width: {progress_percentage}%;
+                width: {overall_progress}%;
                 border-radius: 12px;
-                box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+                box-shadow: 0 0 16px rgba(0, 255, 255, 0.6);
                 transition: width 0.8s ease;
             "></div>
         </div>
-        
-        <div style="color: rgba(255, 255, 255, 0.9); font-size: 0.9rem;">
-            {'🔄 Processing...' if controller.is_active else '✅ Complete!'}
-        </div>
     </div>
-    """
+    """, unsafe_allow_html=True)
     
-    st.markdown(aurora_progress_html, unsafe_allow_html=True)
+    # Pipeline steps with individual containers
+    pipeline_steps = [
+        ("Audio Transcription", "Converting speech to text using Whisper AI", "upload_validation"),
+        ("Wisdom Extraction", "Identifying key insights and valuable knowledge", "wisdom_extraction"),  
+        ("Outline Generation", "Creating structured content framework", "outline_creation"),
+        ("Blog Composition", "Crafting engaging article content", "article_creation"),
+        ("Social Media Posts", "Generating 5 platform-optimized posts", "social_content"),
+        ("Image Prompts", "Creating visual content descriptions", "image_prompts"),
+        ("Export & Metadata", "Finalizing output and Notion integration", "database_storage")
+    ]
     
-    # Control buttons
+    results = controller.get_results()
+    
+    for i, (title, description, step_key) in enumerate(pipeline_steps):
+        # Determine step state
+        if i < current_step:
+            # Completed
+            state = "completed"
+            icon = "✅"
+            border_color = "rgba(34, 197, 94, 0.4)"
+            bg_color = "rgba(34, 197, 94, 0.05)"
+            progress = 100
+        elif i == current_step and controller.is_active:
+            # Currently processing
+            state = "processing" 
+            icon = "🔄"
+            border_color = "rgba(0, 255, 255, 0.4)"
+            bg_color = "rgba(0, 255, 255, 0.08)"
+            # Simulate step progress (you can make this more accurate)
+            progress = min(85, (time.time() % 10) * 10) if controller.is_active else 42
+        else:
+            # Pending
+            state = "pending"
+            icon = "⭕"
+            border_color = "rgba(107, 114, 128, 0.3)"
+            bg_color = "rgba(107, 114, 128, 0.05)"
+            progress = 0
+            
+        # Create individual step container
+        step_html = f"""
+        <div style="
+            background: {bg_color};
+            border: 1px solid {border_color};
+            border-radius: 12px;
+            padding: 20px;
+            margin: 12px 0;
+            position: relative;
+            overflow: hidden;
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.2rem;">{icon}</span>
+                    <div>
+                        <h4 style="color: #00FFFF; margin: 0; font-size: 1.1rem;">{title}</h4>
+                        <p style="color: rgba(255, 255, 255, 0.6); margin: 4px 0 0 0; font-size: 0.9rem;">{description}</p>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span style="color: rgba(255, 255, 255, 0.8); font-weight: bold;">{progress}%</span>
+                    {"<span style='color: rgba(255, 255, 255, 0.5); font-size: 0.8rem; margin-left: 8px;'>▼</span>" if state == "completed" else ""}
+                </div>
+            </div>
+        """
+        
+        # Add progress bar for processing steps
+        if state == "processing":
+            step_html += f"""
+            <div style="margin-top: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="color: rgba(255, 255, 255, 0.7); font-size: 0.8rem;">Processing...</span>
+                    <span style="color: rgba(255, 255, 255, 0.7); font-size: 0.8rem;">{progress}%</span>
+                </div>
+                <div style="
+                    background: rgba(0, 0, 0, 0.3);
+                    border-radius: 8px;
+                    height: 6px;
+                    overflow: hidden;
+                ">
+                    <div style="
+                        background: linear-gradient(90deg, #00FFFF, #40E0D0);
+                        height: 100%;
+                        width: {progress}%;
+                        border-radius: 8px;
+                        box-shadow: 0 0 12px rgba(0, 255, 255, 0.5);
+                        transition: width 0.5s ease;
+                    "></div>
+                </div>
+            </div>
+            """
+        
+        step_html += "</div>"
+        
+        st.markdown(step_html, unsafe_allow_html=True)
+        
+        # Show expandable content for completed steps
+        if state == "completed" and step_key in results:
+            with st.expander(f"View {title} Results", expanded=False):
+                content = results[step_key]
+                if len(str(content)) > 300:
+                    st.markdown(f"**Preview:** {str(content)[:300]}...")
+                    if st.button(f"Show Full Content", key=f"full_{step_key}"):
+                        st.markdown(content)
+                else:
+                    st.markdown(content)
+    
+    # Control button
     if controller.is_active:
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.info(f"🔄 Currently processing step {current_step + 1} of {total_steps}")
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([2, 1, 1])
         with col2:
-            if st.button("⏹️ Stop", key="stop_processing"):
+            if st.button("⏹️ Stop Processing", key="stop_processing", type="secondary"):
                 controller.reset_pipeline()
+                st.rerun()
+        with col3:
+            if st.button("🔄 Refresh", key="refresh_status"):
                 st.rerun()
     
     if controller.is_complete:
