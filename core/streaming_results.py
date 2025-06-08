@@ -10,7 +10,7 @@ from .streaming_pipeline import get_pipeline_controller
 
 
 def show_streaming_results():
-    """Display results as they become available during processing"""
+    """Display results as they become available during processing - streaming in individual containers"""
     controller = get_pipeline_controller()
     results = controller.get_results()
     errors = controller.get_errors()
@@ -19,64 +19,73 @@ def show_streaming_results():
         return
     
     # Results header
-    st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>✨</span>
-            Generated Content
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### ✨ Generated Content")
+    st.markdown("Each step streams in real-time as processing completes:")
     
-    # Determine which tabs to show based on available results
-    available_tabs = []
-    tab_keys = []
+    # Define the order and display info for each step
+    step_order = [
+        ("upload_validation", "📤 Upload Validation", "File validation and pre-processing"),
+        ("transcription", "🎙️ Audio Transcription", "Converting speech to text"),
+        ("wisdom_extraction", "💎 Wisdom Extraction", "Key insights and takeaways"),
+        ("outline_creation", "📋 Content Outline", "Structured organization"),
+        ("article_creation", "📰 Full Article", "Comprehensive content piece"),
+        ("social_content", "📱 Social Media", "Platform-optimized posts"),
+        ("image_prompts", "🖼️ Image Prompts", "AI-generated visual concepts"),
+        ("database_storage", "💾 Content Storage", "Saving to secure database")
+    ]
     
-    if "transcription" in results:
-        available_tabs.append("📝 Transcript")
-        tab_keys.append("transcription")
+    # Show each step in its own container as it becomes available
+    for step_id, step_title, step_description in step_order:
+        if step_id in results or step_id in errors:
+            _show_content_stream_card(step_id, step_title, step_description, 
+                                    results.get(step_id, ""), errors.get(step_id))
     
-    if "wisdom_extraction" in results:
-        available_tabs.append("💎 Wisdom")
-        tab_keys.append("wisdom_extraction")
-    
-    if "outline_creation" in results:
-        available_tabs.append("📋 Outline")
-        tab_keys.append("outline_creation")
-    
-    if "article_creation" in results:
-        available_tabs.append("📰 Article")
-        tab_keys.append("article_creation")
-    
-    if "social_content" in results:
-        available_tabs.append("📱 Social")
-        tab_keys.append("social_content")
-    
-    if "image_prompts" in results:
-        available_tabs.append("🖼️ Images")
-        tab_keys.append("image_prompts")
-    
-    # Show editor critiques if available
+    # Show editor feedback separately if available
     if st.session_state.get("editor_enabled", False):
         critique_keys = [k for k in results.keys() if k.endswith("_critique")]
         if critique_keys:
-            available_tabs.append("✍️ Editor")
-            tab_keys.append("editor_feedback")
+            st.markdown("---")
+            st.markdown("### ✍️ Editorial Review")
+            _show_editor_feedback(results)
+
+
+def _show_content_stream_card(step_id: str, step_title: str, step_description: str, content: str, error: Optional[str] = None):
+    """Show a streaming content card with Aurora styling for real-time display"""
     
-    if not available_tabs:
-        st.info("🔄 Processing started... Results will appear here as they're generated.")
+    if error:
+        st.error(f"❌ {step_title}: {error}")
         return
     
-    # Create dynamic tabs
-    tabs = st.tabs(available_tabs)
+    if not content:
+        st.info(f"🔄 {step_title}: {step_description}...")
+        return
     
-    for i, (tab, key) in enumerate(zip(tabs, tab_keys)):
-        with tab:
-            if key == "editor_feedback":
-                _show_editor_feedback(results)
+    # Create expandable container for each result
+    with st.expander(f"✅ {step_title} - Complete", expanded=True):
+        st.markdown(f"**{step_description}**")
+        
+        # Special handling for different content types
+        if step_id == "upload_validation":
+            if isinstance(content, dict):
+                st.success(f"File validated: {content.get('file_name', 'Unknown')} ({content.get('file_size_mb', 0):.1f} MB)")
             else:
-                _show_content_card(key, results.get(key, ""), errors.get(key))
-
+                st.success(str(content))
+        elif step_id == "database_storage":
+            st.success("Content saved to database successfully")
+        else:
+            # Show the actual content with proper formatting
+            if len(content) > 1000:
+                # For long content, show first part with expand option
+                st.markdown(content[:500] + "...")
+                with st.expander("Show full content"):
+                    st.markdown(content)
+            else:
+                st.markdown(content)
+        
+        # Copy button for text content
+        if step_id not in ["upload_validation", "database_storage"] and content:
+            if st.button(f"📋 Copy {step_title}", key=f"copy_{step_id}", use_container_width=False):
+                st.code(content, language="markdown")
 
 def _show_content_card(content_type: str, content: str, error: Optional[str] = None):
     """Show a content card with Aurora styling"""
@@ -172,34 +181,41 @@ def show_processing_status():
     if not controller.is_active and not controller.is_complete:
         return
     
-    # Processing status section
-    st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>📊</span>
-            Processing Status
+    # Get the progress tracker from session state if available
+    progress_tracker = st.session_state.get('progress_tracker')
+    
+    if progress_tracker:
+        # Update the progress display - this should render the HTML properly
+        progress_tracker._update_display()
+    else:
+        # Fallback display without progress tracker
+        st.markdown("""
+        <div class="aurora-section">
+            <div class="aurora-section-title">
+                <span>📊</span>
+                Processing Status
+            </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+        if controller.is_active:
+            col1, col2, col3 = st.columns([2, 1, 1])
+            
+            with col1:
+                current_step = controller.current_step_index
+                total_steps = 8  # Fixed total steps
+                st.info(f"🔄 Processing step {current_step + 1} of {total_steps}...")
+            
+            with col2:
+                progress = controller.progress_percentage
+                st.metric("Progress", f"{progress:.1f}%")
+            
+            with col3:
+                if st.button("⏹️ Stop Processing", key="stop_processing"):
+                    controller.reset_pipeline()
+                    st.rerun()
     
-    if controller.is_active:
-        col1, col2, col3 = st.columns([2, 1, 1])
-        
-        with col1:
-            current_step = controller.current_step_index
-            total_steps = len(controller.get_results()) + 1  # +1 for current step
-            st.info(f"🔄 Processing step {current_step + 1} of 8...")
-        
-        with col2:
-            progress = controller.progress_percentage
-            st.metric("Progress", f"{progress:.1f}%")
-        
-        with col3:
-            if st.button("⏹️ Stop Processing", key="stop_processing"):
-                controller.reset_pipeline()
-                st.rerun()
-    
-    elif controller.is_complete:
+    if controller.is_complete:
         st.success("🎉 Processing completed successfully!")
         
         col1, col2 = st.columns([1, 1])

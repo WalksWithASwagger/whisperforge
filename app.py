@@ -624,6 +624,30 @@ def show_auth_page():
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+def _generate_nav_buttons():
+    """Generate navigation buttons for header"""
+    pages = [
+        ("Content Pipeline", "🎙️"),
+        ("Content History", "📋"), 
+        ("Settings", "⚙️"),
+        ("Health Check", "🔍")
+    ]
+    
+    current_page = st.session_state.get('current_page', 'Content Pipeline')
+    
+    # Create column layout for buttons
+    cols = st.columns(len(pages))
+    
+    for i, (page, icon) in enumerate(pages):
+        with cols[i]:
+            if st.button(f"{icon} {page}", key=f"nav_{page}", 
+                        type="primary" if page == current_page else "secondary",
+                        use_container_width=True):
+                st.session_state.current_page = page
+                st.rerun()
+    
+    return ""  # Return empty string since we're using Streamlit buttons
+
 def show_main_app():
     """Main application with clean layout"""
     
@@ -634,6 +658,15 @@ def show_main_app():
         st.session_state.ai_provider = "OpenAI"
     if 'ai_model' not in st.session_state:
         st.session_state.ai_model = "gpt-4o"
+    
+    # Check for page navigation via query params
+    query_params = st.query_params
+    if 'page' in query_params:
+        page = query_params['page'].replace('_', ' ')
+        if page in ["Content Pipeline", "Content History", "Settings", "Health Check"]:
+            st.session_state.current_page = page
+            # Clear the query param after processing
+            st.query_params.clear()
     
     # Load user data
     st.session_state.prompts = get_user_prompts_supabase()
@@ -688,32 +721,92 @@ def show_main_app():
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
+    # Enhanced Header with Aurora Navigation
     st.markdown("""
-    <div class="main-header">
-        <div class="logo">WhisperForge</div>
-        <div class="user-info">✓ Authenticated</div>
-    </div>
+    <style>
+    .aurora-logo {
+        font-size: 2.2rem;
+        font-weight: 700;
+        background: linear-gradient(120deg, #00FFFF, #7DF9FF, #40E0D0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        text-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+        text-align: center;
+        margin-bottom: 16px;
+        position: relative;
+    }
+    
+    .aurora-logo::after {
+        content: "";
+        position: absolute;
+        bottom: -4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
+        animation: aurora-scan 4s ease-in-out infinite;
+    }
+    
+    .aurora-status {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Enhanced button styling for navigation */
+    .stButton > button {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+        border: 1px solid rgba(0, 255, 255, 0.2) !important;
+        color: rgba(255, 255, 255, 0.9) !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+        border-color: rgba(0, 255, 255, 0.3) !important;
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 255, 255, 0.15);
+    }
+    
+    /* Primary button styling for active nav */
+    .stButton > button[data-baseweb="button"][aria-pressed="true"],
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(64, 224, 208, 0.25)) !important;
+        border-color: rgba(0, 255, 255, 0.4) !important;
+        color: #00FFFF !important;
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+    
+    @keyframes aurora-scan {
+        0%, 100% { left: -100%; }
+        50% { left: 100%; }
+    }
+    </style>
     """, unsafe_allow_html=True)
     
-    # Sidebar navigation
+    # Logo and status
+    st.markdown('<div class="aurora-logo">WhisperForge</div>', unsafe_allow_html=True)
+    st.markdown('<div class="aurora-status"><span style="color: #00FF7F;">●</span> Authenticated</div>', unsafe_allow_html=True)
+    
+    # Navigation buttons
+    _generate_nav_buttons()
+    
+    # Compact sidebar for sign out only
     with st.sidebar:
-        st.markdown("### Navigation")
-        
-        pages = [
-            "Content Pipeline",
-            "Content History", 
-            "Settings",
-            "Health Check"
-        ]
-        
-        for page in pages:
-            if st.button(page, key=f"nav_{page}"):
-                st.session_state.current_page = page
-                st.rerun()
-        
         st.markdown("---")
-        if st.button("Sign Out"):
+        if st.button("🚪 Sign Out", use_container_width=True):
             # Clear authentication
             st.session_state.authenticated = False
             st.session_state.user_id = None
