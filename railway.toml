@@ -1,3 +1,4 @@
+# Railway Configuration for WhisperForge Python App
 [build]
 builder = "nixpacks"
 nixpacksConfigPath = ".nixpacks"
