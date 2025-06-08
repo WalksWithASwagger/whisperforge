@@ -1077,134 +1077,51 @@ def show_main_app():
         show_home_page()  # Default fallback
 
 def show_home_page():
-    """Modern home page with integrated progress tracking and enhanced interactions"""
+    """Clean, minimal home page focused on core workflow: upload → process"""
     
-    # Page Header
+    # Initialize defaults
+    if 'ai_provider' not in st.session_state:
+        st.session_state.ai_provider = "OpenAI"  # Default to OpenAI
+    if 'ai_model' not in st.session_state:
+        st.session_state.ai_model = "gpt-4o"  # Default to best OpenAI model
+    if 'editor_enabled' not in st.session_state:
+        st.session_state.editor_enabled = False
+    
+    # Page Header - Clean and focused
     st.markdown("""
     <div class="aurora-page-header">
-        <h1 class="aurora-page-title">Content Pipeline</h1>
-        <p class="aurora-page-subtitle">Transform your audio content into structured, actionable insights with AI-powered analysis.</p>
+        <h1 class="aurora-page-title">Audio Content Pipeline</h1>
+        <p class="aurora-page-subtitle">Upload your audio file and transform it into actionable content with AI</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Initialize progress tracker in session state for persistence
-    if 'progress_tracker' not in st.session_state:
-        st.session_state.progress_tracker = None
-        st.session_state.processing_active = False
-        st.session_state.processing_results = None
-    
-    # AI Configuration Section
+    # CSS for clean upload section
     st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>⚡</span>
-            AI Configuration
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    <style>
+    .aurora-upload-section {
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12));
+        border: 2px dashed rgba(0, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 40px 30px;
+        margin: 30px 0;
+        text-align: center;
+        backdrop-filter: blur(16px);
+    }
+    .aurora-upload-header h2 {
+        color: #00FFFF;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .aurora-upload-header p {
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 0;
+    }
+    </style>
     
-    # AI Provider and Model Selection in a clean grid
-    col1, col2 = st.columns(2)
-    with col1:
-        st.session_state.ai_provider = st.selectbox(
-            "AI Provider", 
-            ["Anthropic", "OpenAI"], 
-            index=["Anthropic", "OpenAI"].index(st.session_state.ai_provider),
-            key="main_ai_provider"
-        )
-    
-    with col2:
-        if st.session_state.ai_provider == "Anthropic":
-            available_models = [
-                "claude-3-5-sonnet-20241022",
-                "claude-3-5-haiku-20241022", 
-                "claude-3-opus-20240229",
-                "claude-3-sonnet-20240229",
-                "claude-3-haiku-20240307"
-            ]
-            try:
-                current_index = available_models.index(st.session_state.ai_model)
-            except ValueError:
-                current_index = 0
-                st.session_state.ai_model = available_models[0]
-        else:  # OpenAI
-            available_models = [
-                "gpt-4o",
-                "gpt-4o-mini", 
-                "gpt-4-turbo",
-                "gpt-4",
-                "gpt-3.5-turbo"
-            ]
-            current_index = 0
-            st.session_state.ai_model = available_models[0]
-        
-        st.session_state.ai_model = st.selectbox(
-            "Model", 
-            available_models, 
-            index=current_index,
-            key="main_selected_model"
-        )
-    
-    # Editor Persona Toggle
-    st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>✍️</span>
-            Editor Persona
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**Editor Persona Mode** - When enabled, an AI editor will critique each output and trigger one round of revision for improved quality.")
-    
-    with col2:
-        editor_enabled = st.toggle(
-            "Enable Editor", 
-            value=st.session_state.get("editor_enabled", False),
-            help="AI editor will review and refine each content generation step",
-            key="editor_toggle"
-        )
-        st.session_state.editor_enabled = editor_enabled
-    
-    if editor_enabled:
-        st.info("🤖 **Editor Persona ACTIVE** - Each content step will be reviewed and refined.")
-    else:
-        st.info("✅ **Standard Mode** - Direct content generation without editor review.")
-    
-    # Pipeline Configuration
-    st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>🔄</span>
-            Pipeline Configuration
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        pipeline_steps = st.multiselect(
-            "Processing Steps",
-            ["Transcription", "Summary", "Key Insights", "Action Items", "Social Media", "Images"],
-            default=["Transcription", "Summary", "Key Insights"],
-            key="main_pipeline_steps"
-        )
-    
-    with col2:
-        processing_mode = st.selectbox(
-            "Processing Mode",
-            ["Standard", "Fast", "Comprehensive"],
-            key="main_processing_mode"
-        )
-    
-    # File Upload Section with enhanced styling
-    st.markdown("""
-    <div class="aurora-section">
-        <div class="aurora-section-title">
-            <span>📁</span>
-            Upload Audio Content
+    <div class="aurora-upload-section">
+        <div class="aurora-upload-header">
+            <h2>🎵 Upload Your Audio File</h2>
+            <p>Drag and drop or browse to select your audio file</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -1215,6 +1132,19 @@ def show_home_page():
         key="main_file_upload",
         help="Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB"
     )
+    
+    # Minimal options - Just editor toggle in a clean, small section
+    if uploaded_file is not None:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("**Optional:** Enable AI Editor for enhanced content quality")
+        with col2:
+            editor_enabled = st.toggle(
+                "AI Editor", 
+                value=st.session_state.get("editor_enabled", False),
+                key="editor_toggle"
+            )
+            st.session_state.editor_enabled = editor_enabled
     
     # Processing Section with streaming pipeline
     if uploaded_file is not None:
@@ -1231,15 +1161,7 @@ def show_home_page():
         file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
         st.success(f"✅ File uploaded: **{uploaded_file.name}** ({file_size_mb:.2f} MB)")
         
-        # Processing control section
-        st.markdown("""
-        <div class="aurora-section">
-            <div class="aurora-section-title">
-                <span>🚀</span>
-                Processing Control
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Clean processing section without bulky headers
         
         # Create columns for processing controls
         proc_col1, proc_col2, proc_col3 = st.columns([2, 1, 1])
@@ -1795,9 +1717,76 @@ def show_settings_page():
     st.markdown('<div class="aurora-settings-container">', unsafe_allow_html=True)
     st.title("⚙️ Settings")
     
-    tab1, tab2, tab3 = st.tabs(["API Keys", "Custom Prompts", "Knowledge Base"])
+    tab1, tab2, tab3, tab4 = st.tabs(["AI Configuration", "API Keys", "Custom Prompts", "Knowledge Base"])
     
     with tab1:
+        st.subheader("AI Provider & Model Settings")
+        
+        # AI Provider Selection
+        current_provider = st.session_state.get("ai_provider", "OpenAI")
+        ai_provider = st.selectbox(
+            "AI Provider", 
+            ["OpenAI", "Anthropic"], 
+            index=["OpenAI", "Anthropic"].index(current_provider),
+            key="settings_ai_provider",
+            help="Choose your preferred AI provider for content generation"
+        )
+        st.session_state.ai_provider = ai_provider
+        
+        # Model Selection based on provider
+        if ai_provider == "Anthropic":
+            available_models = [
+                "claude-3-5-sonnet-20241022",
+                "claude-3-5-haiku-20241022", 
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
+                "claude-3-haiku-20240307"
+            ]
+            default_model = "claude-3-5-sonnet-20241022"
+        else:  # OpenAI
+            available_models = [
+                "gpt-4o",
+                "gpt-4o-mini", 
+                "gpt-4-turbo",
+                "gpt-4",
+                "gpt-3.5-turbo"
+            ]
+            default_model = "gpt-4o"
+        
+        # Get current model or use default
+        current_model = st.session_state.get("ai_model", default_model)
+        if current_model not in available_models:
+            current_model = default_model
+        
+        try:
+            current_index = available_models.index(current_model)
+        except ValueError:
+            current_index = 0
+            current_model = available_models[0]
+        
+        ai_model = st.selectbox(
+            "AI Model", 
+            available_models, 
+            index=current_index,
+            key="settings_ai_model",
+            help="Select the specific AI model for content generation"
+        )
+        st.session_state.ai_model = ai_model
+        
+        # Default Editor Setting
+        editor_default = st.checkbox(
+            "Enable AI Editor by default",
+            value=st.session_state.get("editor_enabled", False),
+            help="When enabled, AI Editor will be active by default for new content processing",
+            key="settings_editor_default"
+        )
+        st.session_state.editor_enabled = editor_default
+        
+        st.success(f"✅ Using **{ai_provider} {ai_model}** for content generation")
+        if editor_default:
+            st.info("🤖 AI Editor enabled by default for enhanced content quality")
+    
+    with tab2:
         st.subheader("API Keys")
         api_keys = get_user_api_keys_supabase()
         
@@ -1840,7 +1829,7 @@ def show_settings_page():
             if success:
                 st.success("Notion keys saved!")
     
-    with tab2:
+    with tab3:
         st.subheader("Custom Prompts")
         
         prompt_types = [
@@ -1867,7 +1856,7 @@ def show_settings_page():
                     st.success(f"Saved {prompt_type} prompt!")
                     st.session_state.prompts[prompt_type] = new_prompt
     
-    with tab3:
+    with tab4:
         st.subheader("Knowledge Base")
         
         kb = get_user_knowledge_base_supabase()
