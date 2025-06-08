@@ -32,40 +32,57 @@ from core.content_generation import (
     generate_social_content, generate_image_prompts
 )
 from core.styling import local_css, add_production_css, create_custom_header, load_js
+from core.monitoring import (
+    init_monitoring, track_error, track_performance, track_user_action, 
+    get_health_status, init_session_tracking
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize monitoring
+init_monitoring()
+
 def run_content_pipeline(transcript, provider, model, knowledge_base=None):
     """Run the complete content generation pipeline"""
-    try:
-        # Step 1: Generate wisdom
-        wisdom = generate_wisdom(transcript, provider, model, None, knowledge_base)
-        
-        # Step 2: Generate outline 
-        outline = generate_outline(transcript, wisdom, provider, model, None, knowledge_base)
-        
-        # Step 3: Generate social content
-        social = generate_social_content(wisdom, outline, provider, model, None, knowledge_base)
-        
-        # Step 4: Generate image prompts
-        images = generate_image_prompts(wisdom, outline, provider, model, None, knowledge_base)
-        
-        return {
-            "wisdom_extraction": wisdom,
-            "outline_creation": outline, 
-            "social_media": social,
-            "image_prompts": images
-        }
-    except Exception as e:
-        logger.error(f"Pipeline error: {e}")
-        return {
-            "wisdom_extraction": f"Error: {str(e)}",
-            "outline_creation": f"Error: {str(e)}",
-            "social_media": f"Error: {str(e)}",
-            "image_prompts": f"Error: {str(e)}"
-        }
+    with track_performance("content_pipeline", {"provider": provider, "model": model}):
+        try:
+            track_user_action("pipeline_start", {"provider": provider, "model": model})
+            
+            # Step 1: Generate wisdom
+            with track_performance("generate_wisdom"):
+                wisdom = generate_wisdom(transcript, provider, model, None, knowledge_base)
+            
+            # Step 2: Generate outline 
+            with track_performance("generate_outline"):
+                outline = generate_outline(transcript, wisdom, provider, model, None, knowledge_base)
+            
+            # Step 3: Generate social content
+            with track_performance("generate_social"):
+                social = generate_social_content(wisdom, outline, provider, model, None, knowledge_base)
+            
+            # Step 4: Generate image prompts
+            with track_performance("generate_images"):
+                images = generate_image_prompts(wisdom, outline, provider, model, None, knowledge_base)
+            
+            track_user_action("pipeline_complete", {"provider": provider, "model": model})
+            
+            return {
+                "wisdom_extraction": wisdom,
+                "outline_creation": outline, 
+                "social_media": social,
+                "image_prompts": images
+            }
+        except Exception as e:
+            track_error(e, {"operation": "content_pipeline", "provider": provider, "model": model})
+            logger.error(f"Pipeline error: {e}")
+            return {
+                "wisdom_extraction": f"Error: {str(e)}",
+                "outline_creation": f"Error: {str(e)}",
+                "social_media": f"Error: {str(e)}",
+                "image_prompts": f"Error: {str(e)}"
+            }
 
 # Initialize Supabase client
 @st.cache_resource
@@ -814,21 +831,68 @@ def show_settings_page():
                     st.success(f"Saved {uploaded_kb.name}!")
                     st.rerun()
 
+def show_health_page():
+    """Health check page for monitoring"""
+    st.title("🏥 System Health")
+    
+    health = get_health_status()
+    
+    # Overall status
+    if health["status"] == "healthy":
+        st.success("✅ System is healthy")
+    elif health["status"] == "degraded":
+        st.warning("⚠️ System is degraded")
+    else:
+        st.error("❌ System is unhealthy")
+    
+    # Detailed checks
+    st.subheader("System Checks")
+    for check, status in health["checks"].items():
+        if isinstance(status, dict):
+            st.write(f"**{check.title()}:**")
+            for key, value in status.items():
+                st.write(f"  - {key}: {value}")
+        else:
+            if "error" in str(status).lower() or "unhealthy" in str(status).lower():
+                st.error(f"❌ **{check.title()}:** {status}")
+            elif "missing" in str(status).lower():
+                st.warning(f"⚠️ **{check.title()}:** {status}")
+            else:
+                st.success(f"✅ **{check.title()}:** {status}")
+
 # Main app logic
 def main():
     """Main application entry point"""
+    try:
+        # Initialize session tracking
+        init_session_tracking()
+        
+        # Initialize session state
+        if 'authenticated' not in st.session_state:
+            st.session_state.authenticated = False
+        if 'user_id' not in st.session_state:
+            st.session_state.user_id = None
+        
+        # Check for health endpoint
+        query_params = st.query_params
+        if 'health' in query_params:
+            show_health_page()
+            return
+        
+        # Handle OAuth callback first
+        if handle_oauth_callback():
+            return
+        
+        # Check authentication
+        if not st.session_state.authenticated:
+            show_auth_page()
+        else:
+            show_main_app()
     
-    # Initialize session state
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = None
-    
-    # Check authentication
-    if not st.session_state.authenticated:
-        show_auth_page()
-    else:
-        show_main_app()
+    except Exception as e:
+        track_error(e, {"location": "main_app"})
+        st.error(f"Application error: {e}")
+        logger.error("Main application error", exc_info=True)
 
 if __name__ == "__main__":
     main() 

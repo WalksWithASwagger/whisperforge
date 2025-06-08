@@ -32,3 +32,6 @@ Pillow>=10.0.0
 
 # Security - Password hashing
 bcrypt>=4.0.0
+
+# Monitoring & Error Tracking
+sentry-sdk[streamlit]>=1.40.0
