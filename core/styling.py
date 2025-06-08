@@ -222,28 +222,87 @@ def apply_aurora_theme():
     </style>
     """, unsafe_allow_html=True)
 
-def create_aurora_header(title="WhisperForge", subtitle="Transform Audio into Structured Content with AI"):
-    """Create a beautiful Aurora-themed header"""
+def create_aurora_header(title="WhisperForge", subtitle="Transform Audio into Structured Content with AI", show_signout=False):
+    """Create a compact flagship Aurora-themed header with optional signout"""
+    
+    # Slower, more elegant aurora animation
     st.markdown(f"""
-    <div class="aurora-card aurora-fade-in" style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="
-            font-size: 3rem;
-            font-weight: 700;
-            background: linear-gradient(120deg, var(--aurora-primary), var(--aurora-tertiary), var(--aurora-secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: var(--aurora-glow);
-            margin: 0 0 16px 0;
-            animation: aurora-glow 3s ease-in-out infinite;
-        ">{title}</h1>
-        <p style="
-            color: var(--aurora-text-muted);
-            font-size: 1.2rem;
-            margin: 0;
-            font-weight: 300;
-        ">{subtitle}</p>
+    <div style="
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.12), rgba(0, 255, 255, 0.08));
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 20px 32px;
+        margin: 12px 0 24px 0;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        justify-content: {'space-between' if show_signout else 'center'};
+        align-items: center;
+    ">
+        <!-- Elegant slower Aurora scanning line -->
+        <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.8), rgba(64, 224, 208, 0.9), rgba(0, 255, 255, 0.8), transparent);
+            animation: elegant-aurora-scan 6s ease-in-out infinite;
+        "></div>
+        
+        <!-- Main content -->
+        <div style="text-align: {'left' if show_signout else 'center'};">
+            <h1 style="
+                font-size: 2.2rem;
+                font-weight: 800;
+                background: linear-gradient(135deg, #00FFFF, #40E0D0, #7DF9FF, #00FFFF);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin: 0 0 6px 0;
+                text-shadow: 0 0 30px rgba(0, 255, 255, 0.6);
+                letter-spacing: -0.5px;
+                filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+            ">{title}</h1>
+            <div style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                justify-content: {'flex-start' if show_signout else 'center'};
+            ">
+                <div style="
+                    width: 8px;
+                    height: 8px;
+                    background: #00FF88;
+                    border-radius: 50%;
+                    animation: gentle-pulse 3s ease-in-out infinite;
+                "></div>
+                <span style="
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                ">Authenticated</span>
+            </div>
+        </div>
+        
+        {'<div id="signout-placeholder" style=""></div>' if show_signout else ''}
     </div>
+    
+    <style>
+    @keyframes elegant-aurora-scan {{
+        0%, 100% {{ left: -100%; opacity: 0; }}
+        10% {{ opacity: 1; }}
+        90% {{ opacity: 1; }}
+        100% {{ left: 100%; opacity: 0; }}
+    }}
+    
+    @keyframes gentle-pulse {{
+        0%, 100% {{ opacity: 1; transform: scale(1); }}
+        50% {{ opacity: 0.7; transform: scale(1.2); }}
+    }}
+    </style>
+    
+
     """, unsafe_allow_html=True)
 
 def create_aurora_progress_card(title, current_step, total_steps, description=""):

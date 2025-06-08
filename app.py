@@ -807,22 +807,24 @@ def show_main_app():
     </style>
     """, unsafe_allow_html=True)
     
-    # Logo and status
-    st.markdown('<div class="aurora-logo">WhisperForge</div>', unsafe_allow_html=True)
-    st.markdown('<div class="aurora-status"><span style="color: #00FF7F;">●</span> Authenticated</div>', unsafe_allow_html=True)
+    # Apply Aurora theme and show compact header with signout
+    apply_aurora_theme()
     
-    # Navigation buttons
-    _generate_nav_buttons()
-    
-    # Compact sidebar for sign out only
-    with st.sidebar:
-        st.markdown("---")
-        if st.button("🚪 Sign Out", use_container_width=True):
+    # Compact header with integrated signout
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        create_aurora_header(show_signout=False)
+    with col2:
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        if st.button("Sign Out", type="secondary", use_container_width=True):
             # Clear authentication
             st.session_state.authenticated = False
             st.session_state.user_id = None
             st.session_state.current_page = "Content Pipeline"
             st.rerun()
+    
+    # Navigation buttons
+    _generate_nav_buttons()
     
     # Show the selected page
     if st.session_state.current_page == "Content Pipeline":
@@ -852,10 +854,28 @@ def show_home_page():
     # Upload section
     st.markdown("### Upload Audio File")
     uploaded_file = st.file_uploader(
-        "Choose audio file (MP3, WAV, M4A, FLAC, or MP4 - max 25MB)",
-        type=['mp3', 'wav', 'm4a', 'flac', 'mp4'],
+        "Choose audio file",
+        type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm', 'mpeg', 'mpga', 'oga', 'ogg'],
+        help="Supported formats: MP3, WAV, M4A, FLAC, MP4, WEBM, MPEG, MPGA, OGA, OGG (max 25MB)",
         key="main_file_upload"
     )
+    
+    # File validation feedback
+    if uploaded_file is not None:
+        file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+        file_ext = uploaded_file.name.split('.')[-1].lower()
+        
+        # Validate file size
+        if file_size_mb > 25:
+            st.error(f"⚠️ File size ({file_size_mb:.1f} MB) exceeds 25MB limit. Please use a smaller file.")
+            uploaded_file = None
+        # Validate file extension
+        elif file_ext not in ['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm', 'mpeg', 'mpga', 'oga', 'ogg']:
+            st.error(f"⚠️ Unsupported file format: .{file_ext}. Please use: MP3, WAV, M4A, FLAC, MP4, WEBM, MPEG, MPGA, OGA, OGG")
+            uploaded_file = None
+        else:
+            # Show file validation success
+            st.success(f"✅ File validated: {uploaded_file.name} ({file_size_mb:.2f} MB) - {file_ext.upper()}")
     
     # Editor toggle
     if uploaded_file is not None:
@@ -882,10 +902,6 @@ def show_home_page():
             st.markdown(STREAMING_RESULTS_CSS, unsafe_allow_html=True)
             
             controller = get_pipeline_controller()
-            
-            # File info
-            file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
-            st.info(f"**File:** {uploaded_file.name} ({file_size_mb:.2f} MB)")
             
             # Processing controls
             st.markdown("### Processing")
