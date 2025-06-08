@@ -1,0 +1,461 @@
+/* Aurora-Themed Progress System - High-End AI Aesthetic */
+
+/* Aurora Color Palette Variables */
+:root {
+    /* Core Aurora Colors */
+    --aurora-cyan: #00FFFF;
+    --aurora-turquoise: #40E0D0;
+    --aurora-electric-blue: #7DF9FF;
+    --aurora-spring-green: #00FF7F;
+    --aurora-teal: #008B8B;
+    
+    /* Aurora HSL Values for Dynamic Manipulation */
+    --aurora-cyan-hsl: 180, 100%, 50%;
+    --aurora-turquoise-hsl: 174, 72%, 56%;
+    --aurora-electric-blue-hsl: 195, 100%, 78%;
+    --aurora-spring-green-hsl: 150, 100%, 50%;
+    
+    /* Sophisticated Glow Variables */
+    --glow-radius-subtle: 8px;
+    --glow-radius-medium: 16px;
+    --glow-radius-strong: 24px;
+    --glow-opacity-subtle: 0.3;
+    --glow-opacity-medium: 0.6;
+    --glow-opacity-strong: 0.9;
+    
+    /* Animation Timing */
+    --timing-organic: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --timing-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --timing-fluid: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Aurora Progress Container - Minimalist Glass Morphism */
+.aurora-progress-container {
+    background: linear-gradient(
+        135deg,
+        rgba(0, 255, 255, 0.02) 0%,
+        rgba(64, 224, 208, 0.03) 50%,
+        rgba(125, 249, 255, 0.02) 100%
+    );
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+    
+    /* Subtle Aurora Glow */
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-subtle)),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 8px 32px rgba(0, 0, 0, 0.12);
+    
+    transition: all 0.6s var(--timing-organic);
+}
+
+.aurora-progress-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--aurora-cyan),
+        var(--aurora-electric-blue),
+        var(--aurora-turquoise),
+        transparent
+    );
+    animation: aurora-scan 4s ease-in-out infinite;
+}
+
+.aurora-progress-container:hover {
+    border-color: rgba(0, 255, 255, 0.3);
+    box-shadow: 
+        0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-medium)),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 12px 48px rgba(0, 0, 0, 0.16);
+    transform: translateY(-2px);
+}
+
+/* Progress Header - Refined Typography */
+.aurora-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.aurora-progress-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    background: linear-gradient(
+        90deg,
+        var(--aurora-cyan),
+        var(--aurora-electric-blue),
+        var(--aurora-turquoise)
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: aurora-text-flow 3s ease-in-out infinite;
+}
+
+.aurora-progress-stats {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.aurora-progress-count {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+}
+
+.aurora-progress-percent {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--aurora-cyan);
+    text-shadow: 0 0 var(--glow-radius-subtle) currentColor;
+}
+
+/* Aurora Progress Bar - Liquid Light Effect */
+.aurora-progress-bar-container {
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.aurora-progress-bar {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(4px);
+}
+
+.aurora-progress-fill {
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        var(--aurora-cyan),
+        var(--aurora-electric-blue),
+        var(--aurora-turquoise),
+        var(--aurora-spring-green)
+    );
+    background-size: 300% 100%;
+    border-radius: 6px;
+    position: relative;
+    transition: width 0.8s var(--timing-organic);
+    
+    /* Living Glow Effect */
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) currentColor,
+        0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), 0.4);
+    
+    animation: aurora-flow 2s ease-in-out infinite;
+}
+
+.aurora-progress-fill::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: -2px;
+    right: -2px;
+    bottom: -1px;
+    background: inherit;
+    border-radius: inherit;
+    filter: blur(4px);
+    opacity: 0.6;
+    z-index: -1;
+}
+
+/* Aurora Progress Steps - Organic List */
+.aurora-progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.aurora-progress-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    transition: all 0.4s var(--timing-organic);
+    position: relative;
+    overflow: hidden;
+}
+
+.aurora-progress-step::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 255, 255, 0.02),
+        rgba(64, 224, 208, 0.03),
+        rgba(125, 249, 255, 0.02)
+    );
+    opacity: 0;
+    transition: opacity 0.4s var(--timing-organic);
+}
+
+.aurora-progress-step.running {
+    background: rgba(var(--aurora-cyan-hsl), 0.04);
+    border: 1px solid rgba(var(--aurora-cyan-hsl), 0.2);
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.aurora-progress-step.running::before {
+    opacity: 1;
+}
+
+.aurora-progress-step.completed {
+    background: rgba(var(--aurora-spring-green-hsl), 0.04);
+    border: 1px solid rgba(var(--aurora-spring-green-hsl), 0.2);
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) rgba(var(--aurora-spring-green-hsl), 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.aurora-progress-step.error {
+    background: rgba(255, 107, 107, 0.04);
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) rgba(255, 107, 107, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Step Indicators - Bioluminescent Dots */
+.aurora-step-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.4s var(--timing-organic);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.aurora-step-indicator::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 0deg,
+        transparent,
+        var(--aurora-cyan),
+        var(--aurora-electric-blue),
+        var(--aurora-turquoise),
+        transparent
+    );
+    opacity: 0;
+    transition: opacity 0.4s var(--timing-organic);
+    z-index: -1;
+    animation: aurora-rotate 3s linear infinite;
+}
+
+.aurora-progress-step.running .aurora-step-indicator {
+    background: var(--aurora-cyan);
+    color: #000;
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) var(--aurora-cyan),
+        0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), 0.4);
+}
+
+.aurora-progress-step.running .aurora-step-indicator::before {
+    opacity: 1;
+}
+
+.aurora-progress-step.completed .aurora-step-indicator {
+    background: var(--aurora-spring-green);
+    color: #000;
+    box-shadow: 
+        0 0 var(--glow-radius-subtle) var(--aurora-spring-green),
+        0 0 var(--glow-radius-medium) rgba(var(--aurora-spring-green-hsl), 0.4);
+}
+
+/* Step Content - Refined Typography */
+.aurora-step-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.aurora-step-name {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.015em;
+}
+
+.aurora-step-description {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+}
+
+.aurora-step-duration {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+.aurora-step-duration.running {
+    color: var(--aurora-cyan);
+    animation: aurora-pulse 1.5s ease-in-out infinite;
+}
+
+.aurora-step-error {
+    color: #FF6B6B;
+    font-size: 0.8rem;
+    margin-top: 4px;
+    font-style: italic;
+    opacity: 0.9;
+}
+
+/* Sophisticated Animations */
+@keyframes aurora-scan {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+@keyframes aurora-text-flow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes aurora-flow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+@keyframes aurora-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes aurora-pulse {
+    0%, 100% { 
+        opacity: 0.6; 
+        text-shadow: 0 0 var(--glow-radius-subtle) currentColor;
+    }
+    50% { 
+        opacity: 1; 
+        text-shadow: 0 0 var(--glow-radius-medium) currentColor;
+    }
+}
+
+/* Pulse Animations for Different States */
+.aurora-pulse-subtle {
+    animation: aurora-pulse-subtle 2s ease-in-out infinite;
+}
+
+.aurora-pulse-thinking {
+    animation: aurora-pulse-thinking 1.5s ease-in-out infinite;
+}
+
+.aurora-pulse-responding {
+    animation: aurora-pulse-responding 1s ease-in-out infinite;
+}
+
+@keyframes aurora-pulse-subtle {
+    0%, 100% { 
+        transform: scale(1); 
+        box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-subtle));
+    }
+    50% { 
+        transform: scale(1.02); 
+        box-shadow: 0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-medium));
+    }
+}
+
+@keyframes aurora-pulse-thinking {
+    0%, 100% { 
+        border-color: rgba(var(--aurora-turquoise-hsl), 0.3);
+        box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-turquoise-hsl), 0.3);
+    }
+    50% { 
+        border-color: rgba(var(--aurora-turquoise-hsl), 0.6);
+        box-shadow: 0 0 var(--glow-radius-medium) rgba(var(--aurora-turquoise-hsl), 0.6);
+    }
+}
+
+@keyframes aurora-pulse-responding {
+    0%, 100% { 
+        border-color: rgba(var(--aurora-spring-green-hsl), 0.4);
+        box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-spring-green-hsl), 0.4);
+    }
+    50% { 
+        border-color: rgba(var(--aurora-spring-green-hsl), 0.8);
+        box-shadow: 0 0 var(--glow-radius-strong) rgba(var(--aurora-spring-green-hsl), 0.8);
+    }
+}
+
+/* Organic Hover Effects */
+.aurora-progress-step:hover {
+    transform: translateX(4px);
+}
+
+.aurora-progress-step:hover::before {
+    opacity: 0.6;
+}
+
+/* Responsive Refinements */
+@media (max-width: 768px) {
+    .aurora-progress-container {
+        padding: 20px;
+        margin: 16px 0;
+    }
+    
+    .aurora-progress-header {
+        margin-bottom: 16px;
+    }
+    
+    .aurora-progress-steps {
+        gap: 10px;
+    }
+    
+    .aurora-progress-step {
+        padding: 10px 12px;
+        gap: 12px;
+    }
+}
+
+/* High-DPI/Retina Optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .aurora-progress-fill {
+        box-shadow: 
+            0 0 calc(var(--glow-radius-subtle) * 0.8) currentColor,
+            0 0 calc(var(--glow-radius-medium) * 0.8) rgba(var(--aurora-cyan-hsl), 0.4);
+    }
+    
+    .aurora-step-indicator {
+        border-width: 0.5px;
+    }
+} 

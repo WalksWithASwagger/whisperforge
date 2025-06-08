@@ -38,12 +38,14 @@ from core.monitoring import (
     get_health_status, init_session_tracking
 )
 from core.progress import (
-    ProgressTracker, create_audio_pipeline_progress, progress_context
+    ProgressTracker, 
+    create_whisperforge_progress_tracker,
+    WHISPERFORGE_PIPELINE_STEPS
 )
 from core.file_upload import FileUploadManager
 from core.notifications import (
     show_success, show_error, show_warning, show_info,
-    create_step_completion_animation, create_loading_spinner
+    create_loading_spinner
 )
 
 # Set up logging
@@ -780,7 +782,7 @@ def show_home_page():
             st.markdown(feature)
 
 def process_audio_pipeline(audio_file):
-    """Process audio through the complete pipeline with beautiful progress tracking"""
+    """Process audio through the complete pipeline with aurora-themed progress tracking"""
     
     # Track pipeline execution
     pipeline_start = datetime.now()
@@ -792,128 +794,98 @@ def process_audio_pipeline(audio_file):
         "metadata": {"filename": audio_file.name}
     }
     
-    # Create progress tracker
-    progress = create_audio_pipeline_progress()
+    # Create aurora-themed progress tracker
+    progress_tracker = create_whisperforge_progress_tracker()
+    progress_tracker.create_display_container()
     
     try:
-        with progress_context(progress):
-            # Step 1: File upload validation
-            step = progress.next_step()
-            if step:
-                show_info("🔍 Validating file format and size...")
-                time.sleep(0.5)  # Simulate validation time
-                show_success("✅ File validation complete!")
-                
-            # Step 2: Transcription
-            step = progress.next_step()
-            if step:
-                show_info("🎤 Starting audio transcription...")
-                transcript = transcribe_audio(audio_file)
-                st.session_state.transcription = transcript
-                
-                if not transcript:
-                    progress.error("Failed to transcribe audio")
-                    show_error("❌ Failed to transcribe audio")
-                    return
-                    
-                show_success("🎤 Audio transcription completed successfully!")
+        # Step 1: Upload Validation
+        with progress_tracker.step_context("upload_validation"):
+            file_size_mb = len(audio_file.getvalue()) / (1024 * 1024)
+            time.sleep(0.3)  # Brief validation simulation
+        
+        # Step 2: Transcription
+        with progress_tracker.step_context("transcription"):
+            transcript = transcribe_audio(audio_file)
+            st.session_state.transcription = transcript
             
-            # Display transcript with beautiful styling
-            st.markdown("### 📄 Transcript Generated")
-            with st.expander("View Full Transcript", expanded=False):
-                st.text_area("", transcript, height=200, key="transcript_display")
-            
-            # Step 3: Wisdom extraction
-            step = progress.next_step()
-            if step:
-                show_info("💡 Extracting key insights and wisdom...")
-                wisdom = generate_wisdom(
-                    transcript, 
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model, 
-                    None, 
-                    st.session_state.knowledge_base
-                )
-                show_success("💡 Wisdom extraction completed!")
-            
-            # Step 4: Outline creation
-            step = progress.next_step()
-            if step:
-                show_info("📋 Creating structured content outline...")
-                outline = generate_outline(
-                    transcript, 
-                    wisdom, 
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model, 
-                    None, 
-                    st.session_state.knowledge_base
-                )
-                show_success("📋 Outline creation completed!")
-            
-            # Step 5: Social media content
-            step = progress.next_step()
-            if step:
-                show_info("📱 Generating social media content...")
-                social = generate_social_content(
-                    wisdom, 
-                    outline, 
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model, 
-                    None, 
-                    st.session_state.knowledge_base
-                )
-                show_success("📱 Social media content generated!")
-            
-            # Step 6: Image prompts
-            step = progress.next_step()
-            if step:
-                show_info("🎨 Creating AI image prompts...")
-                images = generate_image_prompts(
-                    wisdom, 
-                    outline, 
-                    st.session_state.ai_provider, 
-                    st.session_state.ai_model, 
-                    None, 
-                    st.session_state.knowledge_base
-                )
-                show_success("🎨 Image prompts created!")
-            
-            # Combine generated content
-            generated_content = {
+            if not transcript:
+                raise Exception("Failed to transcribe audio - transcript is empty")
+        
+        # Display transcript with aurora styling
+        st.markdown("### 📄 Transcript Generated")
+        with st.expander("View Full Transcript", expanded=False):
+            st.text_area("", transcript, height=200, key="transcript_display")
+        
+        # Step 3: Wisdom Extraction
+        with progress_tracker.step_context("wisdom_extraction"):
+            wisdom = generate_wisdom(
+                transcript, 
+                st.session_state.ai_provider, 
+                st.session_state.ai_model, 
+                None, 
+                st.session_state.knowledge_base
+            )
+        
+        # Step 4: Outline Creation
+        with progress_tracker.step_context("outline_creation"):
+            outline = generate_outline(
+                transcript, 
+                wisdom, 
+                st.session_state.ai_provider, 
+                st.session_state.ai_model, 
+                None, 
+                st.session_state.knowledge_base
+            )
+        
+        # Step 5: Social Media Content
+        with progress_tracker.step_context("social_content"):
+            social = generate_social_content(
+                wisdom, 
+                outline, 
+                st.session_state.ai_provider, 
+                st.session_state.ai_model, 
+                None, 
+                st.session_state.knowledge_base
+            )
+        
+        # Step 6: Image Prompts
+        with progress_tracker.step_context("image_prompts"):
+            images = generate_image_prompts(
+                wisdom, 
+                outline, 
+                st.session_state.ai_provider, 
+                st.session_state.ai_model, 
+                None, 
+                st.session_state.knowledge_base
+            )
+        
+        # Step 7: Database Storage
+        with progress_tracker.step_context("database_storage"):
+            content_data = {
+                "title": f"Content from {audio_file.name}",
+                "transcript": transcript,
                 "wisdom_extraction": wisdom,
                 "outline_creation": outline,
                 "social_media": social,
-                "image_prompts": images
+                "image_prompts": images,
+                "metadata": {
+                    "ai_provider": st.session_state.ai_provider,
+                    "ai_model": st.session_state.ai_model,
+                    "file_size": audio_file.size if hasattr(audio_file, 'size') else len(audio_file.getvalue()),
+                    "created_at": datetime.now().isoformat()
+                }
             }
             
-            # Step 7: Save to database
-            step = progress.next_step()
-            if step:
-                show_info("💾 Saving content to your library...")
-                content_data = {
-                    "title": f"Content from {audio_file.name}",
-                    "transcript": transcript,
-                    **generated_content,
-                    "metadata": {
-                        "ai_provider": st.session_state.ai_provider,
-                        "ai_model": st.session_state.ai_model,
-                        "file_size": audio_file.size,
-                        "created_at": datetime.now().isoformat()
-                    }
-                }
-                
-                content_id = save_generated_content_supabase(content_data)
-                if not content_id:
-                    progress.error("Failed to save content to database")
-                    show_error("💾 Failed to save content to database")
-                else:
-                    show_success("💾 Content saved successfully to your library!")
+            content_id = save_generated_content_supabase(content_data)
+            if not content_id:
+                raise Exception("Failed to save content to database")
+            time.sleep(0.2)  # Brief storage simulation
                     
         # Show success message with animation
         st.balloons()
-        create_step_completion_animation()
         
-        # Display generated content in beautiful cards
+        # Display generated content in beautiful aurora-themed cards
         st.markdown("### ✨ Generated Content")
         st.markdown("*Your content is ready! Click on each tab to explore the results.*")
         
@@ -929,15 +901,15 @@ def process_audio_pipeline(audio_file):
             st.markdown("#### 🧠 Key Insights & Wisdom")
             st.markdown("*AI-extracted insights and valuable takeaways from your content*")
             
-            # Create a beautiful content card
+            # Create a beautiful aurora content card
             wisdom_formatted = wisdom.replace('\n', '<br>')
             wisdom_html = f"""
-            <div class="content-card wisdom-card">
-                <div class="content-header">
-                    <span class="content-icon">💡</span>
-                    <span class="content-title">Wisdom & Insights</span>
+            <div class="aurora-content-card aurora-wisdom-card">
+                <div class="aurora-content-header">
+                    <span class="aurora-content-icon">💡</span>
+                    <span class="aurora-content-title">Wisdom & Insights</span>
                 </div>
-                <div class="content-body">
+                <div class="aurora-content-body">
                     {wisdom_formatted}
                 </div>
             </div>
@@ -954,12 +926,12 @@ def process_audio_pipeline(audio_file):
             
             outline_formatted = outline.replace('\n', '<br>')
             outline_html = f"""
-            <div class="content-card outline-card">
-                <div class="content-header">
-                    <span class="content-icon">📋</span>
-                    <span class="content-title">Content Outline</span>
+            <div class="aurora-content-card aurora-outline-card">
+                <div class="aurora-content-header">
+                    <span class="aurora-content-icon">📋</span>
+                    <span class="aurora-content-title">Content Outline</span>
                 </div>
-                <div class="content-body">
+                <div class="aurora-content-body">
                     {outline_formatted}
                 </div>
             </div>
@@ -975,12 +947,12 @@ def process_audio_pipeline(audio_file):
             
             social_formatted = social.replace('\n', '<br>')
             social_html = f"""
-            <div class="content-card social-card">
-                <div class="content-header">
-                    <span class="content-icon">📱</span>
-                    <span class="content-title">Social Media Content</span>
+            <div class="aurora-content-card aurora-social-card">
+                <div class="aurora-content-header">
+                    <span class="aurora-content-icon">📱</span>
+                    <span class="aurora-content-title">Social Media Content</span>
                 </div>
-                <div class="content-body">
+                <div class="aurora-content-body">
                     {social_formatted}
                 </div>
             </div>
@@ -996,12 +968,12 @@ def process_audio_pipeline(audio_file):
             
             images_formatted = images.replace('\n', '<br>')
             images_html = f"""
-            <div class="content-card images-card">
-                <div class="content-header">
-                    <span class="content-icon">🎨</span>
-                    <span class="content-title">Image Generation Prompts</span>
+            <div class="aurora-content-card aurora-images-card">
+                <div class="aurora-content-header">
+                    <span class="aurora-content-icon">🎨</span>
+                    <span class="aurora-content-title">Image Generation Prompts</span>
                 </div>
-                <div class="content-body">
+                <div class="aurora-content-body">
                     {images_formatted}
                 </div>
             </div>
@@ -1011,95 +983,120 @@ def process_audio_pipeline(audio_file):
             if st.button("📋 Copy Image Prompts", key="copy_images"):
                 st.code(images, language="markdown")
         
-        # Add content card styling
-        content_card_css = """
+        # Add aurora content card styling
+        aurora_content_css = """
         <style>
-        .content-card {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-            border-radius: var(--card-radius);
-            padding: 20px;
-            margin: 15px 0;
-            border: 1px solid rgba(121, 40, 202, 0.2);
+        .aurora-content-card {
+            background: linear-gradient(
+                135deg,
+                rgba(0, 255, 255, 0.02) 0%,
+                rgba(64, 224, 208, 0.03) 50%,
+                rgba(125, 249, 255, 0.02) 100%
+            );
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 
+                0 0 8px rgba(0, 255, 255, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 8px 32px rgba(0, 0, 0, 0.12);
         }
         
-        .content-card:hover {
-            border-color: rgba(121, 40, 202, 0.4);
-            box-shadow: 0 8px 25px rgba(121, 40, 202, 0.15);
+        .aurora-content-card:hover {
+            border-color: rgba(0, 255, 255, 0.3);
+            box-shadow: 
+                0 0 16px rgba(0, 255, 255, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                0 12px 48px rgba(0, 0, 0, 0.16);
             transform: translateY(-2px);
         }
         
-        .content-header {
+        .aurora-content-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
         }
         
-        .content-icon {
+        .aurora-content-icon {
             font-size: 20px;
+            filter: drop-shadow(0 0 4px currentColor);
         }
         
-        .content-title {
-            font-family: var(--terminal-font);
+        .aurora-content-title {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
             font-weight: 600;
-            color: var(--text-primary);
-            font-size: 1rem;
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(
+                90deg,
+                var(--aurora-cyan),
+                var(--aurora-electric-blue),
+                var(--aurora-turquoise)
+            );
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         
-        .content-body {
-            color: var(--text-primary);
+        .aurora-content-body {
+            color: rgba(255, 255, 255, 0.9);
             line-height: 1.6;
             font-size: 0.95rem;
+            letter-spacing: -0.01em;
         }
         
-        .wisdom-card::before {
+        .aurora-wisdom-card::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #FFD700, #FFA500);
+            height: 2px;
+            background: linear-gradient(90deg, var(--aurora-cyan), var(--aurora-electric-blue));
         }
         
-        .outline-card::before {
+        .aurora-outline-card::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #36D399, #10B981);
+            height: 2px;
+            background: linear-gradient(90deg, var(--aurora-spring-green), var(--aurora-turquoise));
         }
         
-        .social-card::before {
+        .aurora-social-card::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #FF0080, #7928CA);
+            height: 2px;
+            background: linear-gradient(90deg, var(--aurora-turquoise), var(--aurora-electric-blue));
         }
         
-        .images-card::before {
+        .aurora-images-card::before {
             content: "";
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 3px;
-            background: linear-gradient(90deg, #3ABFF8, #06B6D4);
+            height: 2px;
+            background: linear-gradient(90deg, var(--aurora-electric-blue), var(--aurora-cyan));
         }
         </style>
         """
         
-        st.markdown(content_card_css, unsafe_allow_html=True)
+        st.markdown(aurora_content_css, unsafe_allow_html=True)
         
         # Log successful pipeline execution
         pipeline_end = datetime.now()
@@ -1113,7 +1110,6 @@ def process_audio_pipeline(audio_file):
         st.success(f"🎉 Pipeline completed successfully! Content saved with ID: {content_id if 'content_id' in locals() else 'N/A'}")
         
     except Exception as e:
-        progress.error(str(e))
         st.error(f"❌ Pipeline error: {e}")
         pipeline_data["error"] = str(e)
         logger.exception("Pipeline error")
