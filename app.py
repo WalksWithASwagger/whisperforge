@@ -1216,8 +1216,17 @@ def show_home_page():
         help="Supports MP3, WAV, M4A, FLAC, and MP4 files up to 25MB"
     )
     
-    # Processing Section with integrated progress tracking
+    # Processing Section with streaming pipeline
     if uploaded_file is not None:
+        # Import streaming components
+        from core.streaming_pipeline import get_pipeline_controller
+        from core.streaming_results import show_streaming_results, show_processing_status, STREAMING_RESULTS_CSS
+        
+        # Apply streaming results CSS
+        st.markdown(STREAMING_RESULTS_CSS, unsafe_allow_html=True)
+        
+        controller = get_pipeline_controller()
+        
         # File info display
         file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
         st.success(f"✅ File uploaded: **{uploaded_file.name}** ({file_size_mb:.2f} MB)")
@@ -1236,65 +1245,55 @@ def show_home_page():
         proc_col1, proc_col2, proc_col3 = st.columns([2, 1, 1])
         
         with proc_col1:
-            # Main processing button with enhanced styling
-            processing_disabled = st.session_state.processing_active
-            button_text = "🔄 Processing..." if processing_disabled else "🚀 Start Processing"
-            
-            if st.button(button_text, 
-                        type="primary", 
-                        use_container_width=True, 
-                        disabled=processing_disabled,
-                        key="process_button"):
-                st.session_state.processing_active = True
-                st.session_state.processing_results = None
-                st.rerun()
+            # Main processing button
+            if not controller.is_active and not controller.is_complete:
+                if st.button("🚀 Start Processing", 
+                            type="primary", 
+                            use_container_width=True,
+                            key="start_processing"):
+                    controller.start_pipeline(uploaded_file)
+                    st.rerun()
+            elif controller.is_active:
+                st.button("🔄 Processing...", 
+                         type="primary", 
+                         use_container_width=True,
+                         disabled=True,
+                         key="processing_active")
+            else:
+                st.button("✅ Processing Complete", 
+                         type="primary", 
+                         use_container_width=True,
+                         disabled=True,
+                         key="processing_complete")
         
         with proc_col2:
-            if st.session_state.processing_active and st.button("⏹️ Stop", use_container_width=True):
-                st.session_state.processing_active = False
-                st.session_state.progress_tracker = None
-                st.rerun()
+            if controller.is_active:
+                if st.button("⏹️ Stop", use_container_width=True, key="stop_btn"):
+                    controller.reset_pipeline()
+                    st.rerun()
         
         with proc_col3:
-            if st.session_state.processing_results and st.button("🔄 Reset", use_container_width=True):
-                st.session_state.processing_active = False
-                st.session_state.progress_tracker = None
-                st.session_state.processing_results = None
-                st.rerun()
-        
-        # Progress Tracking Section - Always visible when processing
-        if st.session_state.processing_active:
-            st.markdown("""
-            <div class="aurora-section">
-                <div class="aurora-section-title">
-                    <span>📊</span>
-                    Processing Progress
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Create and manage progress tracker
-            if st.session_state.progress_tracker is None:
-                from core.progress import create_whisperforge_progress_tracker
-                st.session_state.progress_tracker = create_whisperforge_progress_tracker()
-                st.session_state.progress_tracker.create_display_container()
-            
-            # Process the file with real-time updates
-            try:
-                results = process_audio_pipeline_with_progress(uploaded_file, st.session_state.progress_tracker)
-                if results:
-                    st.session_state.processing_results = results
-                    st.session_state.processing_active = False
+            if controller.is_complete:
+                if st.button("🔄 Reset", use_container_width=True, key="reset_btn"):
+                    controller.reset_pipeline()
                     st.rerun()
-            except Exception as e:
-                st.error(f"❌ Processing failed: {str(e)}")
-                st.session_state.processing_active = False
-                st.session_state.progress_tracker = None
+        
+        # Auto-process next step when pipeline is active
+        if controller.is_active:
+            # Process the next step
+            step_processed = controller.process_next_step()
+            if step_processed:
+                # Trigger rerun to show updated progress and results
+                st.rerun()
+            elif not controller.is_active:
+                # Processing completed or failed
                 st.rerun()
         
-        # Results Section - Show when processing is complete
-        if st.session_state.processing_results:
-            show_processing_results(st.session_state.processing_results)
+        # Show current processing status
+        show_processing_status()
+        
+        # Show streaming results as they become available
+        show_streaming_results()
     
     else:
         # Welcome section with enhanced features showcase
