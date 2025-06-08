@@ -11,7 +11,7 @@ from .content_generation import (
     transcribe_audio, generate_wisdom, generate_outline, generate_article,
     generate_social_content, generate_image_prompts, editor_critique
 )
-from .progress import create_whisperforge_progress_tracker, WHISPERFORGE_PIPELINE_STEPS
+# Removed old complex progress tracker - using simple progress bars now
 
 
 class StreamingPipelineController:
@@ -27,15 +27,12 @@ class StreamingPipelineController:
         st.session_state.pipeline_results = {}
         st.session_state.pipeline_errors = {}
         st.session_state.pipeline_audio_file = None
-        st.session_state.progress_tracker = None
         
     def start_pipeline(self, audio_file):
         """Initialize pipeline for processing"""
         self.reset_pipeline()
         st.session_state.pipeline_active = True
         st.session_state.pipeline_audio_file = audio_file
-        st.session_state.progress_tracker = create_whisperforge_progress_tracker()
-        st.session_state.progress_tracker.create_display_container()
         
         # Store file info for later use
         st.session_state.pipeline_file_info = {
@@ -51,26 +48,26 @@ class StreamingPipelineController:
             
         step_index = st.session_state.pipeline_step_index
         
-        if step_index >= len(WHISPERFORGE_PIPELINE_STEPS):
+        # Define pipeline steps inline
+        pipeline_steps = [
+            "upload_validation", "transcription", "wisdom_extraction", 
+            "outline_creation", "article_creation", "social_content", 
+            "image_prompts", "database_storage"
+        ]
+        
+        if step_index >= len(pipeline_steps):
             # Pipeline complete
             st.session_state.pipeline_active = False
             return False
         
-        step_config = WHISPERFORGE_PIPELINE_STEPS[step_index]
-        step_id = step_config["id"]
+        step_id = pipeline_steps[step_index]
         
         try:
-            # Start the step
-            st.session_state.progress_tracker.start_step(step_id)
-            
             # Process the step
             result = self._execute_step(step_id, step_index)
             
             # Store result
             st.session_state.pipeline_results[step_id] = result
-            
-            # Complete the step
-            st.session_state.progress_tracker.complete_step(step_id)
             
             # Move to next step
             st.session_state.pipeline_step_index += 1
@@ -81,7 +78,6 @@ class StreamingPipelineController:
             # Handle step error
             error_msg = str(e)
             st.session_state.pipeline_errors[step_id] = error_msg
-            st.session_state.progress_tracker.error_step(step_id, error_msg)
             st.session_state.pipeline_active = False
             return False
     
@@ -402,9 +398,7 @@ Please provide improved versions that address the feedback."""
     @property
     def progress_percentage(self) -> float:
         """Get overall progress percentage"""
-        if not st.session_state.get("progress_tracker"):
-            return 0.0
-        return st.session_state.progress_tracker.progress_percentage
+        return (self.current_step_index / 8) * 100
     
     def get_results(self) -> Dict[str, Any]:
         """Get all pipeline results"""

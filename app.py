@@ -37,11 +37,7 @@ from core.monitoring import (
     init_monitoring, track_error, track_performance, track_user_action, 
     get_health_status, init_session_tracking
 )
-from core.progress import (
-    ProgressTracker, 
-    create_whisperforge_progress_tracker,
-    WHISPERFORGE_PIPELINE_STEPS
-)
+# Removed old progress tracker imports - using simple progress bars now
 from core.file_upload import FileUploadManager
 from core.notifications import (
     show_success, show_error, show_warning, show_info,
@@ -627,10 +623,10 @@ def show_auth_page():
 def _generate_nav_buttons():
     """Generate navigation buttons for header"""
     pages = [
-        ("Content Pipeline", "🎙️"),
-        ("Content History", "📋"), 
-        ("Settings", "⚙️"),
-        ("Health Check", "🔍")
+        ("Processing", ""),
+        ("History", ""), 
+        ("Settings", ""),
+        ("Status", "")
     ]
     
     current_page = st.session_state.get('current_page', 'Content Pipeline')
@@ -640,10 +636,17 @@ def _generate_nav_buttons():
     
     for i, (page, icon) in enumerate(pages):
         with cols[i]:
-            if st.button(f"{icon} {page}", key=f"nav_{page}", 
-                        type="primary" if page == current_page else "secondary",
+            # Map new names to old page names for compatibility
+            page_mapping = {
+                "Processing": "Content Pipeline",
+                "History": "Content History", 
+                "Settings": "Settings",
+                "Status": "Health Check"
+            }
+            if st.button(page, key=f"nav_{page}", 
+                        type="primary" if page_mapping[page] == current_page else "secondary",
                         use_container_width=True):
-                st.session_state.current_page = page
+                st.session_state.current_page = page_mapping[page]
                 st.rerun()
     
     return ""  # Return empty string since we're using Streamlit buttons

@@ -295,15 +295,16 @@ def show_processing_status():
     </div>
     """, unsafe_allow_html=True)
     
-    # Pipeline steps with individual containers
+    # Pipeline steps with individual containers - matching the actual step IDs
     pipeline_steps = [
-        ("Audio Transcription", "Converting speech to text using Whisper AI", "upload_validation"),
+        ("Upload Validation", "Validating file format and compatibility", "upload_validation"),
+        ("Audio Transcription", "Converting speech to text using Whisper AI", "transcription"),
         ("Wisdom Extraction", "Identifying key insights and valuable knowledge", "wisdom_extraction"),  
         ("Outline Generation", "Creating structured content framework", "outline_creation"),
-        ("Blog Composition", "Crafting engaging article content", "article_creation"),
+        ("Article Creation", "Crafting engaging article content", "article_creation"),
         ("Social Media Posts", "Generating 5 platform-optimized posts", "social_content"),
         ("Image Prompts", "Creating visual content descriptions", "image_prompts"),
-        ("Export & Metadata", "Finalizing output and Notion integration", "database_storage")
+        ("Database Storage", "Saving content to secure database", "database_storage")
     ]
     
     results = controller.get_results()
