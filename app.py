@@ -137,19 +137,68 @@ def init_supabase():
     except Exception as e:
         return None, f"Supabase initialization error: {str(e)}"
 
-def get_api_keys():
+# User Management Functions
+def get_current_user():
+    """Get current user from session state with native Streamlit"""
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+    return st.session_state.user
+
+def set_current_user(user_data):
+    """Set current user in session state"""
+    st.session_state.user = user_data
+
+def simple_login():
+    """Simple login system using native Streamlit"""
+    with st.sidebar:
+        st.markdown("### 🔐 Authentication")
+        
+        current_user = get_current_user()
+        
+        if current_user:
+            st.success(f"✅ Logged in as: {current_user.get('email', 'User')}")
+            if st.button("🚪 Logout"):
+                st.session_state.user = None
+                st.rerun()
+            return current_user
+        else:
+            st.info("Please log in to access all features")
+            
+            # Simple email-based login for now
+            email = st.text_input("📧 Email")
+            if st.button("🔑 Login"):
+                if email:
+                    # For now, create a simple user - we'll add OAuth later
+                    user_data = {
+                        "id": hash(email) % 10000,  # Simple ID generation
+                        "email": email,
+                        "name": email.split("@")[0]
+                    }
+                    set_current_user(user_data)
+                    st.success("✅ Logged in!")
+                    st.rerun()
+                else:
+                    st.error("Please enter an email")
+            return None
+
+def get_api_keys(user_id=None):
     """Get API keys from database or environment"""
     api_keys = {}
     
-    # Try Supabase first
+    # If no user, use environment only
+    if not user_id:
+        api_keys["openai_api_key"] = os.getenv("OPENAI_API_KEY")
+        return api_keys
+    
+    # Try Supabase first for authenticated users
     try:
         client, error = init_supabase()
         if client and not error:
-            result = client.table("api_keys").select("key_name, key_value").eq("user_id", 3).execute()
+            result = client.table("api_keys").select("key_name, key_value").eq("user_id", user_id).execute()
             for item in result.data:
                 api_keys[item["key_name"]] = item["key_value"]
-    except:
-        pass
+    except Exception as e:
+        st.warning(f"Database access failed: {e}")
     
     # Fallback to environment
     if not api_keys.get("openai_api_key"):
@@ -157,11 +206,11 @@ def get_api_keys():
     
     return api_keys
 
-def transcribe_audio_simple(audio_file):
+def transcribe_audio_simple(audio_file, user_id=None):
     """Rock solid transcription function with bulletproof error handling"""
     try:
         # Get API key
-        api_keys = get_api_keys()
+        api_keys = get_api_keys(user_id)
         openai_key = api_keys.get("openai_api_key")
         
         if not openai_key:
@@ -234,14 +283,14 @@ def transcribe_audio_simple(audio_file):
     except Exception as e:
         return f"❌ Unexpected error: {str(e)}"
 
-def generate_content_simple(transcript, content_type="wisdom"):
+def generate_content_simple(transcript, content_type="wisdom", user_id=None):
     """Rock solid content generation with error handling"""
     try:
         # Validate input
         if not transcript or len(transcript.strip()) == 0:
             return "❌ No transcript provided for content generation."
         
-        api_keys = get_api_keys()
+        api_keys = get_api_keys(user_id)
         openai_key = api_keys.get("openai_api_key")
         
         if not openai_key:
@@ -294,21 +343,25 @@ def generate_content_simple(transcript, content_type="wisdom"):
     except Exception as e:
         return f"❌ Unexpected error in content generation: {str(e)}"
 
-def save_to_database(content_data):
+def save_to_database(content_data, user_id=None):
     """Save processed content to database"""
     try:
+        if not user_id:
+            return False  # Don't save without user
+            
         client, error = init_supabase()
         if not client or error:
             return False
             
         result = client.table("content").insert({
-            "user_id": 3,
+            "user_id": user_id,
             "content_data": content_data,
             "created_at": datetime.now().isoformat()
         }).execute()
         
         return bool(result.data)
-    except:
+    except Exception as e:
+        st.error(f"Save error: {e}")
         return False
 
 def show_history():
@@ -358,21 +411,26 @@ def main():
     st.markdown('<div class="main-title">⚡ WhisperForge</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Transform audio into luminous wisdom</div>', unsafe_allow_html=True)
     
+    # Authentication
+    current_user = simple_login()
+    user_id = current_user.get("id") if current_user else None
+    
     # Navigation using native tabs
     tab1, tab2 = st.tabs(["🎙️ Process Audio", "📋 History"])
     
     with tab1:
-        # Sidebar for API key
+        # Show API key status in sidebar
         with st.sidebar:
-            st.markdown("### ⚙️ Configuration")
-            api_keys = get_api_keys()
-            
-            # Show current status
-            if api_keys.get("openai_api_key"):
-                st.success("✅ OpenAI API key loaded")
-            else:
-                st.error("❌ No OpenAI API key")
-                st.markdown("Add your key to Supabase or environment variables")
+            if current_user:
+                st.markdown("### ⚙️ Configuration")
+                api_keys = get_api_keys(user_id)
+                
+                # Show current status
+                if api_keys.get("openai_api_key"):
+                    st.success("✅ OpenAI API key loaded")
+                else:
+                    st.error("❌ No OpenAI API key")
+                    st.markdown("Add your key to Supabase or environment variables")
         
         # Main interface
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -398,7 +456,7 @@ def main():
                     
                     # Transcription
                     with st.status("🎙️ Transcribing audio...", expanded=True) as status:
-                        transcript = transcribe_audio_simple(uploaded_file)
+                        transcript = transcribe_audio_simple(uploaded_file, user_id)
                         
                         if transcript.startswith("❌"):
                             st.error(transcript)
@@ -418,17 +476,17 @@ def main():
                         
                         with wisdom_tab:
                             with st.spinner("Extracting wisdom..."):
-                                wisdom = generate_content_simple(transcript, "wisdom")
+                                wisdom = generate_content_simple(transcript, "wisdom", user_id)
                                 st.markdown(wisdom)
                         
                         with outline_tab:
                             with st.spinner("Creating outline..."):
-                                outline = generate_content_simple(transcript, "outline")
+                                outline = generate_content_simple(transcript, "outline", user_id)
                                 st.markdown(outline)
                         
-                        with research_tab:
+                                                                        with research_tab:
                             with st.spinner("Generating research insights..."):
-                                research = generate_content_simple(transcript, "research")
+                                research = generate_content_simple(transcript, "research", user_id)
                                 st.markdown(research)
                         
                         # Save to database
@@ -441,10 +499,13 @@ def main():
                             "processed_at": datetime.now().isoformat()
                         }
                         
-                        if save_to_database(content_data):
+                        if save_to_database(content_data, user_id):
                             st.success("💾 Content saved to database!")
                         else:
-                            st.warning("⚠️ Could not save to database")
+                            if user_id:
+                                st.warning("⚠️ Could not save to database")
+                            else:
+                                st.info("💡 Login to save your content history")
     
     with tab2:
         show_history()
