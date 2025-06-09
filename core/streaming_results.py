@@ -78,461 +78,60 @@ def generate_unique_key(base_name: str) -> str:
     return f"{base_name}_{uuid.uuid4().hex[:8]}_{int(time.time() * 1000000) % 1000000}"
 
 def show_streaming_results():
-    """Display ultra-modern Aurora final results - STREAMLINED"""
-    controller = get_pipeline_controller()
-    results = controller.get_results()
-    errors = controller.get_errors() if hasattr(controller, 'get_errors') else {}
-    
-    # Always show content that's available, whether complete or not
-    if not results and not errors:
-        return
-    
-    # 🌊 NEW: Show live streaming content during processing
-    if controller.is_active:
-        show_live_streaming_content()
-        return
-    
-    # Only show final results when pipeline is complete
-    if not controller.is_complete:
-        return
-        
-    # 🌌 AWARD-WINNING MINIMAL COMPLETION INTERFACE
-    st.markdown(f"""
-    <div class="zen-completion">
-        <div class="aurora-orb"></div>
-        <div class="completion-content">
-            <div class="zen-title">∞</div>
-            <div class="zen-subtitle">transformation complete</div>
-            <div class="bio-dots">
-                <span class="dot active"></span>
-                <span class="dot active"></span>
-                <span class="dot active"></span>
-            </div>
-        </div>
-        <div class="aurora-pulse"></div>
-    </div>
-    
-    <div class="action-constellation">
-        <div class="action-orb primary" onclick="downloadAll()">
-            <div class="orb-icon">⬇</div>
-            <div class="orb-label">gather</div>
-        </div>
-        <div class="action-orb secondary" onclick="exportPDF()">
-            <div class="orb-icon">◐</div>
-            <div class="orb-label">PDF</div>
-        </div>
-        <div class="action-orb tertiary" onclick="sendNotion()">
-            <div class="orb-icon">◑</div>
-            <div class="orb-label">notion</div>
-        </div>
-    </div>
-    
-    <style>
-    .zen-completion {{
-        position: relative;
-        padding: 2rem 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        margin: 2rem 0;
-        min-height: 120px;
-    }}
-    
-    .aurora-orb {{
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.05), transparent);
-        animation: orb-breathe 4s ease-in-out infinite;
-        filter: blur(0.5px);
-    }}
-    
-    .completion-content {{
-        position: relative;
-        z-index: 2;
-        text-align: center;
-    }}
-    
-    .zen-title {{
-        font-size: 2.5rem;
-        font-weight: 200;
-        color: rgba(0, 255, 255, 0.9);
-        margin: 0;
-        letter-spacing: 0.1em;
-        text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-        animation: zen-glow 3s ease-in-out infinite;
-    }}
-    
-    .zen-subtitle {{
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.5);
-        margin: 0.5rem 0 1rem 0;
-        letter-spacing: 0.15em;
-        font-weight: 300;
-    }}
-    
-    .bio-dots {{
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-    }}
-    
-    .dot {{
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: rgba(0, 255, 255, 0.3);
-        transition: all 0.3s ease;
-    }}
-    
-    .dot.active {{
-        background: #00FFFF;
-        box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
-        animation: bio-pulse 2s ease-in-out infinite;
-    }}
-    
-    .aurora-pulse {{
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.6), transparent);
-        animation: aurora-scan 6s ease-in-out infinite;
-    }}
-    
-    .action-constellation {{
-        display: flex;
-        justify-content: center;
-        gap: 2rem;
-        margin: 2rem 0;
-        padding: 1rem 0;
-    }}
-    
-    .action-orb {{
-        position: relative;
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-        border: 1px solid rgba(0, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-    }}
-    
-    .action-orb.primary {{
-        background: radial-gradient(circle, rgba(0, 255, 255, 0.08), rgba(64, 224, 208, 0.03));
-        border-color: rgba(0, 255, 255, 0.2);
-    }}
-    
-    .action-orb.secondary {{
-        background: radial-gradient(circle, rgba(138, 43, 226, 0.06), rgba(148, 0, 211, 0.02));
-        border-color: rgba(138, 43, 226, 0.15);
-    }}
-    
-    .action-orb.tertiary {{
-        background: radial-gradient(circle, rgba(255, 20, 147, 0.06), rgba(255, 69, 0, 0.02));
-        border-color: rgba(255, 20, 147, 0.15);
-    }}
-    
-    .action-orb:hover {{
-        transform: translateY(-4px) scale(1.05);
-        box-shadow: 0 12px 30px rgba(0, 255, 255, 0.15);
-    }}
-    
-    .action-orb.primary:hover {{
-        border-color: rgba(0, 255, 255, 0.4);
-        box-shadow: 0 12px 30px rgba(0, 255, 255, 0.2);
-    }}
-    
-    .action-orb.secondary:hover {{
-        border-color: rgba(138, 43, 226, 0.3);
-        box-shadow: 0 12px 30px rgba(138, 43, 226, 0.15);
-    }}
-    
-    .action-orb.tertiary:hover {{
-        border-color: rgba(255, 20, 147, 0.3);
-        box-shadow: 0 12px 30px rgba(255, 20, 147, 0.15);
-    }}
-    
-    .orb-icon {{
-        font-size: 1.5rem;
-        color: rgba(255, 255, 255, 0.8);
-        margin-bottom: 4px;
-        transition: all 0.3s ease;
-    }}
-    
-    .orb-label {{
-        font-size: 0.7rem;
-        color: rgba(255, 255, 255, 0.6);
-        letter-spacing: 0.05em;
-        transition: all 0.3s ease;
-    }}
-    
-    @keyframes orb-breathe {{
-        0%, 100% {{ transform: translate(-50%, -50%) scale(1); opacity: 0.6; }}
-        50% {{ transform: translate(-50%, -50%) scale(1.1); opacity: 0.9; }}
-    }}
-    
-    @keyframes zen-glow {{
-        0%, 100% {{ text-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }}
-        50% {{ text-shadow: 0 0 30px rgba(0, 255, 255, 0.6); }}
-    }}
-    
-    @keyframes bio-pulse {{
-        0%, 100% {{ opacity: 1; transform: scale(1); }}
-        50% {{ opacity: 0.7; transform: scale(1.2); }}
-    }}
-    
-    @keyframes aurora-scan {{
-        0%, 100% {{ left: -100%; opacity: 0; }}
-        25% {{ opacity: 1; }}
-        75% {{ opacity: 1; }}
-        100% {{ left: 100%; opacity: 0; }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Display all available results with beautiful Aurora styling
-    show_2025_content_display()
-
-
-def show_live_streaming_content():
-    """🌊 NEW: Real-time content streaming during processing - 2025 Aurora Style"""
+    """Display content as it streams - SIMPLIFIED"""
     controller = get_pipeline_controller()
     results = controller.get_results()
     
+    # Always show content if we have any
     if not results:
         return
     
-    st.markdown("""
-    <div class="live-stream-header">
-        <div class="stream-pulse"></div>
-        <h3>🌊 Live Generation Stream</h3>
-        <div class="stream-indicator">●</div>
-    </div>
-    
-    <style>
-    .live-stream-header {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        margin: 24px 0;
-        padding: 16px;
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
-        border: 1px solid rgba(0, 255, 255, 0.15);
-        border-radius: 12px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .stream-pulse {
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
-        animation: stream-flow 3s ease-in-out infinite;
-    }
-    
-    .live-stream-header h3 {
-        margin: 0;
-        color: #00FFFF;
-        font-weight: 300;
-        letter-spacing: 0.05em;
-    }
-    
-    .stream-indicator {
-        color: #00FF00;
-        font-size: 12px;
-        animation: blink 1s ease-in-out infinite;
-    }
-    
-    @keyframes stream-flow {
-        0%, 100% { left: -100%; opacity: 0; }
-        50% { left: 100%; opacity: 1; }
-    }
-    
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Show available content with streaming animations
-    content_map = {
-        'transcription': ('🎙️', 'Transcription', 'Audio-to-text conversion'),
-        'wisdom_extraction': ('💎', 'Key Insights', 'Extracted wisdom and takeaways'),
-        'research_enrichment': ('🔍', 'Research Links', 'Supporting context and sources'),
-        'outline_creation': ('📋', 'Content Outline', 'Structured organization'),
-        'article_creation': ('📰', 'Full Article', 'Complete written content'),
-        'social_content': ('📱', 'Social Posts', 'Platform-optimized content'),
-        'image_prompts': ('🖼️', 'Image Prompts', 'Visual concept descriptions')
-    }
-    
-    for key, (icon, title, desc) in content_map.items():
-        if key in results and results[key]:
-            show_streaming_content_card(icon, title, desc, results[key], is_live=True)
+    # Show current content - don't care about completion status
+    show_live_streaming_content()
 
 
-def show_streaming_content_card(icon: str, title: str, description: str, content: str, is_live: bool = False):
-    """🎨 Beautiful streaming content card with Aurora effects"""
+def show_live_streaming_content():
+    """Display real-time content generation - SIMPLIFIED"""
+    controller = get_pipeline_controller()
+    results = controller.get_results()
     
-    # Create unique key for this card
-    card_key = generate_unique_key(f"stream_card_{title.lower()}")
+    st.markdown("### 🌊 Live Content Stream")
     
-    # Live vs complete styling
-    border_color = "rgba(0, 255, 100, 0.2)" if is_live else "rgba(0, 255, 255, 0.15)"
-    bg_gradient = "rgba(0, 255, 100, 0.03), rgba(0, 255, 255, 0.05)" if is_live else "rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05)"
-    glow_color = "rgba(0, 255, 100, 0.4)" if is_live else "rgba(0, 255, 255, 0.3)"
+    # Show progress
+    current_step = getattr(controller, 'current_step_index', 0) if hasattr(controller, 'current_step_index') else 0
+    total_steps = len(getattr(controller, 'PIPELINE_STEPS', [])) if hasattr(controller, 'PIPELINE_STEPS') else 8
     
-    with st.container():
-        st.markdown(f"""
-        <div class="aurora-stream-card {'live' if is_live else 'complete'}">
-            <div class="card-header">
-                <span class="card-icon">{icon}</span>
-                <div class="card-title-group">
-                    <h4 class="card-title">{title}</h4>
-                    <p class="card-description">{description}</p>
-                </div>
-                {'<div class="live-badge">LIVE</div>' if is_live else '<div class="complete-badge">✓</div>'}
-            </div>
-            <div class="card-separator"></div>
-        </div>
-        
-        <style>
-        .aurora-stream-card {{
-            background: linear-gradient(135deg, {bg_gradient});
-            border: 1px solid {border_color};
-            border-radius: 16px;
-            padding: 20px;
-            margin: 16px 0;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            backdrop-filter: blur(20px);
-        }}
-        
-        .aurora-stream-card::before {{
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, {glow_color}, transparent);
-            animation: card-glow 4s ease-in-out infinite;
-        }}
-        
-        .aurora-stream-card.live::before {{
-            animation: card-glow 2s ease-in-out infinite;
-        }}
-        
-        .card-header {{
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }}
-        
-        .card-icon {{
-            font-size: 1.8rem;
-            filter: drop-shadow(0 0 8px {glow_color});
-        }}
-        
-        .card-title-group {{
-            flex: 1;
-        }}
-        
-        .card-title {{
-            margin: 0;
-            color: #00FFFF;
-            font-size: 1.1rem;
-            font-weight: 500;
-            letter-spacing: 0.02em;
-        }}
-        
-        .card-description {{
-            margin: 4px 0 0 0;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.85rem;
-        }}
-        
-        .live-badge {{
-            background: linear-gradient(135deg, rgba(0, 255, 100, 0.2), rgba(0, 255, 100, 0.1));
-            border: 1px solid rgba(0, 255, 100, 0.3);
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 0.7rem;
-            color: #00FF88;
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            animation: pulse-live 2s ease-in-out infinite;
-        }}
-        
-        .complete-badge {{
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            color: #00FFFF;
-        }}
-        
-        .card-separator {{
-            height: 1px;
-            background: linear-gradient(90deg, transparent, {border_color}, transparent);
-            margin: 16px 0 0 0;
-        }}
-        
-        @keyframes card-glow {{
-            0%, 100% {{ left: -100%; opacity: 0; }}
-            50% {{ left: 100%; opacity: 1; }}
-        }}
-        
-        @keyframes pulse-live {{
-            0%, 100% {{ transform: scale(1); opacity: 1; }}
-            50% {{ transform: scale(1.05); opacity: 0.8; }}
-        }}
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Content preview with smart truncation
-        if len(content) > 300:
-            preview = content[:300] + "..."
+    if total_steps > 0:
+        progress = (current_step / total_steps) * 100
+        st.progress(progress / 100.0, f"Step {current_step + 1} of {total_steps}")
+    
+    # Show available content with simple cards
+    content_sections = {
+        "transcription": ("🎙️", "Audio Transcription"),
+        "wisdom_extraction": ("💎", "Key Insights"),
+        "research_enrichment": ("🔍", "Research Links"),
+        "outline_creation": ("📋", "Content Outline"),
+        "article_creation": ("📰", "Full Article"),
+        "social_content": ("📱", "Social Posts"),
+        "image_prompts": ("🖼️", "Image Prompts"),
+    }
+    
+    for step_key, (icon, title) in content_sections.items():
+        if step_key in results and results[step_key]:
+            content = str(results[step_key])
             
-            # Expandable content
-            with st.expander(f"📖 Preview {title}", expanded=False):
-                st.markdown(preview)
-                
-            with st.expander(f"📄 Full {title}", expanded=False):
+            # Simple content card
+            st.markdown(f"#### {icon} {title}")
+            
+            # Show content preview
+            if len(content) > 500:
+                st.markdown(f"**Preview:** {content[:300]}...")
+                with st.expander("Show Full Content"):
+                    st.markdown(content)
+            else:
                 st.markdown(content)
-                
-                # Copy button
-                copy_key = generate_unique_key(f"copy_{title}")
-                if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
-                    st.code(content, language="markdown")
-        else:
-            st.markdown(content)
             
-            # Copy button for short content
-            copy_key = generate_unique_key(f"copy_short_{title}")
-            if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
-                st.code(content, language="markdown")
+            st.markdown("---")
 
 
 def show_2025_content_display():
@@ -683,6 +282,155 @@ def show_2025_content_display():
     for key, (icon, title, desc) in content_map.items():
         if key in results and results[key]:
             show_streaming_content_card(icon, title, desc, results[key], is_live=False)
+
+
+def show_streaming_content_card(icon: str, title: str, description: str, content: str, is_live: bool = False):
+    """🎨 Beautiful streaming content card with Aurora effects"""
+    
+    # Create unique key for this card
+    card_key = generate_unique_key(f"stream_card_{title.lower()}")
+    
+    # Live vs complete styling
+    border_color = "rgba(0, 255, 100, 0.2)" if is_live else "rgba(0, 255, 255, 0.15)"
+    bg_gradient = "rgba(0, 255, 100, 0.03), rgba(0, 255, 255, 0.05)" if is_live else "rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05)"
+    glow_color = "rgba(0, 255, 100, 0.4)" if is_live else "rgba(0, 255, 255, 0.3)"
+    
+    with st.container():
+        st.markdown(f"""
+        <div class="aurora-stream-card {'live' if is_live else 'complete'}">
+            <div class="card-header">
+                <span class="card-icon">{icon}</span>
+                <div class="card-title-group">
+                    <h4 class="card-title">{title}</h4>
+                    <p class="card-description">{description}</p>
+                </div>
+                {'<div class="live-badge">LIVE</div>' if is_live else '<div class="complete-badge">✓</div>'}
+            </div>
+            <div class="card-separator"></div>
+        </div>
+        
+        <style>
+        .aurora-stream-card {{
+            background: linear-gradient(135deg, {bg_gradient});
+            border: 1px solid {border_color};
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px 0;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            backdrop-filter: blur(20px);
+        }}
+        
+        .aurora-stream-card::before {{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, {glow_color}, transparent);
+            animation: card-glow 4s ease-in-out infinite;
+        }}
+        
+        .aurora-stream-card.live::before {{
+            animation: card-glow 2s ease-in-out infinite;
+        }}
+        
+        .card-header {{
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }}
+        
+        .card-icon {{
+            font-size: 1.8rem;
+            filter: drop-shadow(0 0 8px {glow_color});
+        }}
+        
+        .card-title-group {{
+            flex: 1;
+        }}
+        
+        .card-title {{
+            margin: 0;
+            color: #00FFFF;
+            font-size: 1.1rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }}
+        
+        .card-description {{
+            margin: 4px 0 0 0;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }}
+        
+        .live-badge {{
+            background: linear-gradient(135deg, rgba(0, 255, 100, 0.2), rgba(0, 255, 100, 0.1));
+            border: 1px solid rgba(0, 255, 100, 0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            color: #00FF88;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            animation: pulse-live 2s ease-in-out infinite;
+        }}
+        
+        .complete-badge {{
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: #00FFFF;
+        }}
+        
+        .card-separator {{
+            height: 1px;
+            background: linear-gradient(90deg, transparent, {border_color}, transparent);
+            margin: 16px 0 0 0;
+        }}
+        
+        @keyframes card-glow {{
+            0%, 100% {{ left: -100%; opacity: 0; }}
+            50% {{ left: 100%; opacity: 1; }}
+        }}
+        
+        @keyframes pulse-live {{
+            0%, 100% {{ transform: scale(1); opacity: 1; }}
+            50% {{ transform: scale(1.05); opacity: 0.8; }}
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Content preview with smart truncation
+        if len(content) > 300:
+            preview = content[:300] + "..."
+            
+            # Expandable content
+            with st.expander(f"📖 Preview {title}", expanded=False):
+                st.markdown(preview)
+                
+            with st.expander(f"📄 Full {title}", expanded=False):
+                st.markdown(content)
+                
+                # Copy button
+                copy_key = generate_unique_key(f"copy_{title}")
+                if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
+                    st.code(content, language="markdown")
+        else:
+            st.markdown(content)
+            
+            # Copy button for short content
+            copy_key = generate_unique_key(f"copy_short_{title}")
+            if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
+                st.code(content, language="markdown")
 
 
 def _show_download_options(results: Dict[str, Any]):

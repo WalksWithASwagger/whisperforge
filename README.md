@@ -1,173 +1,170 @@
-# 🌌 WhisperForge
+# WhisperForge 🌌
 
-**Simple, Fast Audio Transcription with AI Content Generation**
+**AI-Powered Audio Content Transformation Platform**
 
-Transform your audio files into transcripts, wisdom, outlines, and research insights using native Streamlit components and OpenAI's Whisper. Clean Aurora-styled interface that actually works.
+Transform your audio recordings into structured, actionable content with advanced AI processing and real-time streaming results.
 
-🌐 **Live Production App**: [whisperforge.ai](https://whisperforge.ai)
+## 🚀 Current Status - Version 2.1.0
 
----
+### ✅ **Working Features**
+- **Audio Processing**: Transcription via OpenAI Whisper
+- **AI Content Generation**: Wisdom extraction, outlines, articles, social content
+- **Modern Aurora UI**: 2025-style bioluminescent interface
+- **Database Integration**: Supabase backend for content storage
+- **Authentication**: Email/password and OAuth support
 
-## ✨ **Current Features**
+### 🔧 **Issues Being Addressed**
+- **Streaming Pipeline**: Content streaming works but needs real-time display improvements
+- **Content History**: Database contains processed files but display needs debugging
+- **Session Persistence**: Simplified authentication to improve reliability
+- **Thinking Bubbles**: AI thinking stream integration needs fixes
 
-### **🎙️ Rock Solid Audio Processing**
-- **Upload**: MP3, WAV, M4A, FLAC, MP4, WEBM support (max 25MB)
-- **Transcription**: OpenAI Whisper with bulletproof error handling
-- **Content Generation**: Three AI-powered outputs:
-  - **💡 Wisdom**: Key insights and actionable takeaways
-  - **📋 Outline**: Structured article frameworks  
-  - **🔬 Research**: Research questions and implications
-- **History**: View all processed content with search
+### 🛠 **Recent Simplifications**
+- Removed complex session management that was causing display issues
+- Simplified authentication to use basic Streamlit session state
+- Streamlined content display to focus on actual content vs complex UI states
+- Debug tools added to content history page to identify database issues
 
-### **🎨 Aurora UI System**
-- **Bioluminescent Design**: Beautiful cyan/teal Aurora theme
-- **Native Components**: Pure Streamlit - no complex custom features
-- **Clean Interface**: File upload → Transcribe → Generate content
-- **Mobile Optimized**: Responsive design that works everywhere
+## 🎯 **Architecture Overview**
 
-### **🔐 Simple Authentication**
-- **Database Storage**: API keys stored securely in Supabase
-- **Environment Fallback**: Also reads from Render environment variables
-- **No Session Complexity**: Eliminated problematic session state management
-
----
-
-## 🏗️ **Streamlined Architecture**
-
-### **Core Application**
 ```
-whisperforge--prime/
-├── app.py                     # Main application (450 lines, optimized)
-├── requirements.txt           # Minimal dependencies
-├── Procfile                   # Render deployment
-└── core/                      # Archived complex modules (not used)
+├── app.py                 # Main Streamlit application
+├── core/
+│   ├── streaming_pipeline.py    # Step-by-step content processing
+│   ├── streaming_results.py     # Real-time content display
+│   ├── content_generation.py    # AI content generation functions
+│   ├── supabase_integration.py  # Database operations
+│   ├── visible_thinking.py      # AI thinking bubbles
+│   ├── session_manager.py       # User session handling
+│   └── styling.py              # Aurora UI components
+└── prompts/                # Default and custom AI prompts
 ```
 
-### **Key Simplifications**
-- ✅ **No complex session state** - Uses native Streamlit only
-- ✅ **Direct API calls** - No complicated pipeline systems  
-- ✅ **Native progress indicators** - `st.status()`, `st.spinner()`, `st.tabs()`
-- ✅ **Bulletproof error handling** - Specific OpenAI error types
-- ✅ **Clean database integration** - Simple Supabase functions
+## 🌊 **Core Features**
 
-### **Dependencies (Rock Solid)**
-```
-streamlit>=1.28.0
-openai>=1.3.0
-supabase>=2.0.0
-python-dotenv>=1.0.0
-```
+### **1. Real-Time Audio Processing**
+- Upload audio files (MP3, WAV, M4A, FLAC, etc.)
+- Automatic transcription using OpenAI Whisper
+- Progressive content generation with live updates
 
----
+### **2. AI Content Pipeline**
+1. **Transcription** - Speech-to-text conversion
+2. **Wisdom Extraction** - Key insights and takeaways
+3. **Research Enrichment** - Supporting links and context  
+4. **Outline Creation** - Structured content organization
+5. **Article Generation** - Complete written content
+6. **Social Media** - Platform-optimized posts
+7. **Image Prompts** - AI-generated visual concepts
+8. **Database Storage** - Persistent content library
 
-## 🚀 **Local Development**
+### **3. Modern Aurora Interface**
+- Bioluminescent 2025 design system
+- Real-time progress indicators
+- Animated content cards
+- Responsive Aurora color scheme
 
-### **Setup**
-```bash
-# Clone and setup
-git clone <repository-url>
-cd whisperforge--prime
+## 🔧 **Technical Stack**
 
-# Virtual environment
-python -m venv venv
-source venv/bin/activate
+- **Frontend**: Streamlit with custom Aurora CSS
+- **Backend**: Supabase (PostgreSQL)
+- **AI Models**: OpenAI GPT-4, Anthropic Claude
+- **Audio Processing**: OpenAI Whisper
+- **Authentication**: Supabase Auth + OAuth
+- **Deployment**: Streamlit Cloud ready
 
-# Install dependencies  
-pip install -r requirements.txt
+## 🚀 **Getting Started**
 
-# Run locally
-streamlit run app.py
-```
+1. **Clone Repository**
+   ```bash
+   git clone <repository-url>
+   cd whisperforge--prime
+   ```
 
-### **Environment Variables**
-```bash
-# Required for local development
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-OPENAI_API_KEY=your-openai-key
-```
+2. **Install Dependencies**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+   pip install -r requirements.txt
+   ```
 
----
+3. **Environment Setup**
+   Create `.env` file:
+   ```env
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   OPENAI_API_KEY=your_openai_key
+   ANTHROPIC_API_KEY=your_anthropic_key
+   ```
 
-## 🎯 **Technical Excellence**
+4. **Run Application**
+   ```bash
+   streamlit run app.py
+   ```
 
-### **Bulletproof Transcription**
-- **File Validation**: Size limits, format checking, empty file detection
-- **Smart Cleanup**: Temporary files always deleted, even on errors
-- **Specific Error Handling**: OpenAI API errors, rate limits, auth failures
-- **Content Validation**: Ensures transcripts aren't empty or corrupted
+## 🎨 **Aurora Design System**
 
-### **Rock Solid Content Generation**
-- **Input Validation**: Checks transcript before processing
-- **Smart Truncation**: Keeps beginning and end for context
-- **Robust API Calls**: Handles all OpenAI error types gracefully
-- **Quality Validation**: Ensures generated content isn't empty
+The WhisperForge UI uses a custom Aurora design system featuring:
 
-### **Aurora UI Excellence**
-- **Beautiful Gradients**: Cyan/turquoise glow effects throughout
-- **Native Components**: `st.file_uploader()`, `st.tabs()`, `st.status()`
-- **No Conflicts**: Eliminated nested expander issues
-- **Professional Design**: Modern 2025-style interface
+- **Bioluminescent Effects**: Glowing borders and animations
+- **Gradient Backgrounds**: Dynamic color transitions
+- **Glass Morphism**: Backdrop blur effects
+- **Responsive Cards**: Animated content containers
+- **Progress Streams**: Real-time processing indicators
 
----
+## 📊 **Database Schema**
 
-## 📊 **Production Status**
+### **Core Tables**
+- `users` - User accounts and settings
+- `content` - Generated content and metadata  
+- `prompts` - Custom AI prompts
+- `knowledge_base` - User-uploaded files
+- `api_keys` - Encrypted API credentials
 
-### **✅ OPTIMIZED & WORKING**
-- **Transcription**: Rock solid with comprehensive error handling
-- **Content Generation**: Three-tab workflow (Wisdom/Outline/Research)
-- **UI/UX**: Beautiful Aurora theme with zero conflicts
-- **Database**: Clean Supabase integration for content history
-- **Deployment**: Auto-deploy to Render with environment variables
+## 🔐 **Security Features**
 
-### **🚀 Performance Metrics**
-- **Code Reduction**: From 1,421 lines to ~450 lines (68% reduction)
-- **Session Complexity**: Eliminated completely
-- **Import Conflicts**: Zero (verified clean imports)
-- **Error Handling**: Bulletproof with specific error types
+- **Encrypted Storage**: API keys and sensitive data
+- **Session Management**: Secure user sessions
+- **Input Validation**: File size and type restrictions
+- **Rate Limiting**: API usage controls
 
----
+## 🛡 **Current Known Issues**
 
-## 🛠️ **Recent Optimizations**
+1. **Database Content Retrieval**: 26 processed files not displaying in history (investigating field name mismatches)
+2. **Real-time Streaming**: Content shows but not truly real-time like cursor chat
+3. **Session Persistence**: Authentication doesn't persist across refreshes consistently
+4. **Prompt Saving**: Custom prompts saving but not loading properly
+5. **Thinking Bubbles**: AI thinking stream not integrating smoothly
 
-### **Major Simplifications (December 2024)**
-1. **Eliminated Complex Pipeline**: Replaced with direct API calls
-2. **Removed Session State Chaos**: Uses only native Streamlit state
-3. **Native Components Only**: No custom features that break
-4. **Bulletproof Error Handling**: Comprehensive validation and cleanup
-5. **Clean Database Functions**: Simple, working Supabase integration
+## 🔄 **Debugging Tools**
 
-### **UI/UX Improvements**
-- Fixed nested expander errors
-- Clean transcript display with markdown headers
-- Native tab system for content types
-- Aurora styling with cyan gradients maintained
-- Mobile-responsive file upload interface
+The content history page includes debug information:
+- Database connection status
+- Raw record samples
+- Session state inspection
+- Content structure analysis
 
----
+## 📈 **Roadmap**
 
-## 📝 **Philosophy**
+### **Immediate Fixes**
+- [ ] Fix content history display issues
+- [ ] Implement true real-time streaming
+- [ ] Resolve session persistence
+- [ ] Debug prompt saving/loading
 
-**"Simple, Native, Working"**
+### **Enhancements**
+- [ ] Batch audio processing
+- [ ] Export to multiple formats
+- [ ] Advanced AI model selection
+- [ ] Team collaboration features
 
-WhisperForge now follows the principle of using native Streamlit components wherever possible, eliminating complex custom features that cause conflicts. The result is a fast, reliable, beautiful audio processing app that actually works.
+## 💡 **Contributing**
 
----
-
-## 🤝 **Contributing**
-
-The codebase is now optimized and stable. Future contributions should:
-- Maintain the simplified, native Streamlit approach
-- Preserve the Aurora UI theme
-- Add comprehensive error handling for any new features
-- Test thoroughly to avoid session state conflicts
-
----
+This is currently a private project focused on creating the best audio-to-content transformation experience with a beautiful, modern interface.
 
 ## 📄 **License**
 
-See [LICENSE](LICENSE) file for details.
+MIT License - See LICENSE file for details.
 
 ---
 
-**Built with ❤️ using Python, Streamlit, Supabase, and Advanced AI** 
+**WhisperForge** - Transforming audio into actionable insights with the beauty of Aurora. 🌌 

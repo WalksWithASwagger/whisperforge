@@ -412,11 +412,10 @@ def create_aurora_nav_buttons():
     """, unsafe_allow_html=True)
     
     pages = [
-        ("💬 Chat", "Chat Mode"),        # NEW: Our Cursor-style chat!
-        ("🎙️ Pipeline", "Content Pipeline"),
-        ("📋 History", "History"), 
-        ("⚙️ Settings", "Settings"),
-        ("❤️ Health", "Health")
+        ("Processing", "Content Pipeline"),
+        ("History", "Content History"), 
+        ("Settings", "Settings"),
+        ("Status", "Health Check")
     ]
     
     current_page = st.session_state.get('current_page', 'Content Pipeline')

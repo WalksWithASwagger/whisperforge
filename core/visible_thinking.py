@@ -405,8 +405,25 @@ def add_thought(text: str, mood: str = "info", emoji: str = None) -> None:
     visible_thinking.add_thought(text, mood, emoji)
 
 def render_thinking_stream(container=None) -> None:
-    """Quick function to render the thinking stream"""
-    visible_thinking.render_bubble_stream(container)
+    """Render the current thinking bubble stream"""
+    # Get the global instance or create one
+    if "visible_thinking" not in st.session_state:
+        st.session_state.visible_thinking = VisibleThinking()
+    
+    thinking = st.session_state.visible_thinking
+    
+    if not thinking.is_enabled():
+        return
+    
+    bubbles = st.session_state.get("thinking_bubbles", [])
+    if not bubbles:
+        return
+    
+    # Use provided container or create new one
+    target_container = container if container else st.container()
+    
+    with target_container:
+        thinking.render_bubble_stream()
 
 def thinking_step_start(step_name: str, context: str = "", use_ai: bool = True) -> None:
     """Quick function for step start thoughts"""
