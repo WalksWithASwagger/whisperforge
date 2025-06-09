@@ -241,6 +241,48 @@ def save_user_custom_prompt(user_id, prompt_type, prompt_text):
     except:
         return False
 
+def get_user_knowledge_base(user_id):
+    """Get user's knowledge base files from database"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return []
+            
+        result = client.table("knowledge_base").select("*").eq("user_id", user_id).execute()
+        return result.data
+    except:
+        return []
+
+def save_knowledge_base_file(user_id, file_name, file_content):
+    """Save knowledge base file to database"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return False
+        
+        result = client.table("knowledge_base").insert({
+            "user_id": user_id,
+            "file_name": file_name,
+            "content": file_content,
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        
+        return bool(result.data)
+    except:
+        return False
+
+def delete_knowledge_base_file(user_id, file_id):
+    """Delete knowledge base file"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return False
+        
+        result = client.table("knowledge_base").delete().eq("id", file_id).eq("user_id", user_id).execute()
+        return bool(result.data)
+    except:
+        return False
+
 def transcribe_audio_simple(audio_file, user_id=None):
     """Rock solid transcription function with bulletproof error handling"""
     try:
@@ -346,9 +388,19 @@ def generate_content_simple(transcript, content_type="wisdom", user_id=None):
         # Use custom prompt if available, otherwise default
         prompt = custom_prompts.get(content_type, default_prompts.get(content_type, default_prompts["wisdom"]))
         
+        # Get knowledge base context
+        knowledge_base_context = ""
+        if user_id:
+            kb_files = get_user_knowledge_base(user_id)
+            if kb_files:
+                kb_content = []
+                for kb_file in kb_files[:3]:  # Limit to 3 files to avoid token limits
+                    kb_content.append(f"**{kb_file['file_name']}:**\n{kb_file['content'][:500]}...")
+                knowledge_base_context = "\n\n**Knowledge Base Context:**\n" + "\n\n".join(kb_content)
+        
         # Truncate transcript smartly - keep beginning and end
-        if len(transcript) > 3000:
-            truncated = transcript[:2000] + "\n\n[...content truncated...]\n\n" + transcript[-1000:]
+        if len(transcript) > 2500:  # Reduced to make room for knowledge base
+            truncated = transcript[:1500] + "\n\n[...content truncated...]\n\n" + transcript[-1000:]
         else:
             truncated = transcript
         
@@ -357,7 +409,7 @@ def generate_content_simple(transcript, content_type="wisdom", user_id=None):
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": prompt},
-                    {"role": "user", "content": f"Transcript:\n{truncated}"}
+                    {"role": "user", "content": f"Transcript:\n{truncated}{knowledge_base_context}"}
                 ],
                 max_tokens=1500,
                 temperature=0.7
@@ -519,10 +571,55 @@ def main():
                     
                     with col2:
                         if st.button("🔄 Reset", key=f"reset_{prompt_type}"):
-                            if save_user_custom_prompt(user_id, prompt_type, ""):
-                                st.success("✅ Reset to default!")
-                            else:
-                                st.error("❌ Failed to reset")
+                                                         if save_user_custom_prompt(user_id, prompt_type, ""):
+                                 st.success("✅ Reset to default!")
+                             else:
+                                 st.error("❌ Failed to reset")
+                
+                # Knowledge Base Section
+                st.markdown("---")
+                st.markdown("### 📚 Knowledge Base")
+                
+                with st.expander("📁 Manage Files"):
+                    # Upload new knowledge base file
+                    uploaded_kb_file = st.file_uploader(
+                        "Upload knowledge base file:",
+                        type=['txt', 'md', 'pdf'],
+                        help="Upload text files to provide context for AI generation"
+                    )
+                    
+                    if uploaded_kb_file:
+                        if st.button("💾 Save to Knowledge Base"):
+                            try:
+                                # Read file content
+                                if uploaded_kb_file.type == "application/pdf":
+                                    st.warning("PDF support coming soon. Please use .txt or .md files.")
+                                else:
+                                    content = uploaded_kb_file.read().decode('utf-8')
+                                    if save_knowledge_base_file(user_id, uploaded_kb_file.name, content):
+                                        st.success("✅ File saved to knowledge base!")
+                                    else:
+                                        st.error("❌ Failed to save file")
+                            except Exception as e:
+                                st.error(f"Error reading file: {e}")
+                    
+                    # Show existing knowledge base files
+                    kb_files = get_user_knowledge_base(user_id)
+                    if kb_files:
+                        st.markdown("**Your Knowledge Base Files:**")
+                        for kb_file in kb_files:
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.text(f"📄 {kb_file['file_name']}")
+                            with col2:
+                                if st.button("🗑️", key=f"delete_{kb_file['id']}", help="Delete file"):
+                                    if delete_knowledge_base_file(user_id, kb_file['id']):
+                                        st.success("✅ File deleted!")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Failed to delete")
+                    else:
+                        st.info("No knowledge base files yet. Upload some to provide context for AI generation.")
         
         # Main interface
         col1, col2, col3 = st.columns([1, 2, 1])
