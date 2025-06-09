@@ -4,6 +4,15 @@ Clean, native Streamlit implementation that actually works
 """
 
 import streamlit as st
+
+# MUST BE FIRST - Configure page before any other Streamlit commands
+st.set_page_config(
+    page_title="WhisperForge",
+    page_icon="🎙️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import os
 import tempfile
 import time
@@ -11,14 +20,6 @@ from datetime import datetime
 import hashlib
 import json
 from io import BytesIO
-
-# Configuration
-st.set_page_config(
-    page_title="WhisperForge",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # Aurora CSS - Clean and Beautiful
 AURORA_CSS = """
@@ -96,7 +97,7 @@ AURORA_CSS = """
 # Database functions with enhanced logging
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client with robust error handling and logging"""
+    """Initialize Supabase client with robust error handling"""
     try:
         from supabase import create_client, Client
         
@@ -109,52 +110,39 @@ def init_supabase():
             if hasattr(st, 'secrets'):
                 url = st.secrets.get("SUPABASE_URL")
                 key = st.secrets.get("SUPABASE_ANON_KEY")
-                if url and key:
-                    st.write("🔍 DEBUG: Using Streamlit secrets")
-        except Exception as e:
-            st.write(f"🔍 DEBUG: Streamlit secrets error: {e}")
+        except Exception:
+            pass
         
         # Fallback to environment variables
         if not url:
             url = os.getenv("SUPABASE_URL")
-            if url:
-                st.write("🔍 DEBUG: Using environment SUPABASE_URL")
         if not key:
             key = os.getenv("SUPABASE_ANON_KEY")
-            if key:
-                st.write("🔍 DEBUG: Using environment SUPABASE_ANON_KEY")
         
         if not url or not key:
             error_msg = f"Missing Supabase credentials - URL: {bool(url)}, KEY: {bool(key)}"
-            st.write(f"🔍 DEBUG: {error_msg}")
             return None, error_msg
         
         # Validate URL format
         if not url.startswith(('http://', 'https://')):
             error_msg = f"Invalid Supabase URL format: {url}"
-            st.write(f"🔍 DEBUG: {error_msg}")
             return None, error_msg
             
         client = create_client(url, key)
-        st.write(f"🔍 DEBUG: Created Supabase client for {url}")
         
         # Test connection with a simple query
         try:
             result = client.table("api_keys").select("id").limit(1).execute()
-            st.write(f"🔍 DEBUG: Connection test successful, found {len(result.data)} records")
             return client, None
         except Exception as test_error:
             error_msg = f"Supabase connection test failed: {str(test_error)}"
-            st.write(f"🔍 DEBUG: {error_msg}")
             return None, error_msg
         
     except ImportError as e:
         error_msg = f"Supabase Python client not installed: {e}"
-        st.write(f"🔍 DEBUG: {error_msg}")
         return None, error_msg
     except Exception as e:
         error_msg = f"Supabase initialization error: {str(e)}"
-        st.write(f"🔍 DEBUG: {error_msg}")
         return None, error_msg
 
 # User Management Functions
@@ -986,13 +974,6 @@ def show_sidebar_features():
 
 def main():
     """Main app - Simple and clean"""
-    st.set_page_config(
-        page_title="WhisperForge",
-        page_icon="🎙️",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
     # Add Aurora CSS
     st.markdown("""
     <style>
