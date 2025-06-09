@@ -206,6 +206,41 @@ def get_api_keys(user_id=None):
     
     return api_keys
 
+def get_user_custom_prompts(user_id):
+    """Get user's custom prompts from database"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return {}
+            
+        result = client.table("user_prompts").select("prompt_type, prompt_text").eq("user_id", user_id).execute()
+        
+        prompts = {}
+        for item in result.data:
+            prompts[item["prompt_type"]] = item["prompt_text"]
+        
+        return prompts
+    except:
+        return {}
+
+def save_user_custom_prompt(user_id, prompt_type, prompt_text):
+    """Save user's custom prompt to database"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return False
+        
+        # Upsert the prompt
+        result = client.table("user_prompts").upsert({
+            "user_id": user_id,
+            "prompt_type": prompt_type,
+            "prompt_text": prompt_text
+        }).execute()
+        
+        return bool(result.data)
+    except:
+        return False
+
 def transcribe_audio_simple(audio_file, user_id=None):
     """Rock solid transcription function with bulletproof error handling"""
     try:
@@ -299,13 +334,17 @@ def generate_content_simple(transcript, content_type="wisdom", user_id=None):
         import openai
         client = openai.OpenAI(api_key=openai_key)
         
-        prompts = {
+        # Get custom prompts for user, fallback to defaults
+        custom_prompts = get_user_custom_prompts(user_id) if user_id else {}
+        
+        default_prompts = {
             "wisdom": "Extract key insights, lessons, and wisdom from this transcript. Focus on actionable takeaways and practical lessons that readers can apply.",
             "outline": "Create a detailed, well-structured outline for an article based on this transcript. Include main sections, subsections, and key points.",
             "research": "Act as a researcher. Analyze this content and provide: 1) Related research questions, 2) Key implications, 3) Connections to broader topics, 4) Suggested further research areas."
         }
         
-        prompt = prompts.get(content_type, prompts["wisdom"])
+        # Use custom prompt if available, otherwise default
+        prompt = custom_prompts.get(content_type, default_prompts.get(content_type, default_prompts["wisdom"]))
         
         # Truncate transcript smartly - keep beginning and end
         if len(transcript) > 3000:
@@ -364,9 +403,13 @@ def save_to_database(content_data, user_id=None):
         st.error(f"Save error: {e}")
         return False
 
-def show_history():
+def show_history(user_id=None):
     """Show content history using native Streamlit"""
     st.markdown("### 📋 Content History")
+    
+    if not user_id:
+        st.info("👋 Please login to view your content history")
+        return
     
     try:
         client, error = init_supabase()
@@ -374,7 +417,7 @@ def show_history():
             st.error("Database connection failed")
             return
             
-        result = client.table("content").select("*").eq("user_id", 3).order("created_at", desc=True).limit(10).execute()
+        result = client.table("content").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(10).execute()
         
         if not result.data:
             st.info("No content found yet. Process some audio files to see history here!")
@@ -431,6 +474,55 @@ def main():
                 else:
                     st.error("❌ No OpenAI API key")
                     st.markdown("Add your key to Supabase or environment variables")
+                
+                # Custom Prompts Section
+                st.markdown("---")
+                st.markdown("### 🎯 Custom Prompts")
+                
+                with st.expander("✏️ Edit Prompts"):
+                    prompt_type = st.selectbox(
+                        "Select prompt type:",
+                        ["wisdom", "outline", "research"],
+                        help="Choose which prompt to customize"
+                    )
+                    
+                    # Get current custom prompts
+                    custom_prompts = get_user_custom_prompts(user_id)
+                    current_prompt = custom_prompts.get(prompt_type, "")
+                    
+                    # Show default for reference
+                    default_prompts = {
+                        "wisdom": "Extract key insights, lessons, and wisdom from this transcript. Focus on actionable takeaways and practical lessons that readers can apply.",
+                        "outline": "Create a detailed, well-structured outline for an article based on this transcript. Include main sections, subsections, and key points.",
+                        "research": "Act as a researcher. Analyze this content and provide: 1) Related research questions, 2) Key implications, 3) Connections to broader topics, 4) Suggested further research areas."
+                    }
+                    
+                    st.markdown(f"**Default {prompt_type} prompt:**")
+                    st.text_area("", default_prompts[prompt_type], height=100, disabled=True, key=f"default_{prompt_type}")
+                    
+                    # Custom prompt editor
+                    new_prompt = st.text_area(
+                        f"Your custom {prompt_type} prompt:",
+                        value=current_prompt,
+                        height=150,
+                        placeholder=f"Enter your custom {prompt_type} prompt here...",
+                        key=f"custom_{prompt_type}"
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("💾 Save", key=f"save_{prompt_type}"):
+                            if save_user_custom_prompt(user_id, prompt_type, new_prompt):
+                                st.success("✅ Prompt saved!")
+                            else:
+                                st.error("❌ Failed to save")
+                    
+                    with col2:
+                        if st.button("🔄 Reset", key=f"reset_{prompt_type}"):
+                            if save_user_custom_prompt(user_id, prompt_type, ""):
+                                st.success("✅ Reset to default!")
+                            else:
+                                st.error("❌ Failed to reset")
         
         # Main interface
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -484,7 +576,7 @@ def main():
                                 outline = generate_content_simple(transcript, "outline", user_id)
                                 st.markdown(outline)
                         
-                                                                        with research_tab:
+                        with research_tab:
                             with st.spinner("Generating research insights..."):
                                 research = generate_content_simple(transcript, "research", user_id)
                                 st.markdown(research)
@@ -508,7 +600,7 @@ def main():
                                 st.info("💡 Login to save your content history")
     
     with tab2:
-        show_history()
+        show_history(user_id)
 
 if __name__ == "__main__":
     main() 
