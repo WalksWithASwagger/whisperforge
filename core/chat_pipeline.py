@@ -180,21 +180,111 @@ def show_chat_interface():
         
         # Simple synchronous processing for now
         if audio_file:
-            # FIXED: Use the actual pipeline instead of simulation
+            # ENHANCED: Complete audio processing workflow in chat
             try:
-                from core.streaming_pipeline import get_pipeline_controller
-                controller = get_pipeline_controller()
+                from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content, generate_image_prompts
+                from core.research_enrichment import generate_research_enrichment
                 
-                chat.stream_thinking("Starting real audio processing...")
-                st.rerun()
+                chat.stream_thinking(f"🎵 Processing audio file: {audio_file.name}")
                 
-                # Start actual pipeline
-                controller.start_pipeline(audio_file)
+                # Step 1: Transcription
+                chat.stream_content(f"🎵 **Processing Audio: {audio_file.name}**\n\n")
+                chat.stream_content(f"📊 **File size:** {len(audio_file.getvalue()) / (1024*1024):.2f} MB\n\n")
                 
-                # Basic feedback for now
-                chat.stream_content(f"🎵 **Processing Audio File: {audio_file.name}**\n\n")
-                chat.stream_content(f"📊 Size: {len(audio_file.getvalue())} bytes\n\n")
-                chat.stream_content("🔄 **Processing started - check Content Pipeline for full results**\n")
+                chat.add_step("transcription", "processing", "Transcribing audio using OpenAI Whisper...")
+                
+                transcript = transcribe_audio(audio_file)
+                if not transcript or transcript.startswith("Error"):
+                    chat.update_step("transcription", "error", f"Failed: {transcript}")
+                    chat.stream_content(f"❌ **Transcription failed:** {transcript}\n\n")
+                    chat.stream_content("💡 **Check your OpenAI API key in Settings**")
+                    chat.complete_response()
+                    st.session_state.chat_input = ""
+                    st.rerun()
+                    return
+                
+                chat.update_step("transcription", "complete", f"Transcribed {len(transcript)} characters")
+                chat.stream_content(f"✅ **Transcription complete** ({len(transcript)} characters)\n\n")
+                
+                # Show transcript preview
+                preview = transcript[:200] + "..." if len(transcript) > 200 else transcript
+                chat.stream_content(f"📝 **Transcript preview:**\n> {preview}\n\n")
+                
+                # Step 2: Wisdom Extraction
+                chat.add_step("wisdom_extraction", "processing", "Extracting key insights and wisdom...")
+                
+                ai_provider = st.session_state.get('ai_provider', 'OpenAI')
+                ai_model = st.session_state.get('ai_model', 'gpt-4o')
+                knowledge_base = st.session_state.get('knowledge_base', {})
+                prompts = st.session_state.get('prompts', {})
+                
+                wisdom = generate_wisdom(transcript, ai_provider, ai_model, prompts.get("wisdom_extraction"), knowledge_base)
+                if wisdom and not wisdom.startswith("Error"):
+                    chat.update_step("wisdom_extraction", "complete", f"Generated {len(wisdom)} characters of insights")
+                    chat.stream_content(f"💡 **Key Insights:**\n{wisdom}\n\n")
+                else:
+                    chat.update_step("wisdom_extraction", "error", "Failed to extract wisdom")
+                    chat.stream_content(f"⚠️ Wisdom extraction failed: {wisdom}\n\n")
+                
+                # Step 3: Research Enrichment (The Researcher!)
+                chat.add_step("research_enrichment", "processing", "🔬 Researcher analyzing and enriching content...")
+                
+                try:
+                    research_data = generate_research_enrichment(transcript, wisdom or "", ai_provider, ai_model, knowledge_base)
+                    if research_data and isinstance(research_data, dict):
+                        chat.update_step("research_enrichment", "complete", "Research analysis complete")
+                        
+                        # Show research results
+                        chat.stream_content("🔬 **Research Analysis (The Researcher):**\n\n")
+                        
+                        if research_data.get('research_questions'):
+                            chat.stream_content(f"**🤔 Research Questions:**\n{research_data['research_questions']}\n\n")
+                        
+                        if research_data.get('context_analysis'):
+                            chat.stream_content(f"**📊 Context Analysis:**\n{research_data['context_analysis']}\n\n")
+                        
+                        if research_data.get('deeper_insights'):
+                            chat.stream_content(f"**🧠 Deeper Insights:**\n{research_data['deeper_insights']}\n\n")
+                        
+                        if research_data.get('connections'):
+                            chat.stream_content(f"**🔗 Connections & Patterns:**\n{research_data['connections']}\n\n")
+                        
+                        if research_data.get('implications'):
+                            chat.stream_content(f"**🎯 Implications:**\n{research_data['implications']}\n\n")
+                    else:
+                        chat.update_step("research_enrichment", "error", "Research analysis failed")
+                        chat.stream_content("⚠️ Research analysis failed\n\n")
+                except Exception as research_error:
+                    chat.update_step("research_enrichment", "error", f"Research error: {str(research_error)}")
+                    chat.stream_content(f"⚠️ Research analysis error: {str(research_error)}\n\n")
+                
+                # Step 4: Content Generation Options
+                chat.stream_content("🚀 **Quick Actions:**\n")
+                chat.stream_content("- Content saved to your History\n")
+                chat.stream_content("- Visit **Content Pipeline** page for full article generation\n")
+                chat.stream_content("- Use **Settings** to customize prompts and knowledge base\n\n")
+                
+                # Save to database
+                try:
+                    from app import save_generated_content_supabase
+                    content_data = {
+                        "transcript": transcript,
+                        "wisdom": wisdom,
+                        "research_data": research_data,
+                        "file_name": audio_file.name,
+                        "ai_provider": ai_provider,
+                        "ai_model": ai_model,
+                        "processed_at": str(datetime.now())
+                    }
+                    
+                    content_id = save_generated_content_supabase(content_data)
+                    if content_id:
+                        chat.stream_content(f"💾 **Saved to database** (ID: {content_id})")
+                    else:
+                        chat.stream_content("⚠️ **Warning:** Could not save to database")
+                        
+                except Exception as save_error:
+                    chat.stream_content(f"⚠️ **Save error:** {str(save_error)}")
                 
             except Exception as e:
                 chat.stream_content(f"❌ **Error processing audio:** {str(e)}\n\n")

@@ -104,11 +104,27 @@ def get_enhanced_prompt(prompt_type: str, knowledge_base: Dict[str, str] = None,
     return base_prompt
 
 def get_openai_client():
-    """Get OpenAI client with API key"""
+    """Get OpenAI client with API key from database or environment"""
     try:
         import openai
-        api_key = os.getenv("OPENAI_API_KEY")
+        
+        # First, try to get API key from database (stored in session state)
+        api_key = None
+        try:
+            import streamlit as st
+            # Check if we have API keys loaded from database
+            if hasattr(st.session_state, 'api_keys') and st.session_state.api_keys:
+                api_key = st.session_state.api_keys.get("openai_api_key")
+        except (ImportError, AttributeError):
+            # Streamlit not available or session_state not initialized
+            pass
+        
+        # Fall back to environment variable if no database key
         if not api_key:
+            api_key = os.getenv("OPENAI_API_KEY")
+            
+        if not api_key:
+            logger.warning("No OpenAI API key found in database or environment")
             return None
         
         client = openai.OpenAI(api_key=api_key)
@@ -121,11 +137,27 @@ def get_openai_client():
         return None
 
 def get_anthropic_client():
-    """Get Anthropic client with API key"""
+    """Get Anthropic client with API key from database or environment"""
     try:
         import anthropic
-        api_key = os.getenv("ANTHROPIC_API_KEY")
+        
+        # First, try to get API key from database (stored in session state)
+        api_key = None
+        try:
+            import streamlit as st
+            # Check if we have API keys loaded from database
+            if hasattr(st.session_state, 'api_keys') and st.session_state.api_keys:
+                api_key = st.session_state.api_keys.get("anthropic_api_key")
+        except (ImportError, AttributeError):
+            # Streamlit not available or session_state not initialized
+            pass
+        
+        # Fall back to environment variable if no database key
         if not api_key:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            
+        if not api_key:
+            logger.warning("No Anthropic API key found in database or environment")
             return None
         
         client = anthropic.Anthropic(api_key=api_key)
@@ -138,8 +170,23 @@ def get_anthropic_client():
         return None
 
 def get_grok_api_key():
-    """Get Grok API key"""
-    return os.getenv("GROK_API_KEY")
+    """Get Grok API key from database or environment"""
+    # First, try to get API key from database (stored in session state)
+    api_key = None
+    try:
+        import streamlit as st
+        # Check if we have API keys loaded from database
+        if hasattr(st.session_state, 'api_keys') and st.session_state.api_keys:
+            api_key = st.session_state.api_keys.get("grok_api_key")
+    except (ImportError, AttributeError):
+        # Streamlit not available or session_state not initialized
+        pass
+    
+    # Fall back to environment variable if no database key
+    if not api_key:
+        api_key = os.getenv("GROK_API_KEY")
+    
+    return api_key
 
 def update_usage_tracking(duration_seconds: float):
     """Placeholder for usage tracking - implement as needed"""
