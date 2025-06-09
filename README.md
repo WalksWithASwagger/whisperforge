@@ -4,26 +4,20 @@
 
 Transform your audio recordings into structured, actionable content with advanced AI processing and real-time streaming results.
 
-## 🚀 Current Status - Version 2.1.0
+## 🚀 Current Status - Version 2.1.2
 
 ### ✅ **Working Features**
 - **Audio Processing**: Transcription via OpenAI Whisper
 - **AI Content Generation**: Wisdom extraction, outlines, articles, social content
 - **Modern Aurora UI**: 2025-style bioluminescent interface
-- **Database Integration**: Supabase backend for content storage
-- **Authentication**: Email/password and OAuth support
+- **Database Integration**: Supabase backend with proper caching
+- **Simple Authentication**: Streamlit session state (no over-engineering)
 
-### 🔧 **Issues Being Addressed**
-- **Streaming Pipeline**: Content streaming works but needs real-time display improvements
-- **Content History**: Database contains processed files but display needs debugging
-- **Session Persistence**: Simplified authentication to improve reliability
-- **Thinking Bubbles**: AI thinking stream integration needs fixes
-
-### 🛠 **Recent Simplifications**
-- Removed complex session management that was causing display issues
-- Simplified authentication to use basic Streamlit session state
-- Streamlined content display to focus on actual content vs complex UI states
-- Debug tools added to content history page to identify database issues
+### 🔧 **Recent Improvements (v2.1.2)**
+- **Simplified Session Management**: Removed complex token system causing display issues
+- **Research-Backed Architecture**: Following 2024-2025 Streamlit + Supabase best practices
+- **Cached Database Connections**: Using `@st.cache_resource` for optimal performance
+- **Minimal Session State**: Only storing what's actually needed
 
 ## 🎯 **Architecture Overview**
 
@@ -168,3 +162,26 @@ MIT License - See LICENSE file for details.
 ---
 
 **WhisperForge** - Transforming audio into actionable insights with the beauty of Aurora. 🌌 
+
+## 🏗 **Architecture (Simplified)**
+
+### **Session Management**
+```python
+# Simple, reliable pattern
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+@st.cache_resource  
+def init_supabase():
+    return get_supabase_client()
+```
+
+### **Database Pattern**
+- **Supabase Client**: Cached with `@st.cache_resource`
+- **User Data**: Loaded fresh each session (not cached in session state)
+- **Content Storage**: Direct to database, no complex state management
+
+### **Authentication Flow**
+1. User enters credentials → Verify against Supabase
+2. Set simple session state flags → No tokens or complex persistence  
+3. Load user preferences from database → Use `@st.cache_data` for performance 

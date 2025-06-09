@@ -59,71 +59,63 @@ init_monitoring()
 
 # Removed unused run_content_pipeline - replaced by streaming_pipeline.py
 
-# Initialize Supabase client
+# === Database Connection (Research-Backed Pattern) ===
+
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client"""
+    """Initialize Supabase client with proper caching"""
     try:
-        db = get_supabase_client()
-        mcp = get_mcp_integration()
-        return db, mcp
+        from core.supabase_integration import get_supabase_client
+        client = get_supabase_client()
+        return client, True
     except Exception as e:
-        st.error(f"Failed to connect to Supabase: {e}")
-        return None, None
+        logger.error(f"Supabase initialization failed: {e}")
+        return None, False
 
 # Database operations using Supabase
-def authenticate_user_supabase(email: str, password: str) -> bool:
-    """Authenticate user using Supabase with migration support"""
+def authenticate_user(email, password):
+    """Simple authentication - no complex token management"""
     try:
-        db, _ = init_supabase()
-        if not db:
-            logger.error("Failed to initialize Supabase client")
+        db, success = init_supabase()
+        if not success:
             return False
-            
-        logger.info(f"Attempting to authenticate user: {email}")
         
-        # Get user record to check password format
-        result = db.client.table("users").select("id, email, password").eq("email", email).execute()
+        # Get user by email
+        result = db.client.table("users").select("*").eq("email", email).execute()
         
         if not result.data:
-            logger.warning(f"User not found: {email}")
+            logger.warning(f"No user found with email: {email}")
             return False
             
         user = result.data[0]
-        stored_password = user["password"]
+        stored_password = user.get("password", "")
         
-        # Check if password is bcrypt (starts with $2b$) or legacy SHA-256
+        # Verify password (bcrypt or legacy)
         if stored_password.startswith('$2b$'):
-            # New bcrypt password
             from core.utils import verify_password
             if verify_password(password, stored_password):
-                # Simple authentication - no complex session manager
+                # Simple session state - no tokens
                 st.session_state.authenticated = True
                 st.session_state.user_id = user["id"]
                 st.session_state.user_email = email
-                logger.info(f"User authenticated successfully with bcrypt: {email}")
+                logger.info(f"User authenticated: {email}")
                 return True
         else:
-            # Legacy SHA-256 password - check and migrate
+            # Legacy password handling
             from core.utils import legacy_hash_password, hash_password
-            legacy_hash = legacy_hash_password(password)
-            if legacy_hash == stored_password:
-                # Password correct, migrate to bcrypt
+            if legacy_hash_password(password) == stored_password:
+                # Migrate to bcrypt and authenticate
                 new_hash = hash_password(password)
-                db.client.table("users").update({
-                    "password": new_hash,
-                    "updated_at": "now()"
-                }).eq("id", user["id"]).execute()
+                db.client.table("users").update({"password": new_hash}).eq("id", user["id"]).execute()
                 
-                # Simple authentication - no complex session manager
                 st.session_state.authenticated = True
                 st.session_state.user_id = user["id"]
                 st.session_state.user_email = email
-                logger.info(f"User authenticated and migrated to bcrypt: {email}")
+                logger.info(f"User authenticated and password migrated: {email}")
                 return True
-        
-        logger.warning(f"Authentication failed for user: {email}")
+                
         return False
+        
     except Exception as e:
         logger.error(f"Authentication error: {e}")
         return False
@@ -579,7 +571,7 @@ def show_auth_page():
         if st.button("Sign In", type="primary", use_container_width=True):
             if not email or not password:
                 st.error("Please enter both email and password")
-            elif authenticate_user_supabase(email, password):
+            elif authenticate_user(email, password):
                 st.success("Welcome back!")
                 st.rerun()
             else:
@@ -1472,18 +1464,33 @@ def show_health_page():
             else:
                 st.success(f"✅ **{check.title()}:** {status}")
 
+def init_simple_session_state():
+    """Simple session initialization - research-backed approach"""
+    # Core auth (only what's needed)
+    defaults = {
+        'authenticated': False,
+        'user_id': None,
+        'user_email': None,
+        'current_page': 'Content Pipeline',
+        # User preferences (cache in session)
+        'ai_provider': 'OpenAI',
+        'ai_model': 'gpt-4o',
+        # Pipeline state (minimal)
+        'pipeline_active': False,
+        'pipeline_results': {},
+        # UI state only
+        'show_debug': False
+    }
+    
+    for key, default_value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+
 def main():
     """Main application entry point - SIMPLIFIED"""
     
-    # Initialize basic session state
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = None
-    if 'user_email' not in st.session_state:
-        st.session_state.user_email = None
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Content Pipeline"
+    # Simple session initialization
+    init_simple_session_state()
     
     # Handle OAuth callback if present
     if handle_oauth_callback():

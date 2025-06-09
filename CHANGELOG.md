@@ -1,5 +1,26 @@
 # 📋 WhisperForge Changelog
 
+## [2.1.2] - 2025-01-08
+
+### 🎯 **Research-Backed Architecture**
+- **MAJOR**: Implemented 2024-2025 Streamlit + Supabase best practices
+- **REMOVED**: Complex session manager causing display issues (311 lines deleted)
+- **Database**: Proper `@st.cache_resource` pattern for connections
+- **Authentication**: Simple session state without token complexity
+- **Session State**: Minimal flat structure, no over-engineering
+
+### 📚 **Research Findings Applied**
+- Official Streamlit docs: "Keep session state simple and flat"
+- Community consensus: Don't fight Supabase's built-in session management
+- Performance: Cache connections, not user data in session state
+- Reliability: Fewer moving parts = fewer bugs
+
+### 🧹 **Code Cleanup**
+- Deleted `core/session_manager.py` (311 lines of unnecessary complexity)
+- Simplified `main()` function to basic pattern
+- Authentication flow now uses 20 lines instead of 200+
+- Database connections properly cached and reused
+
 ## [2.1.1] - 2025-01-08
 
 ### 🔧 **Simplified Architecture**
