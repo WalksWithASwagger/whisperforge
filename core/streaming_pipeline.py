@@ -50,13 +50,15 @@ class StreamingPipelineController:
             "size_mb": len(audio_file.getvalue()) / (1024 * 1024)
         }
         
-        # Ensure prompts are loaded for custom prompt usage
-        if not hasattr(st.session_state, 'prompts') or not st.session_state.prompts:
-            try:
-                from ..app import get_user_prompts_supabase
-                st.session_state.prompts = get_user_prompts_supabase()
-            except ImportError:
-                st.session_state.prompts = {}
+        # Initialize required session state if missing
+        if not hasattr(st.session_state, 'prompts'):
+            st.session_state.prompts = {}
+        if not hasattr(st.session_state, 'knowledge_base'):
+            st.session_state.knowledge_base = {}
+        if not hasattr(st.session_state, 'ai_provider'):
+            st.session_state.ai_provider = "OpenAI"
+        if not hasattr(st.session_state, 'ai_model'):
+            st.session_state.ai_model = "gpt-4o"
     
     def process_next_step(self):
         """Process the next step in the pipeline"""
@@ -411,38 +413,35 @@ Please provide improved versions that address the feedback."""
     
     def _step_database_storage(self) -> str:
         """Step 8: Store content in database"""
-        # Direct database access to avoid circular imports
-        import streamlit as st
         try:
-            from ..app import init_supabase
-            db, _ = init_supabase()
+            # Direct Supabase access to avoid circular imports
+            from .supabase_integration import get_supabase_client
+            
+            db = get_supabase_client()
             if not db:
                 return "Database connection failed"
-        except ImportError:
-            return "Database import failed"
-        
-        content_data = {
-            "title": f"Content from {st.session_state.pipeline_file_info['name']}",
-            "transcript": st.session_state.pipeline_results.get("transcription", ""),
-            "wisdom_extraction": st.session_state.pipeline_results.get("wisdom_extraction", ""),
-            "research_enrichment": st.session_state.pipeline_results.get("research_enrichment", {}),
-            "outline_creation": st.session_state.pipeline_results.get("outline_creation", ""),
-            "article": st.session_state.pipeline_results.get("article_creation", ""),
-            "social_media": st.session_state.pipeline_results.get("social_content", ""),
-            "image_prompts": st.session_state.pipeline_results.get("image_prompts", ""),
-            "metadata": {
-                "ai_provider": st.session_state.ai_provider,
-                "ai_model": st.session_state.ai_model,
-                "file_size": st.session_state.pipeline_file_info["size"],
-                "editor_enabled": st.session_state.get("editor_enabled", False),
-                "research_enabled": st.session_state.get("research_enabled", True),
-                "thinking_enabled": st.session_state.get("thinking_enabled", True),
-                "created_at": datetime.now().isoformat()
+            
+            content_data = {
+                "title": f"Content from {st.session_state.pipeline_file_info['name']}",
+                "transcript": st.session_state.pipeline_results.get("transcription", ""),
+                "wisdom_extraction": st.session_state.pipeline_results.get("wisdom_extraction", ""),
+                "research_enrichment": st.session_state.pipeline_results.get("research_enrichment", {}),
+                "outline_creation": st.session_state.pipeline_results.get("outline_creation", ""),
+                "article": st.session_state.pipeline_results.get("article_creation", ""),
+                "social_media": st.session_state.pipeline_results.get("social_content", ""),
+                "image_prompts": st.session_state.pipeline_results.get("image_prompts", ""),
+                "metadata": {
+                    "ai_provider": st.session_state.ai_provider,
+                    "ai_model": st.session_state.ai_model,
+                    "file_size": st.session_state.pipeline_file_info["size"],
+                    "editor_enabled": st.session_state.get("editor_enabled", False),
+                    "research_enabled": st.session_state.get("research_enabled", True),
+                    "thinking_enabled": st.session_state.get("thinking_enabled", True),
+                    "created_at": datetime.now().isoformat()
+                }
             }
-        }
-        
-        try:
-            # Direct database insert to avoid circular imports
+            
+            # Direct database insert
             result = db.client.table("content").insert({
                 "user_id": st.session_state.user_id,
                 "content_data": content_data,
@@ -455,6 +454,7 @@ Please provide improved versions that address the feedback."""
             
             time.sleep(0.3)  # Simulate save time
             return f"Content saved with ID: {content_id}"
+            
         except Exception as e:
             # Don't fail the pipeline for database errors
             return f"Database save failed: {str(e)}"
