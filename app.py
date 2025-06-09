@@ -406,43 +406,45 @@ def main():
                         else:
                             st.success(f"✅ Transcribed {len(transcript)} characters")
                             status.update(label="✅ Transcription complete", state="complete")
-                            
-                            # Show transcript
-                            with st.expander("📝 Transcript", expanded=True):
-                                st.text_area("", transcript, height=200, disabled=True)
-                            
-                            # Content generation tabs
-                            wisdom_tab, outline_tab, research_tab = st.tabs(["💡 Wisdom", "📋 Outline", "🔬 Research"])
-                            
-                            with wisdom_tab:
-                                with st.spinner("Extracting wisdom..."):
-                                    wisdom = generate_content_simple(transcript, "wisdom")
-                                    st.markdown(wisdom)
-                            
-                            with outline_tab:
-                                with st.spinner("Creating outline..."):
-                                    outline = generate_content_simple(transcript, "outline")
-                                    st.markdown(outline)
-                            
-                            with research_tab:
-                                with st.spinner("Generating research insights..."):
-                                    research = generate_content_simple(transcript, "research")
-                                    st.markdown(research)
-                            
-                            # Save to database
-                            content_data = {
-                                "transcript": transcript,
-                                "wisdom": wisdom,
-                                "outline": outline,
-                                "research": research,
-                                "file_name": uploaded_file.name,
-                                "processed_at": datetime.now().isoformat()
-                            }
-                            
-                            if save_to_database(content_data):
-                                st.success("💾 Content saved to database!")
-                            else:
-                                st.warning("⚠️ Could not save to database")
+                    
+                    # Show results outside of status context to avoid nesting issues
+                    if not transcript.startswith("❌"):
+                        # Show transcript
+                        st.markdown("### 📝 Transcript")
+                        st.text_area("", transcript, height=200, disabled=True, key="main_transcript")
+                        
+                        # Content generation tabs
+                        wisdom_tab, outline_tab, research_tab = st.tabs(["💡 Wisdom", "📋 Outline", "🔬 Research"])
+                        
+                        with wisdom_tab:
+                            with st.spinner("Extracting wisdom..."):
+                                wisdom = generate_content_simple(transcript, "wisdom")
+                                st.markdown(wisdom)
+                        
+                        with outline_tab:
+                            with st.spinner("Creating outline..."):
+                                outline = generate_content_simple(transcript, "outline")
+                                st.markdown(outline)
+                        
+                        with research_tab:
+                            with st.spinner("Generating research insights..."):
+                                research = generate_content_simple(transcript, "research")
+                                st.markdown(research)
+                        
+                        # Save to database
+                        content_data = {
+                            "transcript": transcript,
+                            "wisdom": wisdom,
+                            "outline": outline,
+                            "research": research,
+                            "file_name": uploaded_file.name,
+                            "processed_at": datetime.now().isoformat()
+                        }
+                        
+                        if save_to_database(content_data):
+                            st.success("💾 Content saved to database!")
+                        else:
+                            st.warning("⚠️ Could not save to database")
     
     with tab2:
         show_history()
