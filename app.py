@@ -639,14 +639,22 @@ def show_main_app():
     """Main application with clean layout and integrated navigation"""
     
     # Initialize session management
-    from core.session_manager import check_session
+    from core.session_manager import check_session, login_user, init_session
     
-    # FIXED: Use correct user ID for feelmoreplants@gmail.com
+    # Initialize session if needed
+    init_session()
+    
+    # Auto-authenticate feelmoreplants@gmail.com for production
     if not st.session_state.get("authenticated", False):
-        # Set the CORRECT user ID that matches your data
-        st.session_state.authenticated = True
-        st.session_state.user_email = "feelmoreplants@gmail.com"
-        st.session_state.user_id = 3  # This matches what we see in debug: "User ID: 3"
+        # Auto-login the main user with correct user ID
+        success = login_user("3", "feelmoreplants@gmail.com")
+        if success:
+            # Ensure API keys are loaded
+            if not st.session_state.get('api_keys'):
+                st.session_state.api_keys = get_user_api_keys_supabase()
+        else:
+            st.error("Authentication failed. Please contact support.")
+            st.stop()
     
     # Check for page navigation via query params
     query_params = st.query_params
@@ -657,92 +665,12 @@ def show_main_app():
             # Clear the query param after processing
             st.query_params.clear()
     
-    # Clean main app styling
+    # Clean main app styling - SIMPLIFIED
     st.markdown("""
     <style>
     .stApp {
         background: linear-gradient(180deg, #0a0f1c 0%, #0d1421 100%);
         font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    }
-    
-    /* Clean header */
-    .main-header {
-        background: rgba(255, 255, 255, 0.02);
-        border-bottom: 1px solid rgba(0, 255, 255, 0.1);
-        padding: 1rem;
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .logo {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #00FFFF;
-    }
-    
-    .user-info {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-    }
-    
-    /* Clean navigation */
-    .stButton > button {
-        width: 100% !important;
-        background: rgba(255, 255, 255, 0.02) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        color: rgba(255, 255, 255, 0.8) !important;
-        border-radius: 8px !important;
-        text-align: left !important;
-        margin-bottom: 4px !important;
-    }
-    
-    .stButton > button:hover {
-        background: rgba(0, 255, 255, 0.08) !important;
-        border-color: rgba(0, 255, 255, 0.2) !important;
-        color: white !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Enhanced Header with Aurora Navigation
-    st.markdown("""
-    <style>
-    .aurora-logo {
-        font-size: 2.2rem;
-        font-weight: 700;
-        background: linear-gradient(120deg, #00FFFF, #7DF9FF, #40E0D0);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
-        text-align: center;
-        margin-bottom: 16px;
-        position: relative;
-    }
-    
-    .aurora-logo::after {
-        content: "";
-        position: absolute;
-        bottom: -4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
-        animation: aurora-scan 4s ease-in-out infinite;
-    }
-    
-    .aurora-status {
-        text-align: center;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
     }
     
     /* Enhanced button styling for navigation */
@@ -766,17 +694,11 @@ def show_main_app():
     }
     
     /* Primary button styling for active nav */
-    .stButton > button[data-baseweb="button"][aria-pressed="true"],
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(64, 224, 208, 0.25)) !important;
         border-color: rgba(0, 255, 255, 0.4) !important;
         color: #00FFFF !important;
         box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-    }
-    
-    @keyframes aurora-scan {
-        0%, 100% { left: -100%; }
-        50% { left: 100%; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -786,18 +708,6 @@ def show_main_app():
     
     # Show simple navigation for now
     _generate_nav_buttons()
-    
-    # OR use the Aurora header (comment out simple nav above and uncomment below)
-    # create_aurora_header()
-    # from core.styling import create_aurora_nav_buttons
-    # from core.session_manager import logout_user
-    # import time
-    # if create_aurora_nav_buttons():
-    #     logout_user()
-    #     st.success("Logged out successfully!")
-    #     time.sleep(1)
-    #     st.session_state.current_page = "Content Pipeline"
-    #     st.rerun()
     
     # Show the selected page
     if st.session_state.current_page == "Home":
