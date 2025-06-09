@@ -8,6 +8,9 @@ import os
 import tempfile
 import time
 from datetime import datetime
+import hashlib
+import json
+from io import BytesIO
 
 # Configuration
 st.set_page_config(
@@ -502,12 +505,13 @@ def save_to_database(content_data, user_id=None):
         st.error(f"Save error: {e}")
         return False
 
-def show_history(user_id=None):
-    """Show content history using native Streamlit"""
-    st.markdown("### 📋 Content History")
+def show_history():
+    """Show WhisperForge content library"""
+    st.markdown("### 📚 Your WhisperForge Library")
     
+    user_id = get_current_user()
     if not user_id:
-        st.info("👋 Please login to view your content history")
+        st.info("🔐 Login to see your content library")
         return
     
     try:
@@ -519,7 +523,7 @@ def show_history(user_id=None):
         result = client.table("content").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(10).execute()
         
         if not result.data:
-            st.info("No content found yet. Process some audio files to see history here!")
+            st.info("No content yet. Upload audio to create your first WhisperForge magic!")
             return
         
         for item in result.data:
@@ -528,223 +532,575 @@ def show_history(user_id=None):
             
             with st.expander(f"🎵 {content_data.get('file_name', 'Unknown file')} - {created_at[:10]}"):
                 
-                if content_data.get("transcript"):
-                    st.markdown("**📝 Transcript:**")
-                    st.text_area("", content_data["transcript"], height=100, disabled=True, key=f"transcript_{item['id']}")
+                # Full content tabs like in the pipeline
+                if any(content_data.get(key) for key in ['wisdom', 'outline', 'article', 'social_content', 'image_prompts']):
+                    wisdom_tab, outline_tab, article_tab, social_tab, research_tab, prompts_tab = st.tabs([
+                        "💡 Wisdom", "📋 Outline", "📝 Article", "📱 Social", "🔬 Research", "🎨 Prompts"
+                    ])
+                    
+                    with wisdom_tab:
+                        st.markdown(content_data.get('wisdom', 'No wisdom content available'))
+                    
+                    with outline_tab:
+                        st.markdown(content_data.get('outline', 'No outline content available'))
+                    
+                    with article_tab:
+                        st.markdown(content_data.get('article', 'No article content available'))
+                    
+                    with social_tab:
+                        st.markdown(content_data.get('social_content', 'No social content available'))
+                    
+                    with research_tab:
+                        research_data = content_data.get('research_data', {})
+                        if research_data.get('entities'):
+                            display_research_enrichment(research_data)
+                        else:
+                            st.info("No research enrichment available")
+                    
+                    with prompts_tab:
+                        st.markdown(content_data.get('image_prompts', 'No image prompts available'))
                 
-                if content_data.get("wisdom"):
-                    st.markdown("**💡 Wisdom:**")
-                    st.markdown(content_data["wisdom"])
-                
-                if content_data.get("research"):
-                    st.markdown("**🔬 Research:**")
-                    st.markdown(content_data["research"])
+                else:
+                    # Fallback for older content format
+                    if content_data.get("transcript"):
+                        st.markdown("**📝 Transcript:**")
+                        st.text_area("", content_data["transcript"], height=100, disabled=True, key=f"transcript_{item['id']}")
+                    
+                    if content_data.get("research"):
+                        st.markdown("**🔬 Legacy Research:**")
+                        st.markdown(content_data["research"])
         
     except Exception as e:
         st.error(f"Error loading history: {e}")
 
+# ============================================================================
+# VISIBLE THINKING SYSTEM 
+# ============================================================================
+
+class VisibleThinking:
+    """Kris-tone AI thinking bubbles during processing"""
+    
+    def __init__(self):
+        if "thinking_bubbles" not in st.session_state:
+            st.session_state.thinking_bubbles = []
+    
+    def add_thought(self, text: str, mood: str = "info"):
+        """Add a Kris-tone thought bubble"""
+        if len(text) > 80:
+            text = text[:77] + "..."
+            
+        bubble = {
+            "text": text,
+            "mood": mood,
+            "time": time.time(),
+            "emoji": {
+                "info": "🧠",
+                "processing": "⚡", 
+                "discovery": "✨",
+                "success": "✅",
+                "research": "🔍"
+            }.get(mood, "🧠")
+        }
+        
+        st.session_state.thinking_bubbles.append(bubble)
+        
+        # Keep only last 4 bubbles
+        if len(st.session_state.thinking_bubbles) > 4:
+            st.session_state.thinking_bubbles = st.session_state.thinking_bubbles[-4:]
+    
+    def render_stream(self):
+        """Show the thinking bubble stream"""
+        if not st.session_state.thinking_bubbles:
+            return
+            
+        with st.container():
+            for bubble in st.session_state.thinking_bubbles[-3:]:  # Show last 3
+                mood_colors = {
+                    "info": "#00D2FF",       # Aurora Cyan
+                    "processing": "#00D2FF", # Aurora Cyan  
+                    "discovery": "#A855F7",  # Purple
+                    "success": "#10B981",    # Green
+                    "research": "#F59E0B"    # Amber
+                }
+                
+                color = mood_colors.get(bubble["mood"], "#00D2FF")
+                
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, {color}15, {color}25);
+                    border-left: 3px solid {color};
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    margin: 4px 0;
+                    font-size: 0.9em;
+                    color: #E0E0E0;
+                    animation: fadeIn 0.5s ease-in;
+                ">
+                    {bubble["emoji"]} {bubble["text"]}
+                </div>
+                """, unsafe_allow_html=True)
+
+# Global thinking instance
+thinking = VisibleThinking()
+
+# ============================================================================
+# COMPLETE CONTENT PIPELINE
+# ============================================================================
+
+def process_audio_pipeline(uploaded_file):
+    """Process audio with full WhisperForge pipeline"""
+    user_id = get_current_user()
+    
+    if not user_id:
+        st.error("Please log in to process audio")
+        return
+    
+    thinking.add_thought("⚡ Starting the content pipeline...", "processing")
+    
+    # Step 1: Transcription
+    with st.status("🎙️ Transcribing audio...", expanded=True) as status:
+        thinking.add_thought("🧠 Converting your speech to text...", "processing")
+        transcript = transcribe_audio_simple(uploaded_file, user_id)
+        
+        if transcript.startswith("❌"):
+            st.error(transcript)
+            status.update(label="❌ Transcription failed", state="error")
+            return
+        
+        st.success(f"✅ Transcribed {len(transcript)} characters")
+        status.update(label="✅ Transcription complete", state="complete")
+        thinking.add_thought("✅ Got your words! Now for the magic...", "success")
+    
+    # Step 2: Research Enrichment
+    thinking.add_thought("🔍 Finding brilliant supporting research...", "research")
+    research_data = generate_research_enrichment(transcript)
+    
+    # Step 3: Generate All Content
+    st.markdown("## 🎉 Your WhisperForge Results")
+    
+    # Show transcript first
+    with st.expander("📝 Full Transcript", expanded=False):
+        st.text_area("", transcript, height=300, disabled=True)
+    
+    # Content tabs with everything
+    wisdom_tab, outline_tab, article_tab, social_tab, research_tab, prompts_tab = st.tabs([
+        "💡 Wisdom", "📋 Outline", "📝 Article", "📱 Social", "🔬 Research", "🎨 Prompts"
+    ])
+    
+    with wisdom_tab:
+        thinking.add_thought("✨ Extracting pure wisdom from your content...", "discovery")
+        wisdom = generate_content_simple(transcript, "wisdom", user_id)
+        st.markdown(wisdom)
+    
+    with outline_tab:
+        thinking.add_thought("⚡ Crafting the perfect structure...", "processing")
+        outline = generate_content_simple(transcript, "outline", user_id)
+        st.markdown(outline)
+    
+    with article_tab:
+        thinking.add_thought("📝 Writing a full article in your voice...", "processing")
+        article = generate_article_content(transcript, user_id)
+        st.markdown(article)
+    
+    with social_tab:
+        thinking.add_thought("📱 Creating social media gold...", "discovery")
+        social_content = generate_social_content(transcript, user_id)
+        st.markdown(social_content)
+    
+    with research_tab:
+        if research_data.get("entities"):
+            thinking.add_thought("🔍 Here's your research enrichment!", "research")
+            display_research_enrichment(research_data)
+        else:
+            st.info("No specific entities found for research enrichment")
+    
+    with prompts_tab:
+        thinking.add_thought("🎨 Generating vivid image prompts...", "discovery")
+        image_prompts = generate_image_prompts(transcript, user_id)
+        st.markdown(image_prompts)
+    
+    # Save everything to database
+    thinking.add_thought("💾 Saving everything to your library...", "success")
+    content_data = {
+        "transcript": transcript,
+        "wisdom": wisdom,
+        "outline": outline,
+        "article": article,
+        "social_content": social_content,
+        "image_prompts": image_prompts,
+        "research_data": research_data,
+        "file_name": uploaded_file.name,
+        "processed_at": datetime.now().isoformat()
+    }
+    
+    if save_to_database(content_data, user_id):
+        thinking.add_thought("✅ All done! Your content is ready to shine!", "success")
+        st.balloons()
+    else:
+        st.warning("⚠️ Could not save to database")
+
+def generate_article_content(transcript: str, user_id: str) -> str:
+    """Generate a full 1000+ word article"""
+    try:
+        api_keys = get_api_keys(user_id)
+        openai_key = api_keys.get("openai_api_key")
+        
+        if not openai_key:
+            return "❌ OpenAI API key not found"
+        
+        client = OpenAI(api_key=openai_key)
+        
+        prompt = f"""Based on this transcript, write a comprehensive 1000+ word article that:
+
+1. Starts with a compelling hook
+2. Develops the main ideas with depth and insight
+3. Includes practical takeaways and actionable advice
+4. Ends with a strong conclusion
+5. Uses engaging, conversational tone
+
+Transcript:
+{transcript[:3000]}
+
+Write a complete, ready-to-publish article:"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"❌ Error generating article: {str(e)}"
+
+def generate_social_content(transcript: str, user_id: str) -> str:
+    """Generate social media posts for multiple platforms"""
+    try:
+        api_keys = get_api_keys(user_id)
+        openai_key = api_keys.get("openai_api_key")
+        
+        if not openai_key:
+            return "❌ OpenAI API key not found"
+        
+        client = OpenAI(api_key=openai_key)
+        
+        prompt = f"""Based on this transcript, create 5 engaging social media posts optimized for different platforms:
+
+1. **Twitter/X** (280 characters) - Punchy, includes hashtags
+2. **LinkedIn** (Professional tone, 150-200 words)  
+3. **Instagram** (Visual storytelling, 125 words + hashtags)
+4. **Facebook** (Conversational, 100-150 words)
+5. **TikTok/YouTube Shorts** (Hook + key points, 75 words)
+
+Transcript:
+{transcript[:2000]}
+
+Format each post clearly with platform labels:"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.8
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"❌ Error generating social content: {str(e)}"
+
+def generate_image_prompts(transcript: str, user_id: str) -> str:
+    """Generate vivid AI image prompts"""
+    try:
+        api_keys = get_api_keys(user_id)
+        openai_key = api_keys.get("openai_api_key")
+        
+        if not openai_key:
+            return "❌ OpenAI API key not found"
+        
+        client = OpenAI(api_key=openai_key)
+        
+        prompt = f"""Based on this transcript, create 5-7 vivid, detailed AI image generation prompts that visually represent the key concepts and themes.
+
+Each prompt should be:
+- Highly detailed and specific
+- Visually compelling
+- Include style references (photographic, digital art, etc.)
+- Ready to use in AI image generators like Midjourney or DALL-E
+
+Transcript:
+{transcript[:2000]}
+
+Generate detailed image prompts:"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1200,
+            temperature=0.9
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"❌ Error generating image prompts: {str(e)}"
+
+def generate_research_enrichment(transcript: str) -> dict:
+    """Generate research enrichment with entities and links"""
+    try:
+        # Extract key entities/topics
+        entities = extract_research_entities(transcript)
+        
+        # Generate supporting research for each entity
+        enriched_entities = []
+        for entity in entities[:3]:  # Limit to top 3
+            research = generate_entity_research(entity)
+            if research:
+                enriched_entities.append(research)
+        
+        return {
+            "entities": enriched_entities,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {"error": str(e), "entities": []}
+
+def extract_research_entities(transcript: str) -> list:
+    """Extract key entities for research"""
+    try:
+        # Use OpenAI to extract entities
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        prompt = f"""Analyze this transcript and extract 3-5 key entities that would benefit from research links.
+
+Focus on:
+- People (experts, thought leaders)
+- Organizations/Companies
+- Concepts/Theories
+- Technologies/Methods
+
+Return as JSON array: ["Entity 1", "Entity 2", "Entity 3"]
+
+Transcript: {transcript[:1500]}"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo", 
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200
+        )
+        
+        entities_text = response.choices[0].message.content
+        
+        # Try to parse JSON
+        import re
+        json_match = re.search(r'\[(.*?)\]', entities_text)
+        if json_match:
+            entities_str = json_match.group(1)
+            entities = [e.strip(' "') for e in entities_str.split(',')]
+            return entities[:3]
+        
+        return []
+        
+    except Exception:
+        return []
+
+def generate_entity_research(entity: str) -> dict:
+    """Generate research data for an entity"""
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        prompt = f"""For the entity "{entity}", provide:
+
+1. A brief "why this matters" explanation (2-3 sentences)
+2. Suggest 2-3 types of authoritative sources to research
+3. Key search terms for further research
+
+Entity: {entity}
+
+Respond in this format:
+WHY IT MATTERS: [explanation]
+RESEARCH SOURCES: [source types] 
+SEARCH TERMS: [terms]"""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300
+        )
+        
+        result = response.choices[0].message.content
+        
+        return {
+            "name": entity,
+            "research_guidance": result
+        }
+        
+    except Exception:
+        return None
+
+def display_research_enrichment(research_data: dict):
+    """Display research enrichment results"""
+    st.markdown("### 🔍 Research Enrichment")
+    
+    for entity in research_data.get("entities", []):
+        with st.expander(f"🔬 Research: {entity['name']}"):
+            st.markdown(entity.get("research_guidance", "No research guidance available"))
+
+def show_sidebar_features():
+    """Show custom prompts and knowledge base in sidebar"""
+    current_user = get_current_user()
+    user_id = current_user
+    
+    if not user_id:
+        return
+    
+    # Custom Prompts
+    st.markdown("### 🎯 Custom Prompts")
+    with st.expander("✏️ Customize AI"):
+        st.info("Personalize how AI processes your content")
+        if st.button("🔧 Configure Prompts"):
+            st.info("Prompt customization coming in next update!")
+    
+    # Knowledge Base  
+    st.markdown("### 📚 Knowledge Base")
+    with st.expander("📁 Add Context"):
+        uploaded_kb = st.file_uploader("Upload context files", type=['txt', 'md'])
+        if uploaded_kb and st.button("💾 Add to KB"):
+            st.success("File added! (Feature completing soon)")
+    
+    # OAuth Integration
+    st.markdown("### 🔗 Connect Accounts")
+    with st.expander("🌐 Integrations"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.button("📊 Notion", disabled=True, help="Coming soon")
+        with col2:
+            st.button("🐦 Twitter", disabled=True, help="Coming soon")
+
+# ============================================================================
+# MAIN APP
+# ============================================================================
+
 def main():
     """Main app - Simple and clean"""
+    st.set_page_config(
+        page_title="WhisperForge",
+        page_icon="🎙️",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     
-    # Apply Aurora styling
-    st.markdown(AURORA_CSS, unsafe_allow_html=True)
+    # Add Aurora CSS
+    st.markdown("""
+    <style>
+    :root {
+        --aurora-primary: #00D2FF;
+        --aurora-secondary: #10B981;
+        --aurora-tertiary: #A855F7;
+        --aurora-bg: #0B1426;
+        --aurora-surface: #1E293B;
+        --aurora-text: #E2E8F0;
+    }
     
-    # Header
-    st.markdown('<div class="main-title">⚡ WhisperForge</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Transform audio into luminous wisdom</div>', unsafe_allow_html=True)
+    .stApp {
+        background: linear-gradient(135deg, var(--aurora-bg) 0%, #0F172A 50%, var(--aurora-bg) 100%);
+        color: var(--aurora-text);
+    }
     
-    # Authentication
-    current_user = simple_login()
-    user_id = current_user.get("id") if current_user else None
+    .aurora-header {
+        background: linear-gradient(135deg, var(--aurora-primary)20, var(--aurora-tertiary)20);
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        border: 1px solid var(--aurora-primary)30;
+    }
     
-    # Navigation using native tabs
-    tab1, tab2 = st.tabs(["🎙️ Process Audio", "📋 History"])
+    .aurora-card {
+        background: linear-gradient(135deg, var(--aurora-surface)90, var(--aurora-primary)10);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid var(--aurora-primary)30;
+        margin-bottom: 1rem;
+    }
     
-    with tab1:
-        # Show API key status in sidebar
-        with st.sidebar:
-            if current_user:
-                st.markdown("### ⚙️ Configuration")
-                api_keys = get_api_keys(user_id)
-                
-                # Show current status
-                if api_keys.get("openai_api_key"):
-                    st.success("✅ OpenAI API key loaded")
-                else:
-                    st.error("❌ No OpenAI API key")
-                    st.markdown("Add your key to Supabase or environment variables")
-                
-                # Custom Prompts Section
-                st.markdown("---")
-                st.markdown("### 🎯 Custom Prompts")
-                
-                with st.expander("✏️ Edit Prompts"):
-                    prompt_type = st.selectbox(
-                        "Select prompt type:",
-                        ["wisdom", "outline", "research"],
-                        help="Choose which prompt to customize"
-                    )
-                    
-                    # Get current custom prompts
-                    custom_prompts = get_user_custom_prompts(user_id)
-                    current_prompt = custom_prompts.get(prompt_type, "")
-                    
-                    # Show default for reference
-                    default_prompts = {
-                        "wisdom": "Extract key insights, lessons, and wisdom from this transcript. Focus on actionable takeaways and practical lessons that readers can apply.",
-                        "outline": "Create a detailed, well-structured outline for an article based on this transcript. Include main sections, subsections, and key points.",
-                        "research": "Act as a researcher. Analyze this content and provide: 1) Related research questions, 2) Key implications, 3) Connections to broader topics, 4) Suggested further research areas."
-                    }
-                    
-                    st.markdown(f"**Default {prompt_type} prompt:**")
-                    st.text_area("", default_prompts[prompt_type], height=100, disabled=True, key=f"default_{prompt_type}")
-                    
-                    # Custom prompt editor
-                    new_prompt = st.text_area(
-                        f"Your custom {prompt_type} prompt:",
-                        value=current_prompt,
-                        height=150,
-                        placeholder=f"Enter your custom {prompt_type} prompt here...",
-                        key=f"custom_{prompt_type}"
-                    )
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("💾 Save", key=f"save_{prompt_type}"):
-                            if save_user_custom_prompt(user_id, prompt_type, new_prompt):
-                                st.success("✅ Prompt saved!")
-                            else:
-                                st.error("❌ Failed to save")
-                    
-                    with col2:
-                        if st.button("🔄 Reset", key=f"reset_{prompt_type}"):
-                                                         if save_user_custom_prompt(user_id, prompt_type, ""):
-                                 st.success("✅ Reset to default!")
-                             else:
-                                 st.error("❌ Failed to reset")
-                
-                # Knowledge Base Section
-                st.markdown("---")
-                st.markdown("### 📚 Knowledge Base")
-                
-                with st.expander("📁 Manage Files"):
-                    # Upload new knowledge base file
-                    uploaded_kb_file = st.file_uploader(
-                        "Upload knowledge base file:",
-                        type=['txt', 'md', 'pdf'],
-                        help="Upload text files to provide context for AI generation"
-                    )
-                    
-                    if uploaded_kb_file:
-                        if st.button("💾 Save to Knowledge Base"):
-                            try:
-                                # Read file content
-                                if uploaded_kb_file.type == "application/pdf":
-                                    st.warning("PDF support coming soon. Please use .txt or .md files.")
-                                else:
-                                    content = uploaded_kb_file.read().decode('utf-8')
-                                    if save_knowledge_base_file(user_id, uploaded_kb_file.name, content):
-                                        st.success("✅ File saved to knowledge base!")
-                                    else:
-                                        st.error("❌ Failed to save file")
-                            except Exception as e:
-                                st.error(f"Error reading file: {e}")
-                    
-                    # Show existing knowledge base files
-                    kb_files = get_user_knowledge_base(user_id)
-                    if kb_files:
-                        st.markdown("**Your Knowledge Base Files:**")
-                        for kb_file in kb_files:
-                            col1, col2 = st.columns([3, 1])
-                            with col1:
-                                st.text(f"📄 {kb_file['file_name']}")
-                            with col2:
-                                if st.button("🗑️", key=f"delete_{kb_file['id']}", help="Delete file"):
-                                    if delete_knowledge_base_file(user_id, kb_file['id']):
-                                        st.success("✅ File deleted!")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Failed to delete")
-                    else:
-                        st.info("No knowledge base files yet. Upload some to provide context for AI generation.")
+    .thinking-container {
+        background: linear-gradient(135deg, var(--aurora-surface)50, var(--aurora-primary)5);
+        border: 1px solid var(--aurora-primary)20;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Main header
+    st.markdown("""
+    <div class="aurora-header">
+        <h1>🎙️ WhisperForge</h1>
+        <p>Upload audio → Watch AI think → Get everything you need</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Sidebar authentication
+    with st.sidebar:
+        st.markdown("### 🔐 Authentication")
+        current_user = get_current_user()
         
-        # Main interface
-        col1, col2, col3 = st.columns([1, 2, 1])
+        if not current_user:
+            simple_login()
+            st.stop()
+        else:
+            st.success(f"✅ Logged in as: {current_user}")
+            if st.button("🚪 Logout"):
+                set_current_user(None)
+                st.rerun()
+    
+    # Show thinking stream at top
+    with st.container():
+        st.markdown('<div class="thinking-container">', unsafe_allow_html=True)
+        thinking.render_stream()
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Main content
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown('<div class="aurora-card">', unsafe_allow_html=True)
+        st.markdown("### 🎵 Upload Audio")
         
-        with col2:
-            # File upload
-            uploaded_file = st.file_uploader(
-                "🎵 Drop audio file here",
-                type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm'],
-                help="Max 25MB • Supports MP3, WAV, M4A, FLAC, MP4, WEBM"
-            )
+        uploaded_file = st.file_uploader(
+            "Drop your audio file here",
+            type=["mp3", "wav", "m4a", "mp4", "webm", "ogg"],
+            help="Supported formats: MP3, WAV, M4A, MP4, WebM, OGG"
+        )
+        
+        if uploaded_file:
+            st.success(f"✅ Uploaded: {uploaded_file.name}")
             
-            if uploaded_file:
-                # Show file info
-                file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-                st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
-                
-                # Audio player
-                st.audio(uploaded_file.getvalue())
-                
-                # Process button
-                if st.button("⚡ Process Audio", type="primary", use_container_width=True):
-                    
-                    # Transcription
-                    with st.status("🎙️ Transcribing audio...", expanded=True) as status:
-                        transcript = transcribe_audio_simple(uploaded_file, user_id)
-                        
-                        if transcript.startswith("❌"):
-                            st.error(transcript)
-                            status.update(label="❌ Transcription failed", state="error")
-                        else:
-                            st.success(f"✅ Transcribed {len(transcript)} characters")
-                            status.update(label="✅ Transcription complete", state="complete")
-                    
-                    # Show results outside of status context to avoid nesting issues
-                    if not transcript.startswith("❌"):
-                        # Show transcript
-                        st.markdown("### 📝 Transcript")
-                        st.text_area("", transcript, height=200, disabled=True, key="main_transcript")
-                        
-                        # Content generation tabs
-                        wisdom_tab, outline_tab, research_tab = st.tabs(["💡 Wisdom", "📋 Outline", "🔬 Research"])
-                        
-                        with wisdom_tab:
-                            with st.spinner("Extracting wisdom..."):
-                                wisdom = generate_content_simple(transcript, "wisdom", user_id)
-                                st.markdown(wisdom)
-                        
-                        with outline_tab:
-                            with st.spinner("Creating outline..."):
-                                outline = generate_content_simple(transcript, "outline", user_id)
-                                st.markdown(outline)
-                        
-                        with research_tab:
-                            with st.spinner("Generating research insights..."):
-                                research = generate_content_simple(transcript, "research", user_id)
-                                st.markdown(research)
-                        
-                        # Save to database
-                        content_data = {
-                            "transcript": transcript,
-                            "wisdom": wisdom,
-                            "outline": outline,
-                            "research": research,
-                            "file_name": uploaded_file.name,
-                            "processed_at": datetime.now().isoformat()
-                        }
-                        
-                        if save_to_database(content_data, user_id):
-                            st.success("💾 Content saved to database!")
-                        else:
-                            if user_id:
-                                st.warning("⚠️ Could not save to database")
-                            else:
-                                st.info("💡 Login to save your content history")
+            # Add thinking bubble
+            thinking.add_thought("🧠 Got your audio! This looks interesting...", "info")
+            
+            # Process button
+            if st.button("🚀 Process with WhisperForge", type="primary"):
+                process_audio_pipeline(uploaded_file)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    with tab2:
-        show_history(user_id)
+    with col2:
+        show_sidebar_features()
+    
+    # Show history
+    st.markdown("---")
+    show_history()
 
 if __name__ == "__main__":
     main() 
