@@ -1,5 +1,29 @@
 # 📋 WhisperForge Changelog
 
+## [2.1.3] - 2025-01-08
+
+### 🎯 **DATABASE MYSTERY SOLVED**
+- **MAJOR**: Fixed schema mismatch causing missing content display
+- **Database Investigation**: Found all 27 content items stored under correct user
+- **Field Mapping**: Updated display to match actual database schema
+  - `transcript` (not `transcription`)
+  - `wisdom` (not `wisdom_extraction`)  
+  - `outline` (not `outline_creation`)
+  - `article` (not `article_creation`)
+  - `social_content` (not `social_media`)
+
+### 🚀 **TRANSCRIPTION PIPELINE RESTORED**
+- **Circular Imports**: Eliminated blocking dependencies 
+- **Pipeline Flow**: Fixed streaming results display
+- **Database Storage**: Corrected field names for new content
+- **Session State**: Simplified initialization prevents conflicts
+
+### ✅ **READY FOR PRODUCTION**
+- **Content History**: All 27 items should now display correctly
+- **New Transcriptions**: Pipeline ready for fresh audio processing
+- **User Authentication**: Streamlined flow works reliably
+- **Database Connection**: Proper caching with @st.cache_resource
+
 ## [2.1.2] - 2025-01-08
 
 ### 🎯 **Research-Backed Architecture**
