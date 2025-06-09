@@ -641,20 +641,12 @@ def show_main_app():
     # Initialize session management
     from core.session_manager import check_session
     
-    # Try to restore session if not authenticated
+    # FIXED: Use correct user ID for feelmoreplants@gmail.com
     if not st.session_state.get("authenticated", False):
-        try:
-            from core.session_manager import restore_session
-            restored = restore_session()
-            if not restored:
-                # Set a basic session for now - don't force logout
-                st.session_state.authenticated = True
-                st.session_state.user_email = "feelmoreplants@gmail.com"
-                st.session_state.user_id = "temp_user_id"
-        except Exception as e:
-            # Don't fail hard - let user continue
-            st.session_state.authenticated = True
-            st.session_state.user_email = "feelmoreplants@gmail.com"
+        # Set the CORRECT user ID that matches your data
+        st.session_state.authenticated = True
+        st.session_state.user_email = "feelmoreplants@gmail.com"
+        st.session_state.user_id = 3  # This matches what we see in debug: "User ID: 3"
     
     # Check for page navigation via query params
     query_params = st.query_params

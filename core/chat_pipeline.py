@@ -180,25 +180,25 @@ def show_chat_interface():
         
         # Simple synchronous processing for now
         if audio_file:
-            # Audio processing
-            chat.stream_thinking("Analyzing audio file...")
-            st.rerun()
-            
-            # Simulate processing steps
-            steps = ["Audio Transcription", "Wisdom Extraction", "Content Creation"]
-            content_parts = [
-                f"🎵 **Processing Audio File: {audio_file.name}**\n\n",
-                f"📊 Size: {len(audio_file.getvalue())} bytes\n",
-                "🔄 **Transcription Complete**\n",
-                "✨ **Insights Extracted**\n", 
-                "📝 **Content Generated**\n\n",
-                "**Your audio has been processed! 🎉**"
-            ]
-            
-            for i, step in enumerate(steps):
-                assistant_msg.add_step(step, "complete")
-                if i < len(content_parts):
-                    chat.stream_content(content_parts[i])
+            # FIXED: Use the actual pipeline instead of simulation
+            try:
+                from core.streaming_pipeline import get_pipeline_controller
+                controller = get_pipeline_controller()
+                
+                chat.stream_thinking("Starting real audio processing...")
+                st.rerun()
+                
+                # Start actual pipeline
+                controller.start_pipeline(audio_file)
+                
+                # Basic feedback for now
+                chat.stream_content(f"🎵 **Processing Audio File: {audio_file.name}**\n\n")
+                chat.stream_content(f"📊 Size: {len(audio_file.getvalue())} bytes\n\n")
+                chat.stream_content("🔄 **Processing started - check Content Pipeline for full results**\n")
+                
+            except Exception as e:
+                chat.stream_content(f"❌ **Error processing audio:** {str(e)}\n\n")
+                chat.stream_content("💡 **Try using Content Pipeline page for audio processing**")
         else:
             # Text processing
             chat.stream_thinking(f"Processing your message: '{user_input[:50]}...'")
