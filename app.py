@@ -1076,7 +1076,7 @@ def show_content_history_page():
                 
                 # Test query with count
                 count_result = db.client.table("content").select("id", count="exact").eq("user_id", st.session_state.get("user_id", "")).execute()
-                                st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
+                st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
                 
                 # Show raw sample data with CORRECT database fields
                 sample_result = db.client.table("content").select("id, title, transcript, wisdom, outline, article, social_content, created_at").eq("user_id", st.session_state.get("user_id", "")).order("created_at", desc=True).limit(3).execute()
