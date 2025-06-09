@@ -93,19 +93,49 @@ AURORA_CSS = """
 # Database functions (simplified)
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client"""
+    """Initialize Supabase client with robust error handling"""
     try:
         from supabase import create_client, Client
-        url = st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
-        key = st.secrets.get("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANON_KEY")
+        
+        # Try multiple sources for credentials
+        url = None
+        key = None
+        
+        # Try Streamlit secrets first
+        try:
+            if hasattr(st, 'secrets'):
+                url = st.secrets.get("SUPABASE_URL")
+                key = st.secrets.get("SUPABASE_ANON_KEY")
+        except:
+            pass
+        
+        # Fallback to environment variables
+        if not url:
+            url = os.getenv("SUPABASE_URL")
+        if not key:
+            key = os.getenv("SUPABASE_ANON_KEY")
         
         if not url or not key:
-            return None, "Missing Supabase credentials"
+            return None, "Missing Supabase credentials in secrets or environment variables"
+        
+        # Validate URL format
+        if not url.startswith(('http://', 'https://')):
+            return None, "Invalid Supabase URL format"
             
         client = create_client(url, key)
+        
+        # Test connection with a simple query
+        try:
+            client.table("api_keys").select("id").limit(1).execute()
+        except Exception as test_error:
+            return None, f"Supabase connection test failed: {str(test_error)}"
+        
         return client, None
+        
+    except ImportError:
+        return None, "Supabase Python client not installed"
     except Exception as e:
-        return None, str(e)
+        return None, f"Supabase initialization error: {str(e)}"
 
 def get_api_keys():
     """Get API keys from database or environment"""
@@ -128,48 +158,89 @@ def get_api_keys():
     return api_keys
 
 def transcribe_audio_simple(audio_file):
-    """Simple, working transcription function"""
+    """Rock solid transcription function with bulletproof error handling"""
     try:
         # Get API key
         api_keys = get_api_keys()
         openai_key = api_keys.get("openai_api_key")
         
         if not openai_key:
-            return "❌ No OpenAI API key found. Please add it in the sidebar."
+            return "❌ No OpenAI API key found. Add your key to Supabase database or environment variables."
         
-        # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-            temp_file.write(audio_file.read())
-            temp_file_path = temp_file.name
+        # Validate file size (OpenAI limit is 25MB)
+        file_size = len(audio_file.getvalue())
+        if file_size > 25 * 1024 * 1024:
+            return f"❌ File too large: {file_size/(1024*1024):.1f}MB. Maximum is 25MB."
         
-        # Import and use OpenAI
+        if file_size == 0:
+            return "❌ File is empty. Please upload a valid audio file."
+        
+        # Reset file pointer
+        audio_file.seek(0)
+        
+        # Get proper file extension
+        file_name = audio_file.name.lower()
+        if file_name.endswith(('.mp3', '.wav', '.m4a', '.flac')):
+            ext = file_name.split('.')[-1]
+        elif file_name.endswith(('.mp4', '.webm')):
+            ext = file_name.split('.')[-1]
+        else:
+            ext = "mp3"  # Default fallback
+        
+        # Save uploaded file temporarily with correct extension
+        temp_file_path = None
         try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as temp_file:
+                temp_file.write(audio_file.read())
+                temp_file_path = temp_file.name
+            
+            # Verify temp file was created and has content
+            if not os.path.exists(temp_file_path) or os.path.getsize(temp_file_path) == 0:
+                return "❌ Failed to save audio file temporarily."
+            
+            # Import OpenAI and transcribe
             import openai
             client = openai.OpenAI(api_key=openai_key)
             
             with open(temp_file_path, "rb") as audio:
                 transcript = client.audio.transcriptions.create(
                     model="whisper-1",
-                    file=audio
+                    file=audio,
+                    response_format="text"
                 )
             
-            # Clean up
-            os.unlink(temp_file_path)
+            # Validate transcript
+            if not transcript or len(transcript.strip()) == 0:
+                return "❌ Transcription returned empty result. Audio may be silent or corrupted."
             
-            return transcript.text
+            return transcript.strip()
             
+        except openai.APIError as e:
+            return f"❌ OpenAI API error: {str(e)}"
+        except openai.RateLimitError:
+            return "❌ OpenAI rate limit exceeded. Please try again in a moment."
+        except openai.AuthenticationError:
+            return "❌ Invalid OpenAI API key. Please check your key in settings."
         except Exception as e:
-            # Clean up on error
-            if os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
             return f"❌ Transcription failed: {str(e)}"
+        finally:
+            # Always clean up temp file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass  # Don't fail if cleanup fails
         
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f"❌ Unexpected error: {str(e)}"
 
 def generate_content_simple(transcript, content_type="wisdom"):
-    """Simple content generation"""
+    """Rock solid content generation with error handling"""
     try:
+        # Validate input
+        if not transcript or len(transcript.strip()) == 0:
+            return "❌ No transcript provided for content generation."
+        
         api_keys = get_api_keys()
         openai_key = api_keys.get("openai_api_key")
         
@@ -180,26 +251,48 @@ def generate_content_simple(transcript, content_type="wisdom"):
         client = openai.OpenAI(api_key=openai_key)
         
         prompts = {
-            "wisdom": "Extract key insights, lessons, and wisdom from this transcript. Focus on actionable takeaways.",
-            "outline": "Create a detailed outline for an article based on this transcript.",
-            "research": "Analyze this content and suggest related research topics, questions, and implications."
+            "wisdom": "Extract key insights, lessons, and wisdom from this transcript. Focus on actionable takeaways and practical lessons that readers can apply.",
+            "outline": "Create a detailed, well-structured outline for an article based on this transcript. Include main sections, subsections, and key points.",
+            "research": "Act as a researcher. Analyze this content and provide: 1) Related research questions, 2) Key implications, 3) Connections to broader topics, 4) Suggested further research areas."
         }
         
         prompt = prompts.get(content_type, prompts["wisdom"])
         
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Transcript: {transcript[:3000]}..."}
-            ],
-            max_tokens=1500
-        )
+        # Truncate transcript smartly - keep beginning and end
+        if len(transcript) > 3000:
+            truncated = transcript[:2000] + "\n\n[...content truncated...]\n\n" + transcript[-1000:]
+        else:
+            truncated = transcript
         
-        return response.choices[0].message.content
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": f"Transcript:\n{truncated}"}
+                ],
+                max_tokens=1500,
+                temperature=0.7
+            )
+            
+            content = response.choices[0].message.content
+            
+            if not content or len(content.strip()) == 0:
+                return f"❌ {content_type.title()} generation returned empty result."
+            
+            return content.strip()
+            
+        except openai.APIError as e:
+            return f"❌ OpenAI API error: {str(e)}"
+        except openai.RateLimitError:
+            return "❌ OpenAI rate limit exceeded. Please try again in a moment."
+        except openai.AuthenticationError:
+            return "❌ Invalid OpenAI API key. Please check your key in settings."
+        except Exception as e:
+            return f"❌ {content_type.title()} generation failed: {str(e)}"
         
     except Exception as e:
-        return f"❌ Content generation failed: {str(e)}"
+        return f"❌ Unexpected error in content generation: {str(e)}"
 
 def save_to_database(content_data):
     """Save processed content to database"""
