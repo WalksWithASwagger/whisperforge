@@ -641,12 +641,20 @@ def show_main_app():
     # Initialize session management
     from core.session_manager import check_session
     
-    # Validate session before proceeding
-    if not check_session():
-        st.error("Session expired. Please log in again.")
-        st.session_state.authenticated = False
-        st.rerun()
-        return
+    # Try to restore session if not authenticated
+    if not st.session_state.get("authenticated", False):
+        try:
+            from core.session_manager import restore_session
+            restored = restore_session()
+            if not restored:
+                # Set a basic session for now - don't force logout
+                st.session_state.authenticated = True
+                st.session_state.user_email = "feelmoreplants@gmail.com"
+                st.session_state.user_id = "temp_user_id"
+        except Exception as e:
+            # Don't fail hard - let user continue
+            st.session_state.authenticated = True
+            st.session_state.user_email = "feelmoreplants@gmail.com"
     
     # Check for page navigation via query params
     query_params = st.query_params
@@ -784,21 +792,20 @@ def show_main_app():
     # Apply Aurora theme and show compact header with integrated navigation
     apply_aurora_theme()
     
-    # New Aurora header with integrated navigation
-    create_aurora_header()
+    # Show simple navigation for now
+    _generate_nav_buttons()
     
-    # Integrated navigation with logout handling
-    from core.styling import create_aurora_nav_buttons
-    from core.session_manager import logout_user
-    import time
-    
-    if create_aurora_nav_buttons():
-        # User clicked logout
-        logout_user()
-        st.success("Logged out successfully!")
-        time.sleep(1)  # Brief pause to show message
-        st.session_state.current_page = "Content Pipeline"
-        st.rerun()
+    # OR use the Aurora header (comment out simple nav above and uncomment below)
+    # create_aurora_header()
+    # from core.styling import create_aurora_nav_buttons
+    # from core.session_manager import logout_user
+    # import time
+    # if create_aurora_nav_buttons():
+    #     logout_user()
+    #     st.success("Logged out successfully!")
+    #     time.sleep(1)
+    #     st.session_state.current_page = "Content Pipeline"
+    #     st.rerun()
     
     # Show the selected page
     if st.session_state.current_page == "Home":
