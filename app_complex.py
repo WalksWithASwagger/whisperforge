@@ -218,43 +218,6 @@ def save_to_database(content_data):
     except:
         return False
 
-def show_history():
-    """Show content history using native Streamlit"""
-    st.markdown("### 📋 Content History")
-    
-    try:
-        client, error = init_supabase()
-        if not client or error:
-            st.error("Database connection failed")
-            return
-            
-        result = client.table("content").select("*").eq("user_id", 3).order("created_at", desc=True).limit(10).execute()
-        
-        if not result.data:
-            st.info("No content found yet. Process some audio files to see history here!")
-            return
-        
-        for item in result.data:
-            content_data = item.get("content_data", {})
-            created_at = item.get("created_at", "")
-            
-            with st.expander(f"🎵 {content_data.get('file_name', 'Unknown file')} - {created_at[:10]}"):
-                
-                if content_data.get("transcript"):
-                    st.markdown("**📝 Transcript:**")
-                    st.text_area("", content_data["transcript"], height=100, disabled=True, key=f"transcript_{item['id']}")
-                
-                if content_data.get("wisdom"):
-                    st.markdown("**💡 Wisdom:**")
-                    st.markdown(content_data["wisdom"])
-                
-                if content_data.get("research"):
-                    st.markdown("**🔬 Research:**")
-                    st.markdown(content_data["research"])
-        
-    except Exception as e:
-        st.error(f"Error loading history: {e}")
-
 def main():
     """Main app - Simple and clean"""
     
@@ -265,94 +228,87 @@ def main():
     st.markdown('<div class="main-title">⚡ WhisperForge</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle">Transform audio into luminous wisdom</div>', unsafe_allow_html=True)
     
-    # Navigation using native tabs
-    tab1, tab2 = st.tabs(["🎙️ Process Audio", "📋 History"])
+    # Sidebar for API key
+    with st.sidebar:
+        st.markdown("### ⚙️ Configuration")
+        api_keys = get_api_keys()
+        
+        # Show current status
+        if api_keys.get("openai_api_key"):
+            st.success("✅ OpenAI API key loaded")
+        else:
+            st.error("❌ No OpenAI API key")
+            st.markdown("Add your key to Supabase or environment variables")
     
-    with tab1:
-        # Sidebar for API key
-        with st.sidebar:
-            st.markdown("### ⚙️ Configuration")
-            api_keys = get_api_keys()
-            
-            # Show current status
-            if api_keys.get("openai_api_key"):
-                st.success("✅ OpenAI API key loaded")
-            else:
-                st.error("❌ No OpenAI API key")
-                st.markdown("Add your key to Supabase or environment variables")
+    # Main interface
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        # File upload
+        uploaded_file = st.file_uploader(
+            "🎵 Drop audio file here",
+            type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm'],
+            help="Max 25MB • Supports MP3, WAV, M4A, FLAC, MP4, WEBM"
+        )
         
-        # Main interface
-        col1, col2, col3 = st.columns([1, 2, 1])
-        
-        with col2:
-            # File upload
-            uploaded_file = st.file_uploader(
-                "🎵 Drop audio file here",
-                type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm'],
-                help="Max 25MB • Supports MP3, WAV, M4A, FLAC, MP4, WEBM"
-            )
+        if uploaded_file:
+            # Show file info
+            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
+            st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
             
-            if uploaded_file:
-                # Show file info
-                file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-                st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
+            # Audio player
+            st.audio(uploaded_file.getvalue())
+            
+            # Process button
+            if st.button("⚡ Process Audio", type="primary", use_container_width=True):
                 
-                # Audio player
-                st.audio(uploaded_file.getvalue())
-                
-                # Process button
-                if st.button("⚡ Process Audio", type="primary", use_container_width=True):
+                # Transcription
+                with st.status("🎙️ Transcribing audio...", expanded=True) as status:
+                    transcript = transcribe_audio_simple(uploaded_file)
                     
-                    # Transcription
-                    with st.status("🎙️ Transcribing audio...", expanded=True) as status:
-                        transcript = transcribe_audio_simple(uploaded_file)
+                    if transcript.startswith("❌"):
+                        st.error(transcript)
+                        status.update(label="❌ Transcription failed", state="error")
+                    else:
+                        st.success(f"✅ Transcribed {len(transcript)} characters")
+                        status.update(label="✅ Transcription complete", state="complete")
                         
-                        if transcript.startswith("❌"):
-                            st.error(transcript)
-                            status.update(label="❌ Transcription failed", state="error")
+                        # Show transcript
+                        with st.expander("📝 Transcript", expanded=True):
+                            st.text_area("", transcript, height=200, disabled=True)
+                        
+                        # Content generation tabs
+                        tab1, tab2, tab3 = st.tabs(["💡 Wisdom", "📋 Outline", "🔬 Research"])
+                        
+                        with tab1:
+                            with st.spinner("Extracting wisdom..."):
+                                wisdom = generate_content_simple(transcript, "wisdom")
+                                st.markdown(wisdom)
+                        
+                        with tab2:
+                            with st.spinner("Creating outline..."):
+                                outline = generate_content_simple(transcript, "outline")
+                                st.markdown(outline)
+                        
+                        with tab3:
+                            with st.spinner("Generating research insights..."):
+                                research = generate_content_simple(transcript, "research")
+                                st.markdown(research)
+                        
+                        # Save to database
+                        content_data = {
+                            "transcript": transcript,
+                            "wisdom": wisdom,
+                            "outline": outline,
+                            "research": research,
+                            "file_name": uploaded_file.name,
+                            "processed_at": datetime.now().isoformat()
+                        }
+                        
+                        if save_to_database(content_data):
+                            st.success("💾 Content saved to database!")
                         else:
-                            st.success(f"✅ Transcribed {len(transcript)} characters")
-                            status.update(label="✅ Transcription complete", state="complete")
-                            
-                            # Show transcript
-                            with st.expander("📝 Transcript", expanded=True):
-                                st.text_area("", transcript, height=200, disabled=True)
-                            
-                            # Content generation tabs
-                            wisdom_tab, outline_tab, research_tab = st.tabs(["💡 Wisdom", "📋 Outline", "🔬 Research"])
-                            
-                            with wisdom_tab:
-                                with st.spinner("Extracting wisdom..."):
-                                    wisdom = generate_content_simple(transcript, "wisdom")
-                                    st.markdown(wisdom)
-                            
-                            with outline_tab:
-                                with st.spinner("Creating outline..."):
-                                    outline = generate_content_simple(transcript, "outline")
-                                    st.markdown(outline)
-                            
-                            with research_tab:
-                                with st.spinner("Generating research insights..."):
-                                    research = generate_content_simple(transcript, "research")
-                                    st.markdown(research)
-                            
-                            # Save to database
-                            content_data = {
-                                "transcript": transcript,
-                                "wisdom": wisdom,
-                                "outline": outline,
-                                "research": research,
-                                "file_name": uploaded_file.name,
-                                "processed_at": datetime.now().isoformat()
-                            }
-                            
-                            if save_to_database(content_data):
-                                st.success("💾 Content saved to database!")
-                            else:
-                                st.warning("⚠️ Could not save to database")
-    
-    with tab2:
-        show_history()
+                            st.warning("⚠️ Could not save to database")
 
 if __name__ == "__main__":
     main() 
