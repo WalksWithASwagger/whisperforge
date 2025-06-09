@@ -90,10 +90,10 @@ AURORA_CSS = """
 </style>
 """
 
-# Database functions (simplified)
+# Database functions with enhanced logging
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client with robust error handling"""
+    """Initialize Supabase client with robust error handling and logging"""
     try:
         from supabase import create_client, Client
         
@@ -106,36 +106,53 @@ def init_supabase():
             if hasattr(st, 'secrets'):
                 url = st.secrets.get("SUPABASE_URL")
                 key = st.secrets.get("SUPABASE_ANON_KEY")
-        except:
-            pass
+                if url and key:
+                    st.write("🔍 DEBUG: Using Streamlit secrets")
+        except Exception as e:
+            st.write(f"🔍 DEBUG: Streamlit secrets error: {e}")
         
         # Fallback to environment variables
         if not url:
             url = os.getenv("SUPABASE_URL")
+            if url:
+                st.write("🔍 DEBUG: Using environment SUPABASE_URL")
         if not key:
             key = os.getenv("SUPABASE_ANON_KEY")
+            if key:
+                st.write("🔍 DEBUG: Using environment SUPABASE_ANON_KEY")
         
         if not url or not key:
-            return None, "Missing Supabase credentials in secrets or environment variables"
+            error_msg = f"Missing Supabase credentials - URL: {bool(url)}, KEY: {bool(key)}"
+            st.write(f"🔍 DEBUG: {error_msg}")
+            return None, error_msg
         
         # Validate URL format
         if not url.startswith(('http://', 'https://')):
-            return None, "Invalid Supabase URL format"
+            error_msg = f"Invalid Supabase URL format: {url}"
+            st.write(f"🔍 DEBUG: {error_msg}")
+            return None, error_msg
             
         client = create_client(url, key)
+        st.write(f"🔍 DEBUG: Created Supabase client for {url}")
         
         # Test connection with a simple query
         try:
-            client.table("api_keys").select("id").limit(1).execute()
+            result = client.table("api_keys").select("id").limit(1).execute()
+            st.write(f"🔍 DEBUG: Connection test successful, found {len(result.data)} records")
+            return client, None
         except Exception as test_error:
-            return None, f"Supabase connection test failed: {str(test_error)}"
+            error_msg = f"Supabase connection test failed: {str(test_error)}"
+            st.write(f"🔍 DEBUG: {error_msg}")
+            return None, error_msg
         
-        return client, None
-        
-    except ImportError:
-        return None, "Supabase Python client not installed"
+    except ImportError as e:
+        error_msg = f"Supabase Python client not installed: {e}"
+        st.write(f"🔍 DEBUG: {error_msg}")
+        return None, error_msg
     except Exception as e:
-        return None, f"Supabase initialization error: {str(e)}"
+        error_msg = f"Supabase initialization error: {str(e)}"
+        st.write(f"🔍 DEBUG: {error_msg}")
+        return None, error_msg
 
 # User Management Functions
 def get_current_user():
