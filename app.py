@@ -300,9 +300,9 @@ def get_user_content_history_supabase(limit: int = 20) -> list:
         user_id = st.session_state.user_id
         logger.info(f"Fetching content history for user_id: {user_id}")
         
-        # Enhanced query with better error handling
+        # Enhanced query with better error handling - get ALL fields
         result = db.client.table("content")\
-            .select("id, content_data, created_at")\
+            .select("id, title, transcript, wisdom, outline, article, social_content, created_at")\
             .eq("user_id", user_id)\
             .order("created_at", desc=True)\
             .limit(limit)\
@@ -1076,23 +1076,20 @@ def show_content_history_page():
                 
                 # Test query with count
                 count_result = db.client.table("content").select("id", count="exact").eq("user_id", st.session_state.get("user_id", "")).execute()
-                st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
+                                st.write(f"**Total records in DB for user:** {count_result.count if hasattr(count_result, 'count') else 'Unknown'}")
                 
-                # Show raw sample data
-                sample_result = db.client.table("content").select("id, content_data, created_at").eq("user_id", st.session_state.get("user_id", "")).order("created_at", desc=True).limit(3).execute()
+                # Show raw sample data with CORRECT database fields
+                sample_result = db.client.table("content").select("id, title, transcript, wisdom, outline, article, social_content, created_at").eq("user_id", st.session_state.get("user_id", "")).order("created_at", desc=True).limit(3).execute()
                 if sample_result.data:
                     st.write(f"**Sample raw records ({len(sample_result.data)}):**")
                     for i, record in enumerate(sample_result.data):
                         st.write(f"Record {i+1}:")
                         st.write(f"  - ID: {record.get('id')}")
+                        st.write(f"  - Title: {record.get('title', 'No title')}")
+                        st.write(f"  - Has transcript: {'Yes' if record.get('transcript') else 'No'}")
+                        st.write(f"  - Has wisdom: {'Yes' if record.get('wisdom') else 'No'}")
+                        st.write(f"  - Has article: {'Yes' if record.get('article') else 'No'}")
                         st.write(f"  - Created: {record.get('created_at')}")
-                        content_data = record.get('content_data', {})
-                        if isinstance(content_data, dict):
-                            st.write(f"  - Content keys: {list(content_data.keys())}")
-                            if 'metadata' in content_data:
-                                st.write(f"  - Metadata: {content_data['metadata']}")
-                        else:
-                            st.write(f"  - Content data type: {type(content_data)}")
                 else:
                     st.warning("No sample records found")
             else:
@@ -1135,80 +1132,54 @@ def show_content_history_page():
     for i, item in enumerate(history):
         # Parse creation date
         created_date = item.get('created_at', '')[:10] if item.get('created_at') else 'Unknown date'
+        title = item.get('title', f'Content {i+1}')
         
         # Create Aurora content card
-        with st.expander(f"✨ Content Generated on {created_date}", expanded=i==0):
-            content_data = item.get("content_data", {})
+        with st.expander(f"✨ {title} - {created_date}", expanded=i==0):
+            # Display each content type directly from database fields
+            content_sections = {
+                'transcript': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
+                'wisdom': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'), 
+                'outline': ('◇', 'Content Outline', 'Structured organization and flow'),
+                'article': ('◈', 'Full Article', 'Complete written content'),
+                'social_content': ('◉', 'Social Media Posts', 'Platform-optimized content')
+            }
             
-            if isinstance(content_data, dict):
-                # Metadata section
-                if 'metadata' in content_data:
-                    st.markdown("### Metadata")
-                    metadata = content_data['metadata']
-                    if isinstance(metadata, dict):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("File Size", metadata.get('file_size', 'Unknown'))
-                        with col2:
-                            st.metric("Duration", metadata.get('duration', 'Unknown'))
-                        with col3:
-                            st.metric("AI Model", metadata.get('ai_model', 'Unknown'))
-                
-                # Display each content type in its own section
-                # FIXED: Map to ACTUAL database field names from investigation
-                content_sections = {
-                    'transcript': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
-                    'wisdom': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'), 
-                    'research_enrichment': ('🔍', 'Research Enrichment', 'Supporting links and context'),
-                    'outline': ('◇', 'Content Outline', 'Structured organization and flow'),
-                    'article': ('◈', 'Full Article', 'Complete written content'),
-                    'social_content': ('◉', 'Social Media Posts', 'Platform-optimized content'),
-                    'image_prompts': ('◎', 'Image Generation Prompts', 'AI-generated visual concepts')
-                }
-                
-                for section_key, (icon, title, description) in content_sections.items():
-                    if section_key in content_data and content_data[section_key]:
-                        content = content_data[section_key]
-                        
-                        # Aurora content section
-                        st.markdown(f"""
-                        <div style="
-                            background: linear-gradient(135deg, rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05));
-                            border: 1px solid rgba(0, 255, 255, 0.1);
-                            border-radius: 12px;
-                            padding: 20px;
-                            margin: 16px 0;
-                        ">
-                            <h4 style="color: #00FFFF; margin-bottom: 8px;">{icon} {title}</h4>
-                            <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-bottom: 16px;">{description}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        # Special handling for research enrichment
-                        if section_key == "research_enrichment" and isinstance(content, dict):
-                            _show_research_content(content)
-                        else:
-                            # Show regular text content with copy functionality
-                            if len(str(content)) > 500:
-                                # Show preview for long content
-                                st.markdown(f"**Preview:** {str(content)[:300]}...")
-                                show_full_key = generate_unique_key(f"show_{section_key}_{title}")
-                                if st.button(f"Show Full {title}", key=show_full_key):
-                                    full_text_key = generate_unique_key(f"full_{section_key}_{title}")
-                                    st.text_area(f"Full {title}", content, height=200, key=full_text_key)
-                            else:
-                                st.markdown(content)
-                        
-                        # Copy button
-                        copy_key = generate_unique_key(f"copy_{section_key}_{title}")
-                        if st.button(f"Copy {title}", key=copy_key, help=f"Copy {title} to clipboard"):
-                            st.code(content, language="markdown")
-                        
-                        st.markdown("---")
-            else:
-                # Fallback for non-dict content
-                st.markdown("### Raw Content")
-                st.markdown(str(content_data))
+            # Show content for each section that exists
+            for section_key, (icon, section_title, description) in content_sections.items():
+                content = item.get(section_key)
+                if content and content.strip():
+                    # Aurora content section
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, rgba(0, 255, 255, 0.03), rgba(64, 224, 208, 0.05));
+                        border: 1px solid rgba(0, 255, 255, 0.1);
+                        border-radius: 12px;
+                        padding: 20px;
+                        margin: 16px 0;
+                    ">
+                        <h4 style="color: #00FFFF; margin-bottom: 8px;">{icon} {section_title}</h4>
+                        <p style="color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; margin-bottom: 16px;">{description}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Show content with copy functionality  
+                    if len(str(content)) > 500:
+                        # Show preview for long content
+                        st.markdown(f"**Preview:** {str(content)[:300]}...")
+                        show_full_key = generate_unique_key(f"show_{section_key}_{i}")
+                        if st.button(f"Show Full {section_title}", key=show_full_key):
+                            full_text_key = generate_unique_key(f"full_{section_key}_{i}")
+                            st.text_area(f"Full {section_title}", content, height=200, key=full_text_key)
+                    else:
+                        st.markdown(content)
+                    
+                    # Copy button
+                    copy_key = generate_unique_key(f"copy_{section_key}_{i}")
+                    if st.button(f"Copy {section_title}", key=copy_key, help=f"Copy {section_title} to clipboard"):
+                        st.code(content, language="markdown")
+                    
+                    st.markdown("---")
 
 def _show_research_content(research_data: dict):
     """Display research enrichment content in a beautiful format"""

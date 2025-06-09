@@ -421,30 +421,18 @@ Please provide improved versions that address the feedback."""
             if not db:
                 return "Database connection failed"
             
-            content_data = {
-                "title": f"Content from {st.session_state.pipeline_file_info['name']}",
-                "transcript": st.session_state.pipeline_results.get("transcription", ""),
-                "wisdom": st.session_state.pipeline_results.get("wisdom_extraction", ""),
-                "research_enrichment": st.session_state.pipeline_results.get("research_enrichment", {}),
-                "outline": st.session_state.pipeline_results.get("outline_creation", ""), 
-                "article": st.session_state.pipeline_results.get("article_creation", ""),
-                "social_content": st.session_state.pipeline_results.get("social_content", ""),
-                "image_prompts": st.session_state.pipeline_results.get("image_prompts", ""),
-                "metadata": {
-                    "ai_provider": st.session_state.ai_provider,
-                    "ai_model": st.session_state.ai_model,
-                    "file_size": st.session_state.pipeline_file_info["size"],
-                    "editor_enabled": st.session_state.get("editor_enabled", False),
-                    "research_enabled": st.session_state.get("research_enabled", True),
-                    "thinking_enabled": st.session_state.get("thinking_enabled", True),
-                    "created_at": datetime.now().isoformat()
-                }
-            }
+            # Get results with correct step names
+            results = st.session_state.pipeline_results
             
-            # Direct database insert
+            # Direct database insert with CORRECT field names
             result = db.client.table("content").insert({
                 "user_id": st.session_state.user_id,
-                "content_data": content_data,
+                "title": f"Content from {st.session_state.pipeline_file_info['name']}",
+                "transcript": results.get("transcription", ""),
+                "wisdom": results.get("wisdom_extraction", ""), 
+                "outline": results.get("outline_creation", ""),
+                "article": results.get("article_creation", ""),
+                "social_content": results.get("social_content", ""),
                 "created_at": "now()"
             }).execute()
             

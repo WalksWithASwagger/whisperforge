@@ -442,13 +442,27 @@ def transcribe_audio(audio_file) -> str:
         if not openai_client:
             return "Error: OpenAI API key is not configured for transcription."
         
-        # Save uploaded file temporarily
+        # Get the original file extension to preserve format
         import tempfile
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
+        import os
+        
+        # Get file extension from the uploaded file name
+        file_extension = ""
+        if hasattr(audio_file, 'name') and audio_file.name:
+            file_extension = os.path.splitext(audio_file.name)[1]
+        
+        # If no extension, default to common audio format
+        if not file_extension:
+            file_extension = ".m4a"
+        
+        # Save uploaded file temporarily with correct extension
+        with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
+            # Reset file pointer to beginning
+            audio_file.seek(0)
             temp_file.write(audio_file.read())
             temp_file_path = temp_file.name
         
-        # Transcribe using OpenAI Whisper
+        # Transcribe using OpenAI Whisper with correct file
         with open(temp_file_path, "rb") as audio:
             transcript = openai_client.audio.transcriptions.create(
                 model="whisper-1",
