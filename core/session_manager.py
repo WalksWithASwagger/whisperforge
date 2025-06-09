@@ -41,7 +41,7 @@ class SessionManager:
             
         # App state persistence
         if 'current_page' not in st.session_state:
-            st.session_state.current_page = "Content Pipeline"
+            st.session_state.current_page = "Home"
         if 'ai_provider' not in st.session_state:
             st.session_state.ai_provider = "OpenAI"
         if 'ai_model' not in st.session_state:

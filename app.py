@@ -617,35 +617,23 @@ def show_auth_page():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def _generate_nav_buttons():
-    """Generate navigation buttons for header"""
+    """Generate navigation buttons"""
     pages = [
-        ("Processing", ""),
-        ("History", ""), 
-        ("Settings", ""),
-        ("Status", "")
+        ("🏠", "Home"),
+        ("🎙️", "Content Pipeline"), 
+        ("💬", "Chat Mode"),  # NEW: Chat interface like Cursor
+        ("📋", "History"),
+        ("⚙️", "Settings"),
+        ("❤️", "Health")
     ]
     
-    current_page = st.session_state.get('current_page', 'Content Pipeline')
-    
-    # Create column layout for buttons
     cols = st.columns(len(pages))
-    
-    for i, (page, icon) in enumerate(pages):
+    for i, (icon, name) in enumerate(pages):
         with cols[i]:
-            # Map new names to old page names for compatibility
-            page_mapping = {
-                "Processing": "Content Pipeline",
-                "History": "Content History", 
-                "Settings": "Settings",
-                "Status": "Health Check"
-            }
-            if st.button(page, key=f"nav_{page}", 
-                        type="primary" if page_mapping[page] == current_page else "secondary",
-                        use_container_width=True):
-                st.session_state.current_page = page_mapping[page]
+            if st.button(f"{icon} {name}", key=f"nav_{name.lower().replace(' ', '_')}", 
+                        type="primary" if st.session_state.get("current_page") == name else "secondary"):
+                st.session_state.current_page = name
                 st.rerun()
-    
-    return ""  # Return empty string since we're using Streamlit buttons
 
 def show_main_app():
     """Main application with clean layout and integrated navigation"""
@@ -813,14 +801,28 @@ def show_main_app():
         st.rerun()
     
     # Show the selected page
-    if st.session_state.current_page == "Content Pipeline":
+    if st.session_state.current_page == "Home":
         show_home_page()
-    elif st.session_state.current_page == "Content History":
+    elif st.session_state.current_page == "Content Pipeline":
+        show_home_page()  # Same as home for now
+    elif st.session_state.current_page == "Chat Mode":
+        # 💬 NEW: Cursor-style Chat Interface
+        try:
+            from core.chat_pipeline import show_chat_interface, apply_chat_css
+            apply_chat_css()
+            show_chat_interface()
+        except ImportError as e:
+            st.error(f"Chat interface not available: {e}")
+            st.markdown("**Chat interface is under development**")
+    elif st.session_state.current_page == "History":
         show_content_history_page()
     elif st.session_state.current_page == "Settings":
         show_settings_page()
-    elif st.session_state.current_page == "Health Check":
+    elif st.session_state.current_page == "Health":
         show_health_page()
+    else:
+        # Default fallback
+        show_home_page()
 
 def show_home_page():
     """Clean, focused home page - COMPLETELY REBUILT"""
