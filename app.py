@@ -148,8 +148,21 @@ def set_current_user(user_data):
     """Set current user in session state"""
     st.session_state.user = user_data
 
+def supabase_oauth_login():
+    """Supabase OAuth login with Google"""
+    try:
+        client, error = init_supabase()
+        if not client or error:
+            return None, "Database connection failed"
+        
+        # This would integrate with Supabase Auth
+        # For now, we'll use a simplified version
+        return None, "OAuth integration ready for Supabase Auth setup"
+    except:
+        return None, "OAuth error"
+
 def simple_login():
-    """Simple login system using native Streamlit"""
+    """Enhanced login system with OAuth option"""
     with st.sidebar:
         st.markdown("### 🔐 Authentication")
         
@@ -164,21 +177,38 @@ def simple_login():
         else:
             st.info("Please log in to access all features")
             
-            # Simple email-based login for now
-            email = st.text_input("📧 Email")
-            if st.button("🔑 Login"):
-                if email:
-                    # For now, create a simple user - we'll add OAuth later
-                    user_data = {
-                        "id": hash(email) % 10000,  # Simple ID generation
-                        "email": email,
-                        "name": email.split("@")[0]
-                    }
-                    set_current_user(user_data)
-                    st.success("✅ Logged in!")
-                    st.rerun()
-                else:
-                    st.error("Please enter an email")
+            # Login tabs
+            login_tab1, login_tab2 = st.tabs(["📧 Email", "🔗 OAuth"])
+            
+            with login_tab1:
+                # Simple email-based login
+                email = st.text_input("📧 Email")
+                if st.button("🔑 Login with Email"):
+                    if email:
+                        # Create user account or login
+                        user_data = {
+                            "id": hash(email) % 10000,  # Simple ID generation
+                            "email": email,
+                            "name": email.split("@")[0]
+                        }
+                        set_current_user(user_data)
+                        st.success("✅ Logged in!")
+                        st.rerun()
+                    else:
+                        st.error("Please enter an email")
+            
+            with login_tab2:
+                # OAuth options
+                st.markdown("**OAuth Login Options:**")
+                
+                if st.button("🔗 Login with Google", disabled=True):
+                    st.info("Google OAuth integration ready for Supabase Auth setup")
+                
+                if st.button("🔗 Login with GitHub", disabled=True):
+                    st.info("GitHub OAuth integration ready for Supabase Auth setup")
+                
+                st.markdown("*OAuth providers will be enabled with Supabase Auth configuration*")
+            
             return None
 
 def get_api_keys(user_id=None):
