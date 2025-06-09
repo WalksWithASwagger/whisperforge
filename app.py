@@ -1155,14 +1155,14 @@ def show_content_history_page():
                             st.metric("AI Model", metadata.get('ai_model', 'Unknown'))
                 
                 # Display each content type in its own section
-                # Map EXACT database field names to display (no more variants)
+                # FIXED: Map to ACTUAL database field names from investigation
                 content_sections = {
                     'transcript': ('♦', 'Audio Transcription', 'The original speech-to-text conversion'),
-                    'wisdom_extraction': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'),
+                    'wisdom': ('◆', 'Key Insights & Wisdom', 'Extracted insights and takeaways'), 
                     'research_enrichment': ('🔍', 'Research Enrichment', 'Supporting links and context'),
-                    'outline_creation': ('◇', 'Content Outline', 'Structured organization and flow'),
+                    'outline': ('◇', 'Content Outline', 'Structured organization and flow'),
                     'article': ('◈', 'Full Article', 'Complete written content'),
-                    'social_media': ('◉', 'Social Media Posts', 'Platform-optimized content'),
+                    'social_content': ('◉', 'Social Media Posts', 'Platform-optimized content'),
                     'image_prompts': ('◎', 'Image Generation Prompts', 'AI-generated visual concepts')
                 }
                 

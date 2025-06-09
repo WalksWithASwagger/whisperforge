@@ -424,11 +424,11 @@ Please provide improved versions that address the feedback."""
             content_data = {
                 "title": f"Content from {st.session_state.pipeline_file_info['name']}",
                 "transcript": st.session_state.pipeline_results.get("transcription", ""),
-                "wisdom_extraction": st.session_state.pipeline_results.get("wisdom_extraction", ""),
+                "wisdom": st.session_state.pipeline_results.get("wisdom_extraction", ""),
                 "research_enrichment": st.session_state.pipeline_results.get("research_enrichment", {}),
-                "outline_creation": st.session_state.pipeline_results.get("outline_creation", ""),
+                "outline": st.session_state.pipeline_results.get("outline_creation", ""), 
                 "article": st.session_state.pipeline_results.get("article_creation", ""),
-                "social_media": st.session_state.pipeline_results.get("social_content", ""),
+                "social_content": st.session_state.pipeline_results.get("social_content", ""),
                 "image_prompts": st.session_state.pipeline_results.get("image_prompts", ""),
                 "metadata": {
                     "ai_provider": st.session_state.ai_provider,
