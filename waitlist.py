@@ -110,7 +110,7 @@ def main():
     }
     
     .waitlist-container {
-        max-width: 600px;
+        max-width: 700px;
         margin: 0 auto;
         padding: 40px 20px;
         text-align: center;
@@ -120,8 +120,8 @@ def main():
         background: linear-gradient(135deg, var(--aurora-bg-card), rgba(64, 224, 208, 0.08));
         border: 1px solid var(--aurora-border);
         border-radius: 20px;
-        padding: 50px 40px;
-        margin-bottom: 40px;
+        padding: 40px 30px;
+        margin-bottom: 30px;
         backdrop-filter: blur(20px);
         position: relative;
         overflow: hidden;
@@ -139,72 +139,31 @@ def main():
     }
     
     .waitlist-logo {
-        font-size: 3.5rem;
+        font-size: 3rem;
         font-weight: 700;
         background: linear-gradient(120deg, var(--aurora-primary), var(--aurora-tertiary), var(--aurora-secondary));
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         text-shadow: var(--aurora-glow);
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         line-height: 1.2;
     }
     
     .waitlist-subtitle {
         color: var(--aurora-text);
-        font-size: 1.3rem;
-        margin-bottom: 16px;
+        font-size: 1.2rem;
+        margin-bottom: 12px;
         line-height: 1.5;
         font-weight: 500;
     }
     
     .waitlist-description {
         color: var(--aurora-text-muted);
-        font-size: 1.1rem;
-        line-height: 1.6;
-        max-width: 480px;
+        font-size: 1rem;
+        line-height: 1.5;
+        max-width: 500px;
         margin: 0 auto;
-    }
-    
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 24px;
-        margin: 50px 0;
-    }
-    
-    .feature-card {
-        background: var(--aurora-bg-card);
-        border: 1px solid var(--aurora-border);
-        border-radius: 16px;
-        padding: 28px 20px;
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-    }
-    
-    .feature-card:hover {
-        border-color: var(--aurora-border-hover);
-        transform: translateY(-4px);
-        box-shadow: var(--aurora-glow);
-    }
-    
-    .feature-icon {
-        font-size: 2.5rem;
-        margin-bottom: 16px;
-        display: block;
-    }
-    
-    .feature-title {
-        color: var(--aurora-primary);
-        font-weight: 600;
-        font-size: 1.1rem;
-        margin-bottom: 8px;
-    }
-    
-    .feature-desc {
-        color: var(--aurora-text-muted);
-        font-size: 0.9rem;
-        line-height: 1.4;
     }
     
     .form-container {
@@ -212,16 +171,60 @@ def main():
         border: 1px solid var(--aurora-border);
         border-radius: 20px;
         padding: 40px;
-        margin: 40px 0;
+        margin: 30px 0;
         backdrop-filter: blur(16px);
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
     }
     
     .form-title {
         color: var(--aurora-primary);
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: 600;
         margin-bottom: 24px;
         text-shadow: var(--aurora-glow);
+    }
+    
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 20px;
+        margin: 40px 0;
+    }
+    
+    .feature-card {
+        background: var(--aurora-bg-card);
+        border: 1px solid var(--aurora-border);
+        border-radius: 16px;
+        padding: 24px 16px;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        border-color: var(--aurora-border-hover);
+        transform: translateY(-3px);
+        box-shadow: var(--aurora-glow);
+    }
+    
+    .feature-icon {
+        font-size: 2.2rem;
+        margin-bottom: 12px;
+        display: block;
+    }
+    
+    .feature-title {
+        color: var(--aurora-primary);
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 8px;
+    }
+    
+    .feature-desc {
+        color: var(--aurora-text-muted);
+        font-size: 0.85rem;
+        line-height: 1.4;
     }
     
     /* Streamlit form styling */
@@ -307,7 +310,7 @@ def main():
         }
         
         .form-container {
-            padding: 25px;
+            padding: 30px 20px;
         }
         
         .feature-grid {
@@ -329,90 +332,97 @@ def main():
             Transform audio into actionable insights
         </div>
         <div class="waitlist-description">
-            Join the waitlist for early access to the most advanced AI-powered audio content transformation platform. Turn your recordings into structured articles, social media content, and actionable wisdom.
+            Join the waitlist for early access to the most advanced AI-powered audio content transformation platform.
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Features section
-    st.markdown("""
-    <div class="feature-grid">
-        <div class="feature-card">
-            <div class="feature-icon">🎙️</div>
-            <div class="feature-title">Smart Transcription</div>
-            <div class="feature-desc">AI-powered speech-to-text with context understanding and speaker recognition</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">💎</div>
-            <div class="feature-title">Wisdom Extraction</div>
-            <div class="feature-desc">Automatically identify key insights, quotes, and actionable takeaways</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">📋</div>
-            <div class="feature-title">Structured Content</div>
-            <div class="feature-desc">Generate outlines, articles, and social media posts instantly</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">🚀</div>
-            <div class="feature-title">Real-time Processing</div>
-            <div class="feature-desc">Watch your content transform live with beautiful progress indicators</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Waitlist form
+    # Waitlist form - NOW POSITIONED ABOVE OTHER ELEMENTS
     st.markdown('<div class="form-container">', unsafe_allow_html=True)
-    st.markdown('<div class="form-title">Join the Waitlist</div>', unsafe_allow_html=True)
+    st.markdown('<div class="form-title">🚀 Join the Waitlist</div>', unsafe_allow_html=True)
     
     with st.form("waitlist_form", clear_on_submit=True):
-        col1, col2 = st.columns([2, 1])
+        # Name and Email inputs
+        name = st.text_input(
+            "Your Name",
+            placeholder="Enter your name",
+            help="We'd love to know what to call you!",
+            key="name_input"
+        )
         
-        with col1:
-            email = st.text_input(
-                "Email Address",
-                placeholder="your@email.com",
-                help="We'll notify you when early access is available",
-                label_visibility="collapsed"
-            )
+        email = st.text_input(
+            "Email Address *",
+            placeholder="your@email.com",
+            help="We'll notify you when early access is available",
+            key="email_input"
+        )
         
-        with col2:
-            name = st.text_input(
-                "Name (Optional)",
-                placeholder="Your name",
-                label_visibility="collapsed"
-            )
-        
+        # Interest level (now optional)
         interest_level = st.selectbox(
-            "How interested are you?",
-            ["High - I need this now!", "Medium - Sounds interesting", "Low - Just exploring"],
-            help="Help us prioritize early access invitations",
-            label_visibility="collapsed"
+            "Interest Level (Optional)",
+            ["", "High - I need this now!", "Medium - Sounds interesting", "Low - Just exploring"],
+            help="Help us prioritize early access invitations (optional)",
+            key="interest_input"
         )
         
         # Submit button
-        submitted = st.form_submit_button("🚀 Join Waitlist", use_container_width=True)
+        submitted = st.form_submit_button("🌟 Join Waitlist", use_container_width=True)
         
         if submitted:
             if not email:
-                st.error("Please enter your email address")
-            elif "@" not in email or "." not in email:
-                st.error("Please enter a valid email address")
+                st.error("📧 Please enter your email address")
+            elif "@" not in email or "." not in email.split("@")[-1]:
+                st.error("📧 Please enter a valid email address")
             else:
-                # Map interest level
+                # Map interest level (default to medium if not selected)
                 interest_map = {
+                    "": "medium",
                     "High - I need this now!": "high",
                     "Medium - Sounds interesting": "medium", 
                     "Low - Just exploring": "low"
                 }
                 
+                selected_interest = interest_map.get(interest_level, "medium")
+                
                 # Save to waitlist
-                if save_waitlist_signup(email, name, interest_map[interest_level]):
-                    st.success("🎉 Welcome to the waitlist! We'll be in touch soon with early access.")
-                    st.balloons()
-                else:
-                    st.error("This email is already on our waitlist! Check your inbox for updates.")
+                try:
+                    if save_waitlist_signup(email, name, selected_interest):
+                        st.success("🎉 Welcome to the waitlist! We'll be in touch soon with early access.")
+                        st.balloons()
+                        st.info("💌 Check your email for a confirmation (might be in spam folder)")
+                    else:
+                        st.warning("📧 This email is already on our waitlist! Check your inbox for updates.")
+                except Exception as e:
+                    st.error("⚠️ Something went wrong. Please try again or contact support.")
+                    logger.error(f"Form submission error: {e}")
     
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Features section - NOW POSITIONED BELOW THE FORM
+    st.markdown("""
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🎙️</div>
+            <div class="feature-title">Smart Transcription</div>
+            <div class="feature-desc">AI-powered speech-to-text with context understanding</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💎</div>
+            <div class="feature-title">Wisdom Extraction</div>
+            <div class="feature-desc">Automatically identify key insights and takeaways</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📋</div>
+            <div class="feature-title">Structured Content</div>
+            <div class="feature-desc">Generate articles and social media posts instantly</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🚀</div>
+            <div class="feature-title">Real-time Processing</div>
+            <div class="feature-desc">Watch your content transform live</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Stats section
     st.markdown("""
@@ -427,7 +437,7 @@ def main():
     
     # Footer
     st.markdown("""
-    <div style="text-align: center; margin-top: 50px; color: rgba(255, 255, 255, 0.5); font-size: 0.9rem;">
+    <div style="text-align: center; margin-top: 40px; color: rgba(255, 255, 255, 0.5); font-size: 0.9rem;">
         <p>WhisperForge - Transforming audio into actionable insights with AI 🌌</p>
         <p style="margin-top: 10px;">
             <a href="mailto:hello@whisperforge.ai" style="color: var(--aurora-primary); text-decoration: none;">Contact Us</a> • 
