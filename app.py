@@ -1593,80 +1593,90 @@ def show_waitlist_page():
     </div>
     """, unsafe_allow_html=True)
     
-    # Features section
-    st.markdown("""
-    <div class="waitlist-features">
-        <div class="feature-card">
-            <div class="feature-icon">🎙️</div>
-            <div class="feature-title">Smart Transcription</div>
-            <div class="feature-desc">Advanced AI-powered speech-to-text with context awareness</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">💎</div>
-            <div class="feature-title">Wisdom Extraction</div>
-            <div class="feature-desc">Automatically identify key insights and actionable takeaways</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">📋</div>
-            <div class="feature-title">Structured Content</div>
-            <div class="feature-desc">Generate outlines, articles, and social media content instantly</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Waitlist form
+    # Waitlist form - MOVED ABOVE FEATURES
     st.markdown('<div class="waitlist-form">', unsafe_allow_html=True)
     
-    st.markdown("### Join the Waitlist")
+    st.markdown("### 🚀 Join the Waitlist")
     
     with st.form("waitlist_form", clear_on_submit=True):
-        col1, col2 = st.columns([2, 1])
+        # Name and Email inputs (no columns for better mobile)
+        name = st.text_input(
+            "Your Name",
+            placeholder="Enter your name",
+            help="We'd love to know what to call you!",
+            key="waitlist_name_input"
+        )
         
-        with col1:
-            email = st.text_input(
-                "Email Address",
-                placeholder="your@email.com",
-                help="We'll notify you when early access is available"
-            )
+        email = st.text_input(
+            "Email Address *",
+            placeholder="your@email.com",
+            help="We'll notify you when early access is available",
+            key="waitlist_email_input"
+        )
         
-        with col2:
-            name = st.text_input(
-                "Name (Optional)",
-                placeholder="Your name"
-            )
-        
+        # Interest level (now optional)
         interest_level = st.selectbox(
-            "Interest Level",
-            ["High - I need this now!", "Medium - Sounds interesting", "Low - Just exploring"],
-            help="Help us prioritize early access invitations"
+            "Interest Level (Optional)",
+            ["", "High - I need this now!", "Medium - Sounds interesting", "Low - Just exploring"],
+            help="Help us prioritize early access invitations (optional)",
+            key="waitlist_interest_input"
         )
         
         # Submit button
-        submitted = st.form_submit_button("Join Waitlist 🚀", use_container_width=True)
+        submitted = st.form_submit_button("🌟 Join Waitlist", use_container_width=True)
         
         if submitted:
             if not email:
-                st.error("Please enter your email address")
-            elif "@" not in email or "." not in email:
-                st.error("Please enter a valid email address")
+                st.error("📧 Please enter your email address")
+            elif "@" not in email or "." not in email.split("@")[-1]:
+                st.error("📧 Please enter a valid email address")
             else:
-                # Map interest level
+                # Map interest level (default to medium if not selected)
                 interest_map = {
+                    "": "medium",
                     "High - I need this now!": "high",
                     "Medium - Sounds interesting": "medium", 
                     "Low - Just exploring": "low"
                 }
                 
+                selected_interest = interest_map.get(interest_level, "medium")
+                
                 # Save to waitlist
-                if save_waitlist_user_supabase(email, name, interest_map[interest_level]):
-                    st.success("🎉 You're on the waitlist! We'll be in touch soon.")
-                    st.balloons()
-                else:
-                    st.error("This email is already on our waitlist! Check your inbox for updates.")
+                try:
+                    if save_waitlist_user_supabase(email, name, selected_interest):
+                        st.success("🎉 Welcome to the waitlist! We'll be in touch soon with early access.")
+                        st.balloons()
+                        st.info("💌 Check your email for a confirmation (might be in spam folder)")
+                    else:
+                        st.warning("📧 This email is already on our waitlist! Check your inbox for updates.")
+                except Exception as e:
+                    st.error("⚠️ Something went wrong. Please try again or contact support.")
+                    logger.error(f"Form submission error: {e}")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Additional info
+    # Features section - NOW POSITIONED BELOW THE FORM
+    st.markdown("""
+    <div class="waitlist-features">
+        <div class="feature-card">
+            <div class="feature-icon">🎙️</div>
+            <div class="feature-title">Smart Transcription</div>
+            <div class="feature-desc">AI-powered speech-to-text with context understanding</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">💎</div>
+            <div class="feature-title">Wisdom Extraction</div>
+            <div class="feature-desc">Automatically identify key insights and takeaways</div>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📋</div>
+            <div class="feature-title">Structured Content</div>
+            <div class="feature-desc">Generate articles and social media posts instantly</div>
+        </div>
+         </div>
+     """, unsafe_allow_html=True)
+     
+     # Additional info
     st.markdown("""
     <div style="text-align: center; margin-top: 40px; color: rgba(255, 255, 255, 0.6);">
         <p>✨ Early access coming soon • 🔒 Your email is safe with us • 🚀 Join 500+ people waiting</p>
