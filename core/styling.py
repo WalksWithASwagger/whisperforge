@@ -378,8 +378,8 @@ def create_aurora_nav_buttons():
         transition: all 0.2s ease !important;
         min-width: 80px !important;
         height: 32px !important;
-    }
-    
+        }
+        
     .aurora-nav-button .stButton > button:hover {
         background: rgba(0, 255, 255, 0.15) !important;
         border-color: rgba(0, 255, 255, 0.25) !important;
@@ -410,7 +410,7 @@ def create_aurora_nav_buttons():
     }
     </style>
     """, unsafe_allow_html=True)
-    
+
     pages = [
         ("Processing", "Content Pipeline"),
         ("History", "Content History"), 
@@ -544,7 +544,7 @@ def create_aurora_content_card(title, content, content_type="text"):
         ">{preview_content}</div>
     </div>
     """, unsafe_allow_html=True)
-    
+
     if show_full:
         with st.expander("Show full content"):
             st.markdown(content)
@@ -599,4 +599,4 @@ class AuroraComponents:
         ">
             ❌ {message}
         </div>
-        """, unsafe_allow_html=True) 
+    """, unsafe_allow_html=True) 
