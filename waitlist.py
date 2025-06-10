@@ -47,7 +47,11 @@ def save_waitlist_signup(email: str, name: str = "", interest_level: str = "medi
     try:
         client, success = init_supabase()
         if not success or not client:
+            logger.error("Supabase client initialization failed")
             return False
+        
+        # Clean email
+        email = email.strip().lower()
         
         # Check if email already exists
         existing = client.table("waitlist").select("id").eq("email", email).execute()
@@ -57,9 +61,8 @@ def save_waitlist_signup(email: str, name: str = "", interest_level: str = "medi
         
         waitlist_data = {
             "email": email,
-            "name": name,
+            "name": name.strip() if name else "",
             "interest_level": interest_level,
-            "created_at": datetime.now().isoformat(),
             "status": "pending"
         }
         
@@ -68,7 +71,9 @@ def save_waitlist_signup(email: str, name: str = "", interest_level: str = "medi
         if result.data:
             logger.info(f"Waitlist signup successful: {email}")
             return True
-        return False
+        else:
+            logger.error(f"No data returned from insert: {result}")
+            return False
     except Exception as e:
         logger.error(f"Waitlist signup error: {e}")
         return False
@@ -321,6 +326,19 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
+    # Debug info (temporary)
+    if st.query_params.get("debug") == "true":
+        st.info("🔧 Debug Mode")
+        client, success = init_supabase()
+        if success:
+            st.success("✅ Supabase connection working")
+        else:
+            st.error("❌ Supabase connection failed")
+        st.write("Environment check:")
+        st.write(f"SUPABASE_URL: {'✅' if os.getenv('SUPABASE_URL') else '❌'}")
+        st.write(f"SUPABASE_ANON_KEY: {'✅' if os.getenv('SUPABASE_ANON_KEY') else '❌'}")
+        st.divider()
+    
     # Main container
     st.markdown('<div class="waitlist-container">', unsafe_allow_html=True)
     
@@ -374,6 +392,10 @@ def main():
             elif "@" not in email or "." not in email.split("@")[-1]:
                 st.error("📧 Please enter a valid email address")
             else:
+                # Clean inputs
+                email_clean = email.strip().lower()
+                name_clean = name.strip() if name else ""
+                
                 # Map interest level (default to medium if not selected)
                 interest_map = {
                     "": "medium",
@@ -384,17 +406,31 @@ def main():
                 
                 selected_interest = interest_map.get(interest_level, "medium")
                 
-                # Save to waitlist
-                try:
-                    if save_waitlist_signup(email, name, selected_interest):
-                        st.success("🎉 Welcome to the waitlist! We'll be in touch soon with early access.")
-                        st.balloons()
-                        st.info("💌 Check your email for a confirmation (might be in spam folder)")
-                    else:
-                        st.warning("📧 This email is already on our waitlist! Check your inbox for updates.")
-                except Exception as e:
-                    st.error("⚠️ Something went wrong. Please try again or contact support.")
-                    logger.error(f"Form submission error: {e}")
+                # Show processing message
+                with st.spinner("Adding you to the waitlist..."):
+                    # Test Supabase connection first
+                    client, success = init_supabase()
+                    if not success or not client:
+                        st.error("🔧 Database connection issue. Please try again in a moment.")
+                        st.warning("If this persists, contact hello@whisperforge.ai")
+                        logger.error("Supabase connection failed in form submission")
+                        return
+                    
+                    # Save to waitlist
+                    try:
+                        result = save_waitlist_signup(email_clean, name_clean, selected_interest)
+                        if result:
+                            st.success("🎉 Welcome to the waitlist! We'll be in touch soon with early access.")
+                            st.balloons()
+                            st.info("💌 Check your email for a confirmation (might be in spam folder)")
+                            # Clear form by rerunning after success
+                            st.session_state.form_success = True
+                        else:
+                            st.warning("📧 This email is already on our waitlist! Check your inbox for updates.")
+                    except Exception as e:
+                        st.error("⚠️ Something went wrong. Please try again or contact support.")
+                        st.error(f"Error details: {str(e)}")
+                        logger.error(f"Form submission error: {e}")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
