@@ -547,11 +547,6 @@ def show_auth_page():
                 st.warning("Google sign-in temporarily unavailable. Use email login below.")
             st.session_state.oauth_url = None
     
-    # Waitlist button
-    if st.button("🚀 Join the Waitlist", use_container_width=True, type="secondary"):
-        st.session_state.show_waitlist = True
-        st.rerun()
-    
     # OAuth button
     if st.session_state.get('oauth_url'):
         st.link_button("Continue with Google", st.session_state.oauth_url, type="primary", use_container_width=True)
@@ -1455,233 +1450,12 @@ def init_simple_session_state():
         'pipeline_active': False,
         'pipeline_results': {},
         # UI state only
-        'show_debug': False,
-        'show_waitlist': False
+        'show_debug': False
     }
     
     for key, default_value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
-
-def save_waitlist_user_supabase(email: str, name: str = "", interest_level: str = "medium") -> bool:
-    """Save waitlist signup to Supabase"""
-    try:
-        db, _ = init_supabase()
-        if not db:
-            return False
-        
-        # Check if email already exists in waitlist
-        existing = db.client.table("waitlist").select("id").eq("email", email).execute()
-        if existing.data:
-            logger.warning(f"Email already in waitlist: {email}")
-            return False
-        
-        waitlist_data = {
-            "email": email,
-            "name": name,
-            "interest_level": interest_level,
-            "created_at": datetime.now().isoformat(),
-            "status": "pending"
-        }
-        
-        result = db.client.table("waitlist").insert(waitlist_data).execute()
-        
-        if result.data:
-            logger.info(f"Waitlist signup successful: {email}")
-            return True
-        return False
-    except Exception as e:
-        logger.error(f"Waitlist signup error: {e}")
-        return False
-
-def show_waitlist_page():
-    """Beautiful waitlist signup page"""
-    apply_aurora_theme()
-    
-    # Full-width beautiful layout
-    st.markdown("""
-    <style>
-    .waitlist-container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 40px 20px;
-        text-align: center;
-    }
-    
-    .waitlist-header {
-        background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15));
-        border: 1px solid rgba(0, 255, 255, 0.2);
-        border-radius: 20px;
-        padding: 40px;
-        margin-bottom: 40px;
-        backdrop-filter: blur(20px);
-    }
-    
-    .waitlist-logo {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(120deg, #00FFFF, #7DF9FF, #40E0D0);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
-        margin-bottom: 16px;
-    }
-    
-    .waitlist-subtitle {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 1.2rem;
-        margin-bottom: 24px;
-        line-height: 1.6;
-    }
-    
-    .waitlist-features {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin: 40px 0;
-    }
-    
-    .feature-card {
-        background: rgba(0, 255, 255, 0.05);
-        border: 1px solid rgba(0, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 20px;
-        backdrop-filter: blur(10px);
-    }
-    
-    .feature-icon {
-        font-size: 2rem;
-        margin-bottom: 12px;
-    }
-    
-    .feature-title {
-        color: #00FFFF;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-    
-    .feature-desc {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-        line-height: 1.4;
-    }
-    
-    .waitlist-form {
-        background: rgba(0, 255, 255, 0.08);
-        border: 1px solid rgba(0, 255, 255, 0.2);
-        border-radius: 16px;
-        padding: 32px;
-        margin: 40px 0;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Main container
-    st.markdown('<div class="waitlist-container">', unsafe_allow_html=True)
-    
-    # Header section
-    st.markdown("""
-    <div class="waitlist-header">
-        <div class="waitlist-logo">WhisperForge 🌌</div>
-        <div class="waitlist-subtitle">
-            Transform your audio content into structured, actionable insights with AI
-        </div>
-        <p style="color: rgba(255, 255, 255, 0.6); font-size: 1rem;">
-            Join the waitlist to get early access to the most advanced audio content transformation platform
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Features section
-    st.markdown("""
-    <div class="waitlist-features">
-        <div class="feature-card">
-            <div class="feature-icon">🎙️</div>
-            <div class="feature-title">Smart Transcription</div>
-            <div class="feature-desc">Advanced AI-powered speech-to-text with context awareness</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">💎</div>
-            <div class="feature-title">Wisdom Extraction</div>
-            <div class="feature-desc">Automatically identify key insights and actionable takeaways</div>
-        </div>
-        <div class="feature-card">
-            <div class="feature-icon">📋</div>
-            <div class="feature-title">Structured Content</div>
-            <div class="feature-desc">Generate outlines, articles, and social media content instantly</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Waitlist form
-    st.markdown('<div class="waitlist-form">', unsafe_allow_html=True)
-    
-    st.markdown("### Join the Waitlist")
-    
-    with st.form("waitlist_form", clear_on_submit=True):
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            email = st.text_input(
-                "Email Address",
-                placeholder="your@email.com",
-                help="We'll notify you when early access is available"
-            )
-        
-        with col2:
-            name = st.text_input(
-                "Name (Optional)",
-                placeholder="Your name"
-            )
-        
-        interest_level = st.selectbox(
-            "Interest Level",
-            ["High - I need this now!", "Medium - Sounds interesting", "Low - Just exploring"],
-            help="Help us prioritize early access invitations"
-        )
-        
-        # Submit button
-        submitted = st.form_submit_button("Join Waitlist 🚀", use_container_width=True)
-        
-        if submitted:
-            if not email:
-                st.error("Please enter your email address")
-            elif "@" not in email or "." not in email:
-                st.error("Please enter a valid email address")
-            else:
-                # Map interest level
-                interest_map = {
-                    "High - I need this now!": "high",
-                    "Medium - Sounds interesting": "medium", 
-                    "Low - Just exploring": "low"
-                }
-                
-                # Save to waitlist
-                if save_waitlist_user_supabase(email, name, interest_map[interest_level]):
-                    st.success("🎉 You're on the waitlist! We'll be in touch soon.")
-                    st.balloons()
-                else:
-                    st.error("This email is already on our waitlist! Check your inbox for updates.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Additional info
-    st.markdown("""
-    <div style="text-align: center; margin-top: 40px; color: rgba(255, 255, 255, 0.6);">
-        <p>✨ Early access coming soon • 🔒 Your email is safe with us • 🚀 Join 500+ people waiting</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Login link
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if st.button("Already have an account? Login", use_container_width=True):
-            st.session_state.show_waitlist = False
-            st.rerun()
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 def main():
     """Main application entry point - SIMPLIFIED"""
@@ -1694,9 +1468,7 @@ def main():
         return
     
     # Show appropriate page based on authentication status
-    if st.session_state.get('show_waitlist', False):
-        show_waitlist_page()
-    elif st.session_state.get('authenticated', False):
+    if st.session_state.get('authenticated', False):
         show_main_app()
     else:
         show_auth_page()
