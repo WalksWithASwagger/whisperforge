@@ -312,6 +312,42 @@ class SupabaseClient:
         from collections import Counter
         values = [log.get(field, "unknown") for log in logs]
         return Counter(values).most_common(1)[0][0]
+    
+    # Waitlist Management
+    def save_waitlist_signup(self, name: str, email: str) -> bool:
+        """Save waitlist signup"""
+        try:
+            # Check if email already exists in waitlist
+            existing = self.client.table("waitlist").select("id").eq("email", email).execute()
+            if existing.data:
+                logger.info(f"Email already on waitlist: {email}")
+                return True  # Return True since they're already signed up
+            
+            waitlist_record = {
+                "name": name,
+                "email": email,
+                "created_at": datetime.now().isoformat(),
+                "status": "pending"
+            }
+            
+            result = self.client.table("waitlist").insert(waitlist_record).execute()
+            
+            if result.data:
+                logger.info(f"Waitlist signup saved successfully: {email}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error saving waitlist signup: {e}")
+            return False
+    
+    def get_waitlist_count(self) -> int:
+        """Get total number of waitlist signups"""
+        try:
+            result = self.client.table("waitlist").select("id").execute()
+            return len(result.data) if result.data else 0
+        except Exception as e:
+            logger.error(f"Error getting waitlist count: {e}")
+            return 0
 
 
 # MCP Integration Functions
