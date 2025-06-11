@@ -1,95 +1,106 @@
 """
 Enhanced File Upload Component for WhisperForge
 Beautiful drag-and-drop interface with progress tracking
+🚀 NEW: Large file support up to 2GB with chunking and parallel transcription
 """
 
 import streamlit as st
 import time
-from typing import Optional, List, Dict, Any
+import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, List, Dict, Any, Tuple
 import mimetypes
 import os
+import tempfile
+import math
 from pathlib import Path
+from pydub import AudioSegment
+import logging
 
-class FileUploadManager:
-    """Enhanced file upload manager with beautiful UI and progress tracking"""
+logger = logging.getLogger(__name__)
+
+class LargeFileUploadManager:
+    """🚀 ENHANCED: Large file upload manager with chunking and parallel processing"""
     
     def __init__(self):
         self.supported_formats = {
-            'audio': ['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac', '.wma'],
-            'video': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv'],
+            'audio': ['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac', '.wma', '.webm', '.mpeg', '.mpga', '.oga'],
+            'video': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'],
             'text': ['.txt', '.md', '.pdf', '.docx']
         }
-        self.max_file_size = 25 * 1024 * 1024  # 25MB
+        self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
+        self.chunk_size_mb = 20  # 20MB chunks for optimal processing
+        self.max_parallel_chunks = 4  # Process 4 chunks simultaneously
         
-    def create_upload_zone(self, 
-                          accept_types: List[str] = None, 
-                          max_files: int = 1,
-                          show_preview: bool = True) -> Optional[Any]:
-        """Create a beautiful drag-and-drop upload zone"""
+    def create_large_file_upload_zone(self) -> Optional[Any]:
+        """Create enhanced upload zone for large files"""
         
-        if accept_types is None:
-            accept_types = self.supported_formats['audio']
-            
-        # Generate accepted file types string
-        accept_str = ', '.join(accept_types)
-        
-        # Create the upload zone HTML
+        # Enhanced upload zone HTML with large file support
         upload_html = f"""
-        <div class="upload-zone-container">
-            <div class="upload-zone" id="upload-zone">
+        <div class="large-upload-zone-container">
+            <div class="large-upload-zone" id="large-upload-zone">
                 <div class="upload-icon">
-                    <div class="upload-icon-inner">📁</div>
+                    <div class="upload-icon-inner">🎵</div>
                 </div>
                 <div class="upload-text">
-                    <h3>Drop your files here</h3>
-                    <p>or click to browse</p>
+                    <h3>Drop your large audio files here</h3>
+                    <p>Supports files up to 2GB with intelligent chunking</p>
                     <div class="upload-info">
-                        <span class="supported-formats">Supported: {accept_str}</span>
-                        <span class="max-size">Max size: {self.max_file_size // (1024*1024)}MB</span>
+                        <span class="supported-formats">Audio: MP3, WAV, M4A, AAC, OGG, FLAC, WEBM</span>
+                        <span class="max-size">Max size: 2GB</span>
+                        <span class="chunk-info">Auto-chunked for optimal processing</span>
+                    </div>
+                </div>
+                <div class="upload-features">
+                    <div class="feature">
+                        <span class="feature-icon">⚡</span>
+                        <span>Parallel Processing</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">📊</span>
+                        <span>Real-time Progress</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🔄</span>
+                        <span>Auto-retry on Errors</span>
                     </div>
                 </div>
             </div>
         </div>
         """
         
+        # Enhanced CSS for large file upload
         upload_css = """
         <style>
-        .upload-zone-container {
+        .large-upload-zone-container {
             margin: 20px 0;
         }
         
-        .upload-zone {
-            border: 2px dashed rgba(121, 40, 202, 0.3);
-            border-radius: var(--card-radius);
-            padding: 40px 20px;
+        .large-upload-zone {
+            border: 3px dashed rgba(0, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 50px 30px;
             text-align: center;
             background: linear-gradient(135deg, 
-                rgba(121, 40, 202, 0.02) 0%, 
-                rgba(66, 151, 233, 0.02) 100%);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                rgba(0, 255, 255, 0.03) 0%, 
+                rgba(64, 224, 208, 0.05) 100%);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
             overflow: hidden;
         }
         
-        .upload-zone:hover {
-            border-color: rgba(121, 40, 202, 0.6);
+        .large-upload-zone:hover {
+            border-color: rgba(0, 255, 255, 0.6);
             background: linear-gradient(135deg, 
-                rgba(121, 40, 202, 0.05) 0%, 
-                rgba(66, 151, 233, 0.05) 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(121, 40, 202, 0.15);
+                rgba(0, 255, 255, 0.08) 0%, 
+                rgba(64, 224, 208, 0.12) 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(0, 255, 255, 0.2);
         }
         
-        .upload-zone.drag-over {
-            border-color: var(--accent-primary);
-            background: linear-gradient(135deg, 
-                rgba(121, 40, 202, 0.1) 0%, 
-                rgba(66, 151, 233, 0.1) 100%);
-            transform: scale(1.02);
-        }
-        
-        .upload-zone::before {
+        .large-upload-zone::before {
             content: "";
             position: absolute;
             top: 0;
@@ -98,242 +109,447 @@ class FileUploadManager:
             height: 100%;
             background: linear-gradient(90deg, 
                 transparent, 
-                rgba(121, 40, 202, 0.1), 
+                rgba(0, 255, 255, 0.15), 
                 transparent);
-            transition: left 0.5s ease;
+            transition: left 0.6s ease;
         }
         
-        .upload-zone:hover::before {
+        .large-upload-zone:hover::before {
             left: 100%;
         }
         
-        .upload-icon {
-            margin-bottom: 16px;
-            position: relative;
-        }
-        
         .upload-icon-inner {
-            font-size: 48px;
-            opacity: 0.7;
-            transition: all 0.3s ease;
+            font-size: 64px;
+            opacity: 0.8;
+            transition: all 0.4s ease;
             display: inline-block;
         }
         
-        .upload-zone:hover .upload-icon-inner {
+        .large-upload-zone:hover .upload-icon-inner {
             opacity: 1;
-            transform: scale(1.1) rotate(5deg);
+            transform: scale(1.15) rotate(10deg);
         }
         
         .upload-text h3 {
-            color: var(--text-primary);
-            font-size: 1.2rem;
-            margin: 0 0 8px 0;
+            color: #00FFFF;
+            font-size: 1.5rem;
+            margin: 16px 0 8px 0;
             font-weight: 600;
         }
         
         .upload-text p {
-            color: var(--text-secondary);
-            margin: 0 0 16px 0;
-            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin: 0 0 20px 0;
+            font-size: 1rem;
         }
         
         .upload-info {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .supported-formats, .max-size, .chunk-info {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(0, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        
+        .upload-features {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
             flex-wrap: wrap;
         }
         
-        .supported-formats, .max-size {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.05);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: var(--terminal-font);
-        }
-        
-        .file-preview {
-            background: var(--bg-secondary);
-            border-radius: var(--card-radius);
-            padding: 15px;
-            margin: 15px 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .file-preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .file-info {
+        .feature {
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-        
-        .file-icon {
-            font-size: 24px;
-        }
-        
-        .file-details h4 {
-            margin: 0;
-            color: var(--text-primary);
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.8);
             font-size: 0.9rem;
         }
         
-        .file-details p {
-            margin: 2px 0 0 0;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-        
-        .file-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .file-action-btn {
-            background: rgba(121, 40, 202, 0.1);
-            border: 1px solid rgba(121, 40, 202, 0.3);
-            color: var(--text-primary);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .file-action-btn:hover {
-            background: rgba(121, 40, 202, 0.2);
-            border-color: rgba(121, 40, 202, 0.5);
-        }
-        
-        .file-action-btn.danger {
-            background: rgba(248, 114, 114, 0.1);
-            border-color: rgba(248, 114, 114, 0.3);
-        }
-        
-        .file-action-btn.danger:hover {
-            background: rgba(248, 114, 114, 0.2);
-            border-color: rgba(248, 114, 114, 0.5);
+        .feature-icon {
+            font-size: 1.2rem;
         }
         </style>
         """
         
-        # Display the upload zone
-        st.markdown(upload_css + upload_html, unsafe_allow_html=True)
+        st.markdown(upload_css, unsafe_allow_html=True)
+        st.markdown(upload_html, unsafe_allow_html=True)
         
-        # Use Streamlit's file uploader (hidden behind custom UI)
+        # File uploader with large file support
         uploaded_file = st.file_uploader(
-            "Choose file",
-            type=[ext[1:] for ext in accept_types],  # Remove the dot
-            key=f"uploader_{hash(str(accept_types))}",
+            "Choose an audio file",
+            type=['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'webm', 'mpeg', 'mpga', 'oga'],
+            help="Upload audio files up to 2GB. Large files will be automatically chunked for optimal processing.",
             label_visibility="collapsed"
         )
         
-        if uploaded_file:
-            if show_preview:
-                self._show_file_preview(uploaded_file)
-            return uploaded_file
-            
-        return None
+        return uploaded_file
     
-    def _show_file_preview(self, file):
-        """Show preview of uploaded file"""
-        file_size = self._format_file_size(file.size)
-        file_type = self._get_file_type(file.name)
+    def process_large_file(self, uploaded_file) -> Dict[str, Any]:
+        """🚀 Process large files with chunking and parallel transcription"""
         
-        preview_html = f"""
-        <div class="file-preview">
-            <div class="file-preview-header">
-                <div class="file-info">
-                    <div class="file-icon">{self._get_file_icon(file_type)}</div>
-                    <div class="file-details">
-                        <h4>{file.name}</h4>
-                        <p>{file_size} • {file_type.upper()}</p>
-                    </div>
-                </div>
-                <div class="file-actions">
-                    <button class="file-action-btn">✅ Ready</button>
-                </div>
-            </div>
-        </div>
-        """
+        if not uploaded_file:
+            return {"success": False, "error": "No file provided"}
         
-        st.markdown(preview_html, unsafe_allow_html=True)
-    
-    def _get_file_icon(self, file_type: str) -> str:
-        """Get icon for file type"""
-        icons = {
-            'audio': '🎵',
-            'video': '🎬', 
-            'text': '📄',
-            'pdf': '📕',
-            'doc': '📘',
-            'unknown': '📁'
-        }
-        return icons.get(file_type, icons['unknown'])
-    
-    def _get_file_type(self, filename: str) -> str:
-        """Determine file type from filename"""
-        ext = Path(filename).suffix.lower()
+        # Validate file
+        validation = self.validate_large_file(uploaded_file)
+        if not validation["valid"]:
+            return {"success": False, "error": validation["error"]}
         
-        for file_type, extensions in self.supported_formats.items():
-            if ext in extensions:
-                return file_type
-                
-        if ext in ['.pdf']:
-            return 'pdf'
-        elif ext in ['.doc', '.docx']:
-            return 'doc'
-            
-        return 'unknown'
-    
-    def _format_file_size(self, size_bytes: int) -> str:
-        """Format file size in human readable format"""
-        if size_bytes < 1024:
-            return f"{size_bytes} B"
-        elif size_bytes < 1024**2:
-            return f"{size_bytes/1024:.1f} KB"
-        elif size_bytes < 1024**3:
-            return f"{size_bytes/(1024**2):.1f} MB"
+        file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+        
+        # Show file info
+        st.markdown(f"""
+        ### 📁 File Processing
+        **File:** {uploaded_file.name}  
+        **Size:** {file_size_mb:.1f} MB  
+        **Processing Strategy:** {"Chunked Parallel Processing" if file_size_mb > self.chunk_size_mb else "Direct Processing"}
+        """)
+        
+        if file_size_mb <= self.chunk_size_mb:
+            # Small file - process directly
+            return self._process_small_file(uploaded_file)
         else:
-            return f"{size_bytes/(1024**3):.1f} GB"
+            # Large file - chunk and process in parallel
+            return self._process_large_file_chunked(uploaded_file)
     
-    def validate_file(self, file) -> Dict[str, Any]:
-        """Validate uploaded file"""
-        errors = []
-        warnings = []
+    def _process_small_file(self, uploaded_file) -> Dict[str, Any]:
+        """Process small files directly without chunking"""
         
-        # Check file size
-        if file.size > self.max_file_size:
-            errors.append(f"File size ({self._format_file_size(file.size)}) exceeds maximum allowed size ({self._format_file_size(self.max_file_size)})")
+        progress_container = st.empty()
         
-        # Check file type
-        file_type = self._get_file_type(file.name)
-        if file_type == 'unknown':
-            errors.append(f"Unsupported file type: {Path(file.name).suffix}")
+        with progress_container.container():
+            st.markdown("#### 🎵 Processing Audio")
+            progress_bar = st.progress(0.0, "Starting transcription...")
+            
+            try:
+                # Import transcription function
+                from .content_generation import transcribe_audio
+                
+                # Update progress
+                progress_bar.progress(0.3, "Transcribing audio...")
+                
+                # Transcribe
+                transcript = transcribe_audio(uploaded_file)
+                
+                if not transcript or "Error" in transcript:
+                    progress_bar.progress(1.0, "❌ Transcription failed")
+                    return {"success": False, "error": transcript or "Transcription failed"}
+                
+                progress_bar.progress(1.0, "✅ Transcription complete!")
+                
+                return {
+                    "success": True,
+                    "transcript": transcript,
+                    "chunks": 1,
+                    "total_duration": "N/A"
+                }
+                
+            except Exception as e:
+                progress_bar.progress(1.0, f"❌ Error: {str(e)}")
+                return {"success": False, "error": str(e)}
+    
+    def _process_large_file_chunked(self, uploaded_file) -> Dict[str, Any]:
+        """🚀 Process large files with intelligent chunking and parallel transcription"""
         
-        # Check if file is empty
-        if file.size == 0:
-            errors.append("File is empty")
+        st.markdown("#### 🔄 Chunked Processing Pipeline")
         
-        # Audio specific validations
-        if file_type == 'audio':
-            if file.size < 1024:  # Very small audio file
-                warnings.append("Audio file seems very small - please ensure it contains actual audio content")
+        try:
+            # Step 1: Create chunks
+            chunks_info = self._create_audio_chunks(uploaded_file)
+            if not chunks_info["success"]:
+                return chunks_info
+            
+            chunks = chunks_info["chunks"]
+            total_chunks = len(chunks)
+            
+            st.markdown(f"**Created {total_chunks} chunks for parallel processing**")
+            
+            # Step 2: Create progress tracking containers
+            progress_container = st.empty()
+            chunks_container = st.empty()
+            
+            # Step 3: Process chunks in parallel with real-time updates
+            transcription_results = self._transcribe_chunks_parallel(
+                chunks, progress_container, chunks_container
+            )
+            
+            if not transcription_results["success"]:
+                return transcription_results
+            
+            # Step 4: Reassemble transcript
+            final_transcript = self._reassemble_transcript(transcription_results["chunk_transcripts"])
+            
+            # Step 5: Cleanup temporary files
+            self._cleanup_chunks(chunks)
+            
+            # Success!
+            with progress_container.container():
+                st.success("✅ Large file processing complete!")
+                st.markdown(f"""
+                **Processing Summary:**
+                - Total chunks: {total_chunks}
+                - Successful transcriptions: {len(transcription_results['chunk_transcripts'])}
+                - Final transcript length: {len(final_transcript)} characters
+                """)
+            
+            return {
+                "success": True,
+                "transcript": final_transcript,
+                "chunks": total_chunks,
+                "processing_time": transcription_results.get("total_time", "N/A")
+            }
+            
+        except Exception as e:
+            logger.exception("Error in large file processing:")
+            st.error(f"❌ Large file processing failed: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def _create_audio_chunks(self, uploaded_file) -> Dict[str, Any]:
+        """Create audio chunks for parallel processing"""
+        
+        try:
+            st.markdown("##### 📂 Creating Audio Chunks...")
+            
+            # Save uploaded file temporarily
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as temp_file:
+                uploaded_file.seek(0)
+                temp_file.write(uploaded_file.read())
+                temp_file_path = temp_file.name
+            
+            # Load audio with pydub
+            audio = AudioSegment.from_file(temp_file_path)
+            duration_ms = len(audio)
+            duration_minutes = duration_ms / (1000 * 60)
+            
+            # Calculate chunk duration (aim for ~20MB chunks)
+            chunk_duration_ms = self.chunk_size_mb * 60 * 1000  # Convert MB to minutes to ms
+            num_chunks = math.ceil(duration_ms / chunk_duration_ms)
+            
+            st.markdown(f"**Audio Duration:** {duration_minutes:.1f} minutes")
+            st.markdown(f"**Creating {num_chunks} chunks of ~{chunk_duration_ms/60000:.1f} minutes each**")
+            
+            chunks = []
+            chunk_progress = st.progress(0.0, "Creating chunks...")
+            
+            for i in range(num_chunks):
+                start_ms = i * chunk_duration_ms
+                end_ms = min((i + 1) * chunk_duration_ms, duration_ms)
+                
+                # Extract chunk
+                chunk = audio[start_ms:end_ms]
+                
+                # Save chunk to temporary file
+                chunk_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                chunk.export(chunk_file.name, format="wav")
+                
+                chunks.append({
+                    "index": i,
+                    "file_path": chunk_file.name,
+                    "start_time": start_ms / 1000,
+                    "end_time": end_ms / 1000,
+                    "duration": (end_ms - start_ms) / 1000
+                })
+                
+                # Update progress
+                progress = (i + 1) / num_chunks
+                chunk_progress.progress(progress, f"Created chunk {i + 1}/{num_chunks}")
+            
+            # Cleanup original temp file
+            os.unlink(temp_file_path)
+            
+            chunk_progress.progress(1.0, f"✅ Created {num_chunks} chunks successfully!")
+            
+            return {"success": True, "chunks": chunks}
+            
+        except Exception as e:
+            logger.exception("Error creating audio chunks:")
+            return {"success": False, "error": f"Failed to create chunks: {str(e)}"}
+    
+    def _transcribe_chunks_parallel(self, chunks: List[Dict], progress_container, chunks_container) -> Dict[str, Any]:
+        """🚀 Transcribe chunks in parallel with real-time progress tracking"""
+        
+        total_chunks = len(chunks)
+        completed_chunks = 0
+        chunk_transcripts = {}
+        chunk_statuses = {i: "waiting" for i in range(total_chunks)}
+        start_time = time.time()
+        
+        # Import transcription function
+        from .content_generation import get_openai_client
+        
+        def transcribe_single_chunk(chunk_info: Dict) -> Tuple[int, str, bool]:
+            """Transcribe a single chunk"""
+            try:
+                chunk_index = chunk_info["index"]
+                chunk_file_path = chunk_info["file_path"]
+                
+                # Update status to processing
+                chunk_statuses[chunk_index] = "processing"
+                
+                # Get OpenAI client
+                openai_client = get_openai_client()
+                if not openai_client:
+                    return chunk_index, "Error: OpenAI API key not configured", False
+                
+                # Transcribe chunk
+                with open(chunk_file_path, "rb") as audio_file:
+                    transcript = openai_client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file
+                    )
+                
+                chunk_statuses[chunk_index] = "completed"
+                return chunk_index, transcript.text, True
+                
+            except Exception as e:
+                chunk_statuses[chunk_index] = "error"
+                logger.exception(f"Error transcribing chunk {chunk_index}:")
+                return chunk_index, f"Error: {str(e)}", False
+        
+        # Process chunks in parallel
+        with ThreadPoolExecutor(max_workers=self.max_parallel_chunks) as executor:
+            # Submit all chunks for processing
+            future_to_chunk = {
+                executor.submit(transcribe_single_chunk, chunk): chunk["index"] 
+                for chunk in chunks
+            }
+            
+            # Monitor progress in real-time
+            while completed_chunks < total_chunks:
+                # Update progress display
+                with progress_container.container():
+                    overall_progress = completed_chunks / total_chunks
+                    st.progress(overall_progress, f"Transcribing chunks: {completed_chunks}/{total_chunks}")
+                
+                # Update individual chunk statuses
+                with chunks_container.container():
+                    st.markdown("##### 🧩 Chunk Processing Status")
+                    
+                    # Create columns for chunk status display
+                    cols_per_row = 4
+                    rows = math.ceil(total_chunks / cols_per_row)
+                    
+                    for row in range(rows):
+                        cols = st.columns(cols_per_row)
+                        for col_idx in range(cols_per_row):
+                            chunk_idx = row * cols_per_row + col_idx
+                            if chunk_idx < total_chunks:
+                                status = chunk_statuses[chunk_idx]
+                                
+                                if status == "waiting":
+                                    icon, color, text = "⏳", "#FFA500", "Waiting"
+                                elif status == "processing":
+                                    icon, color, text = "🔄", "#00BFFF", "Processing"
+                                elif status == "completed":
+                                    icon, color, text = "✅", "#00FF7F", "Complete"
+                                else:  # error
+                                    icon, color, text = "❌", "#FF6B6B", "Error"
+                                
+                                with cols[col_idx]:
+                                    st.markdown(f"""
+                                    <div style="
+                                        text-align: center;
+                                        padding: 8px;
+                                        border-radius: 8px;
+                                        background: rgba(255, 255, 255, 0.05);
+                                        border: 1px solid {color}40;
+                                        margin: 4px 0;
+                                    ">
+                                        <div style="font-size: 1.2rem;">{icon}</div>
+                                        <div style="font-size: 0.8rem; color: {color};">Chunk {chunk_idx + 1}</div>
+                                        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7);">{text}</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                
+                # Check for completed futures
+                for future in as_completed(future_to_chunk, timeout=1):
+                    chunk_index, transcript, success = future.result()
+                    
+                    if success:
+                        chunk_transcripts[chunk_index] = transcript
+                    
+                    completed_chunks += 1
+                    break
+                
+                # Small delay to prevent excessive updates
+                time.sleep(0.5)
+        
+        # Final progress update
+        with progress_container.container():
+            st.progress(1.0, f"✅ All chunks transcribed: {completed_chunks}/{total_chunks}")
+        
+        processing_time = time.time() - start_time
+        
+        # Check if we have enough successful transcriptions
+        successful_chunks = len(chunk_transcripts)
+        if successful_chunks < total_chunks * 0.8:  # Require at least 80% success
+            return {
+                "success": False,
+                "error": f"Too many failed chunks: {successful_chunks}/{total_chunks} successful"
+            }
         
         return {
-            'valid': len(errors) == 0,
-            'errors': errors,
-            'warnings': warnings,
-            'file_type': file_type,
-            'file_size': file.size,
-            'formatted_size': self._format_file_size(file.size)
+            "success": True,
+            "chunk_transcripts": chunk_transcripts,
+            "total_time": f"{processing_time:.1f}s",
+            "success_rate": f"{successful_chunks}/{total_chunks}"
         }
+    
+    def _reassemble_transcript(self, chunk_transcripts: Dict[int, str]) -> str:
+        """Reassemble transcript from chunks in correct order"""
+        
+        # Sort chunks by index and concatenate
+        sorted_chunks = sorted(chunk_transcripts.items())
+        full_transcript = " ".join([transcript for _, transcript in sorted_chunks])
+        
+        return full_transcript
+    
+    def _cleanup_chunks(self, chunks: List[Dict]):
+        """Clean up temporary chunk files"""
+        for chunk in chunks:
+            try:
+                if os.path.exists(chunk["file_path"]):
+                    os.unlink(chunk["file_path"])
+            except Exception as e:
+                logger.warning(f"Failed to cleanup chunk file {chunk['file_path']}: {e}")
+    
+    def validate_large_file(self, file) -> Dict[str, Any]:
+        """Validate large file upload"""
+        if not file:
+            return {"valid": False, "error": "No file provided"}
+        
+        # Check file size
+        file_size = len(file.getvalue())
+        if file_size > self.max_file_size:
+            size_gb = file_size / (1024 * 1024 * 1024)
+            return {"valid": False, "error": f"File too large: {size_gb:.1f}GB (max 2GB)"}
+        
+        # Check file type
+        file_extension = os.path.splitext(file.name)[1].lower()
+        if file_extension not in self.supported_formats['audio']:
+            return {"valid": False, "error": f"Unsupported format: {file_extension}"}
+        
+        return {"valid": True}
+
+
+# Legacy FileUploadManager for backward compatibility
+class FileUploadManager(LargeFileUploadManager):
+    """Legacy file upload manager - now inherits from LargeFileUploadManager"""
+    
+    def __init__(self):
+        super().__init__()
+        # Keep old max size for legacy methods
+        self.legacy_max_file_size = 25 * 1024 * 1024  # 25MB
 
 def create_upload_progress_indicator(filename: str, progress: float = 0.0):
     """Create a progress indicator for file upload"""

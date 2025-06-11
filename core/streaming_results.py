@@ -78,60 +78,211 @@ def generate_unique_key(base_name: str) -> str:
     return f"{base_name}_{uuid.uuid4().hex[:8]}_{int(time.time() * 1000000) % 1000000}"
 
 def show_streaming_results():
-    """Display content as it streams - SIMPLIFIED"""
+    """Display content as it streams - REAL-TIME STREAMING IMPLEMENTATION"""
     controller = get_pipeline_controller()
     results = controller.get_results()
     
-    # Always show content if we have any
     if not results:
+        # Show placeholder while waiting for first results
+        st.markdown("### 🌊 Live Content Stream")
+        st.info("🔄 Waiting for processing to begin...")
         return
     
-    # Show current content - don't care about completion status
-    show_live_streaming_content()
+    # Show real-time streaming content with smooth reveals
+    show_real_time_content_stream(results, controller)
 
 
-def show_live_streaming_content():
-    """Display real-time content generation - SIMPLIFIED"""
-    controller = get_pipeline_controller()
-    results = controller.get_results()
+def show_real_time_content_stream(results: Dict[str, Any], controller):
+    """🚀 ENHANCED: Real-time content streaming with step-by-step reveals"""
+    st.markdown("### ✨ Content Generation Stream")
     
-    st.markdown("### 🌊 Live Content Stream")
+    # Define content sections with order and styling
+    content_sections = [
+        ("transcription", "🎙️", "Audio Transcription", "Converting speech to text..."),
+        ("wisdom_extraction", "💎", "Key Insights & Wisdom", "Extracting valuable insights..."),
+        ("research_enrichment", "🔍", "Research Links", "Finding supporting resources..."),
+        ("outline_creation", "📋", "Content Outline", "Structuring content flow..."),
+        ("article_creation", "📰", "Full Article", "Writing comprehensive article..."),
+        ("social_content", "📱", "Social Media Posts", "Creating social content..."),
+        ("image_prompts", "🖼️", "Image Prompts", "Generating visual concepts..."),
+        ("database_storage", "💾", "Content Saved", "Storing to your library...")
+    ]
     
-    # Show progress
-    current_step = getattr(controller, 'current_step_index', 0) if hasattr(controller, 'current_step_index') else 0
-    total_steps = len(getattr(controller, 'PIPELINE_STEPS', [])) if hasattr(controller, 'PIPELINE_STEPS') else 8
-    
-    if total_steps > 0:
-        progress = (current_step / total_steps) * 100
-        st.progress(progress / 100.0, f"Step {current_step + 1} of {total_steps}")
-    
-    # Show available content with simple cards
-    content_sections = {
-        "transcription": ("🎙️", "Audio Transcription"),
-        "wisdom_extraction": ("💎", "Key Insights"),
-        "research_enrichment": ("🔍", "Research Links"),
-        "outline_creation": ("📋", "Content Outline"),
-        "article_creation": ("📰", "Full Article"),
-        "social_content": ("📱", "Social Posts"),
-        "image_prompts": ("🖼️", "Image Prompts"),
-    }
-    
-    for step_key, (icon, title) in content_sections.items():
+    # Show each section as it becomes available
+    for i, (step_key, icon, title, processing_msg) in enumerate(content_sections):
+        
         if step_key in results and results[step_key]:
-            content = str(results[step_key])
+            # Content is ready - show it with beautiful styling
+            show_completed_content_section(step_key, icon, title, results[step_key])
             
-            # Simple content card
-            st.markdown(f"#### {icon} {title}")
+        elif controller.current_step_index == i and controller.is_active:
+            # Currently processing this step - show loading state
+            show_processing_content_section(icon, title, processing_msg)
             
-            # Show content preview
-            if len(content) > 500:
-                st.markdown(f"**Preview:** {content[:300]}...")
-                with st.expander("Show Full Content"):
-                    st.markdown(content)
-            else:
-                st.markdown(content)
+        elif controller.current_step_index > i:
+            # This step should be done but no content - show error state
+            show_error_content_section(icon, title, "Content generation failed")
             
-            st.markdown("---")
+        # Don't show future steps to avoid spoilers
+
+
+def show_completed_content_section(step_key: str, icon: str, title: str, content: Any):
+    """Display completed content with beautiful Aurora styling"""
+    
+    # Convert content to string safely
+    content_str = str(content) if content else "No content generated"
+    
+    # Beautiful content reveal with animation
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+        border: 1px solid rgba(0, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0;
+        animation: contentReveal 0.6s ease-out;
+        position: relative;
+        overflow: hidden;
+    ">
+        <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            animation: shimmer 2s ease-in-out;
+        "></div>
+        <div style="position: relative; z-index: 2;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 1.4rem; margin-right: 10px;">{icon}</span>
+                <h4 style="color: #00FFFF; margin: 0; font-weight: 500;">{title}</h4>
+                <span style="margin-left: auto; color: #00FF7F; font-size: 0.9rem;">✅ Complete</span>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+    @keyframes contentReveal {{
+        0% {{ opacity: 0; transform: translateY(20px); }}
+        100% {{ opacity: 1; transform: translateY(0); }}
+    }}
+    
+    @keyframes shimmer {{
+        0% {{ left: -100%; }}
+        100% {{ left: 100%; }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Show content with smart preview/expand
+    if len(content_str) > 600:
+        # Long content - show preview with expand
+        st.markdown("**Preview:**")
+        preview_text = content_str[:300] + "..." if len(content_str) > 300 else content_str
+        st.markdown(preview_text)
+        
+        # Expandable full content
+        expand_key = generate_unique_key(f"expand_{step_key}")
+        with st.expander("📖 Show Full Content", expanded=False):
+            st.markdown(content_str)
+            
+            # Copy button
+            copy_key = generate_unique_key(f"copy_{step_key}")
+            if st.button(f"📋 Copy {title}", key=copy_key, use_container_width=True):
+                st.code(content_str, language="markdown")
+                st.success("✅ Copied to clipboard area!")
+    else:
+        # Short content - show directly
+        st.markdown(content_str)
+        
+        # Inline copy button
+        copy_key = generate_unique_key(f"copy_inline_{step_key}")
+        if st.button(f"📋 Copy {title}", key=copy_key):
+            st.code(content_str, language="markdown")
+            st.success("✅ Copied!")
+    
+    st.markdown("---")
+
+
+def show_processing_content_section(icon: str, title: str, message: str):
+    """Show animated processing state for current step"""
+    
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(255, 165, 0, 0.05), rgba(255, 215, 0, 0.08));
+        border: 1px solid rgba(255, 165, 0, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0;
+        position: relative;
+        overflow: hidden;
+    ">
+        <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 165, 0, 0.2), transparent);
+            animation: processing 2s linear infinite;
+        "></div>
+        <div style="position: relative; z-index: 2;">
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 1.4rem; margin-right: 10px; animation: spin 2s linear infinite;">{icon}</span>
+                <div>
+                    <h4 style="color: #FFA500; margin: 0; font-weight: 500;">{title}</h4>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{message}</p>
+                </div>
+                <div style="margin-left: auto;">
+                    <div style="
+                        width: 20px;
+                        height: 20px;
+                        border: 2px solid rgba(255, 165, 0, 0.3);
+                        border-top: 2px solid #FFA500;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                    "></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+    @keyframes processing {{
+        0% {{ left: -100%; }}
+        100% {{ left: 100%; }}
+    }}
+    
+    @keyframes spin {{
+        0% {{ transform: rotate(0deg); }}
+        100% {{ transform: rotate(360deg); }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def show_error_content_section(icon: str, title: str, error_msg: str):
+    """Show error state for failed step"""
+    
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, rgba(255, 69, 58, 0.05), rgba(255, 105, 97, 0.08));
+        border: 1px solid rgba(255, 69, 58, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 16px 0;
+    ">
+        <div style="display: flex; align-items: center;">
+            <span style="font-size: 1.4rem; margin-right: 10px;">{icon}</span>
+            <div>
+                <h4 style="color: #FF6B6B; margin: 0; font-weight: 500;">{title}</h4>
+                <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{error_msg}</p>
+            </div>
+            <span style="margin-left: auto; color: #FF6B6B; font-size: 0.9rem;">❌ Failed</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def show_2025_content_display():

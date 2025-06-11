@@ -44,7 +44,7 @@ from core.monitoring import (
     get_health_status, init_session_tracking
 )
 # Removed old progress tracker imports - using simple progress bars now
-from core.file_upload import FileUploadManager
+from core.file_upload import FileUploadManager, LargeFileUploadManager
 from core.notifications import (
     show_success, show_error, show_warning, show_info,
     create_loading_spinner
@@ -821,31 +821,97 @@ def show_home_page():
     st.markdown("# Content Pipeline")
     st.markdown("Transform your audio content into structured, actionable insights")
     
-    # Upload section
-    st.markdown("### Upload Audio File")
-    uploaded_file = st.file_uploader(
-        "Choose audio file",
-        type=['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm', 'mpeg', 'mpga', 'oga', 'ogg'],
-        help="Supported formats: MP3, WAV, M4A, FLAC, MP4, WEBM, MPEG, MPGA, OGA, OGG (max 25MB)",
-        key="main_file_upload"
-    )
+    # File upload section with enhanced large file support
+    st.markdown("### 📁 Audio Upload")
     
-    # File validation feedback
+    # Import the enhanced file upload manager
+    from core.file_upload import LargeFileUploadManager
+    
+    # Create upload manager
+    upload_manager = LargeFileUploadManager()
+    
+    # Enhanced upload zone for large files
+    uploaded_file = upload_manager.create_large_file_upload_zone()
+    
+    # Show file validation and processing info
     if uploaded_file is not None:
         file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
-        file_ext = uploaded_file.name.split('.')[-1].lower()
         
-        # Validate file size
-        if file_size_mb > 25:
-            st.error(f"⚠️ File size ({file_size_mb:.1f} MB) exceeds 25MB limit. Please use a smaller file.")
-            uploaded_file = None
-        # Validate file extension
-        elif file_ext not in ['mp3', 'wav', 'm4a', 'flac', 'mp4', 'webm', 'mpeg', 'mpga', 'oga', 'ogg']:
-            st.error(f"⚠️ Unsupported file format: .{file_ext}. Please use: MP3, WAV, M4A, FLAC, MP4, WEBM, MPEG, MPGA, OGA, OGG")
+        # File info display
+        st.markdown(f"""
+        **📄 File Details:**
+        - **Name:** {uploaded_file.name}
+        - **Size:** {file_size_mb:.1f} MB
+        - **Type:** {uploaded_file.type}
+        - **Processing:** {"🔄 Chunked (Large File)" if file_size_mb > 20 else "⚡ Direct (Small File)"}
+        """)
+        
+        # Validation
+        validation = upload_manager.validate_large_file(uploaded_file)
+        if not validation["valid"]:
+            st.error(f"❌ {validation['error']}")
             uploaded_file = None
         else:
-            # Show file validation success
-            st.success(f"✅ File validated: {uploaded_file.name} ({file_size_mb:.2f} MB) - {file_ext.upper()}")
+            st.success("✅ File validated successfully!")
+            
+            # Show processing strategy
+            if file_size_mb > 20:
+                st.info(f"""
+                🚀 **Large File Detected!**
+                
+                Your {file_size_mb:.1f}MB file will be processed using our advanced chunking system:
+                - **Automatic chunking** into ~20MB segments
+                - **Parallel transcription** of up to 4 chunks simultaneously  
+                - **Real-time progress** tracking for each chunk
+                - **Intelligent reassembly** of the final transcript
+                
+                This ensures reliable processing of large files up to 2GB!
+                """)
+            else:
+                st.info("⚡ Small file detected - will be processed directly for optimal speed.")
+    
+    # Enhanced file format support notice
+    if uploaded_file is None:
+        st.markdown("""
+        **🎵 Supported Audio Formats:**
+        - **Common:** MP3, WAV, M4A, AAC
+        - **Advanced:** OGG, FLAC, WMA, WEBM
+        - **Streaming:** MPEG, MPGA, OGA
+        
+        **📏 File Size Limits:**
+        - **Maximum:** 2GB per file
+        - **Optimal:** 20MB-500MB for best performance
+        - **Large files:** Automatically chunked and processed in parallel
+        """)
+    
+    # User preferences
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        ai_provider = st.selectbox(
+            "AI Provider",
+            ["OpenAI", "Anthropic", "Grok"],
+            index=0,
+            help="Choose your preferred AI provider for content generation"
+        )
+        st.session_state.ai_provider = ai_provider
+    
+    with col2:
+        # Model selection based on provider
+        if ai_provider == "OpenAI":
+            model_options = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+        elif ai_provider == "Anthropic":
+            model_options = ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"]
+        else:  # Grok
+            model_options = ["grok-beta"]
+        
+        ai_model = st.selectbox(
+            "Model",
+            model_options,
+            index=0,
+            help="Select the specific model to use"
+        )
+        st.session_state.ai_model = ai_model
     
     # Editor toggle
     if uploaded_file is not None:
@@ -902,15 +968,50 @@ def show_home_page():
             
             # Auto-process next step
             if controller.is_active:
-                step_processed = controller.process_next_step()
-                if step_processed:
-                    st.rerun()
-                elif not controller.is_active:
-                    st.rerun()
-            
-            # Show status and results
-            show_processing_status()
-            show_streaming_results()
+                # 🚀 NEW REAL STREAMING LOGIC - Show content as it generates!
+                
+                # Create containers for real-time updates
+                status_container = st.empty()
+                content_container = st.empty()
+                
+                with status_container.container():
+                    st.markdown("### 🌊 Processing Pipeline")
+                    
+                    # Show current step status
+                    current_step = controller.current_step_index
+                    total_steps = len(controller.PIPELINE_STEPS)
+                    
+                    # Progress bar with current step
+                    progress = (current_step / total_steps) if total_steps > 0 else 0
+                    st.progress(progress, f"Step {current_step + 1} of {total_steps}")
+                    
+                    # Current step indicator
+                    if current_step < total_steps:
+                        current_step_name = controller.PIPELINE_STEPS[current_step].replace('_', ' ').title()
+                        st.info(f"🔄 Currently processing: **{current_step_name}**")
+                
+                # Process ONE step only (not all steps)
+                try:
+                    step_processed = controller.process_next_step()
+                    
+                    # Show results immediately after step completion
+                    with content_container.container():
+                        show_streaming_results()
+                    
+                    # Small delay to show the result before next step
+                    if step_processed:
+                        time.sleep(0.5)  # Brief pause to show result
+                        st.rerun()  # Process next step
+                    
+                except Exception as e:
+                    st.error(f"❌ Processing error: {e}")
+                    controller.reset_pipeline()
+                
+            else:
+                # Pipeline complete or inactive - show final results
+                if controller.is_complete:
+                    st.success("✅ Processing Complete!")
+                    show_streaming_results()
             
         except ImportError as e:
             st.error(f"Streaming pipeline not available: {e}")

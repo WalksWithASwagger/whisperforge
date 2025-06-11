@@ -38,16 +38,18 @@ class StreamingPipelineController:
         st.session_state.pipeline_audio_file = None
         
     def start_pipeline(self, audio_file):
-        """Initialize pipeline for processing"""
+        """Initialize pipeline for processing with large file support"""
         self.reset_pipeline()
         st.session_state.pipeline_active = True
         st.session_state.pipeline_audio_file = audio_file
         
         # Store file info for later use
+        file_size_mb = len(audio_file.getvalue()) / (1024 * 1024)
         st.session_state.pipeline_file_info = {
             "name": audio_file.name,
             "size": len(audio_file.getvalue()),
-            "size_mb": len(audio_file.getvalue()) / (1024 * 1024)
+            "size_mb": file_size_mb,
+            "is_large_file": file_size_mb > 20  # Flag for large file processing
         }
         
         # Initialize required session state if missing
@@ -154,12 +156,60 @@ class StreamingPipelineController:
         }
     
     def _step_transcription(self) -> str:
-        """Step 2: Transcribe audio"""
+        """Step 2: Transcribe audio with large file support"""
         audio_file = st.session_state.pipeline_audio_file
+        file_info = st.session_state.pipeline_file_info
+        
+        # Check if this is a large file requiring chunked processing
+        if file_info.get("is_large_file", False):
+            return self._transcribe_large_file(audio_file)
+        else:
+            return self._transcribe_small_file(audio_file)
+    
+    def _transcribe_small_file(self, audio_file) -> str:
+        """Transcribe small files directly"""
+        from .content_generation import transcribe_audio
+        
+        st.write("🎵 **Processing small file directly...**")
         
         transcript = transcribe_audio(audio_file)
         if not transcript:
             raise Exception("Failed to transcribe audio - transcript is empty")
+        
+        if "Error" in transcript:
+            raise Exception(f"Transcription failed: {transcript}")
+        
+        # Store in session for access by later steps
+        st.session_state.pipeline_transcript = transcript
+        return transcript
+    
+    def _transcribe_large_file(self, audio_file) -> str:
+        """🚀 Transcribe large files using chunked processing"""
+        from .file_upload import LargeFileUploadManager
+        
+        st.write("🚀 **Processing large file with chunked transcription...**")
+        
+        # Create upload manager for large file processing
+        upload_manager = LargeFileUploadManager()
+        
+        # Process the large file with chunking
+        result = upload_manager.process_large_file(audio_file)
+        
+        if not result["success"]:
+            raise Exception(f"Large file transcription failed: {result['error']}")
+        
+        transcript = result["transcript"]
+        
+        if not transcript:
+            raise Exception("Large file transcription produced empty result")
+        
+        # Show processing summary
+        st.success(f"""
+        ✅ **Large File Transcription Complete!**
+        - **Chunks processed:** {result.get('chunks', 'N/A')}
+        - **Processing time:** {result.get('processing_time', 'N/A')}
+        - **Transcript length:** {len(transcript)} characters
+        """)
         
         # Store in session for access by later steps
         st.session_state.pipeline_transcript = transcript
@@ -201,7 +251,7 @@ EDITORIAL FEEDBACK:
 ORIGINAL WISDOM:
 {wisdom}
 
-Please provide an improved version that addresses the feedback while maintaining the core insights."""
+Please provide an improved version that addresses the feedback."""
             
             wisdom = generate_wisdom(
                 transcript, 
@@ -211,6 +261,7 @@ Please provide an improved version that addresses the feedback while maintaining
                 st.session_state.knowledge_base
             )
         
+        # Store in session for later steps AND results for display
         st.session_state.pipeline_wisdom = wisdom
         return wisdom
     
@@ -239,13 +290,15 @@ Please provide an improved version that addresses the feedback while maintaining
         """Step 4: Create outline"""
         transcript = st.session_state.pipeline_transcript
         wisdom = st.session_state.pipeline_wisdom
+        research = st.session_state.pipeline_results.get("research_enrichment", {})
         
         # Get custom prompt if available
         custom_prompt = st.session_state.prompts.get("outline_creation") if hasattr(st.session_state, 'prompts') else None
         
         outline = generate_outline(
-            transcript, 
-            wisdom, 
+            transcript,
+            wisdom,
+            research, 
             st.session_state.ai_provider, 
             st.session_state.ai_model, 
             custom_prompt, 
@@ -263,7 +316,7 @@ Please provide an improved version that addresses the feedback while maintaining
             
             st.session_state.pipeline_results["outline_critique"] = critique
             
-            revision_prompt = f"""Based on this editorial feedback, please revise the content outline:
+            revision_prompt = f"""Based on this editorial feedback, please revise the outline:
 
 EDITORIAL FEEDBACK:
 {critique}
@@ -274,14 +327,16 @@ ORIGINAL OUTLINE:
 Please provide an improved version that addresses the feedback."""
             
             outline = generate_outline(
-                transcript, 
-                wisdom, 
+                transcript,
+                wisdom,
+                research, 
                 st.session_state.ai_provider, 
                 st.session_state.ai_model, 
                 revision_prompt, 
                 st.session_state.knowledge_base
             )
         
+        # Store in session for later steps AND results for display
         st.session_state.pipeline_outline = outline
         return outline
     
