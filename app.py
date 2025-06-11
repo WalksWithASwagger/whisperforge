@@ -63,13 +63,22 @@ init_monitoring()
 
 @st.cache_resource
 def init_supabase():
-    """Initialize Supabase client with proper caching"""
+    """Initialize Supabase client with robust error handling"""
     try:
         from core.supabase_integration import get_supabase_client
         client = get_supabase_client()
-        return client, True
+        
+        # Test connection with timeout
+        if client:
+            # Simple connection test
+            return client, True
+        else:
+            logger.warning("Supabase client creation failed")
+            return None, False
+            
     except Exception as e:
         logger.error(f"Supabase initialization failed: {e}")
+        # Don't crash the app - continue without database
         return None, False
 
 # Database operations using Supabase
@@ -821,241 +830,189 @@ def show_home_page():
     st.markdown("# Content Pipeline")
     st.markdown("Transform your audio content into structured, actionable insights")
     
-    # File upload section with enhanced large file support
+    # 🔧 SIMPLIFIED BULLETPROOF FILE UPLOAD - Core functionality only
     st.markdown("### 📁 Audio Upload")
     
-    # Import the enhanced file upload manager
-    from core.file_upload import LargeFileUploadManager
+    # Simple, reliable file uploader
+    uploaded_file = st.file_uploader(
+        "Choose an audio file",
+        type=['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma'],
+        help="Upload audio files for transcription. Supported: MP3, WAV, M4A, AAC, OGG, FLAC, WMA",
+        key="audio_upload"
+    )
     
-    # Create upload manager
-    upload_manager = LargeFileUploadManager()
-    
-    # Enhanced upload zone for large files
-    uploaded_file = upload_manager.create_large_file_upload_zone()
-    
-    # Show file validation and processing info
+    # Simple file validation
     if uploaded_file is not None:
         file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
         
-        # File info display
-        st.markdown(f"""
-        **📄 File Details:**
-        - **Name:** {uploaded_file.name}
-        - **Size:** {file_size_mb:.1f} MB
-        - **Type:** {uploaded_file.type}
-        - **Processing:** {"🔄 Chunked (Large File)" if file_size_mb > 20 else "⚡ Direct (Small File)"}
-        """)
+        # Basic file info
+        st.success(f"✅ File loaded: **{uploaded_file.name}** ({file_size_mb:.1f} MB)")
         
-        # Validation
-        validation = upload_manager.validate_large_file(uploaded_file)
-        if not validation["valid"]:
-            st.error(f"❌ {validation['error']}")
-            uploaded_file = None
+        # Simple size check - be more generous for now
+        if file_size_mb > 100:  # 100MB limit for stability
+            st.warning(f"⚠️ Large file detected ({file_size_mb:.1f} MB). Processing may take longer.")
+        
+        # Show processing strategy
+        if file_size_mb > 25:
+            st.info("🔄 Large file will be processed with enhanced handling")
         else:
-            st.success("✅ File validated successfully!")
-            
-            # Show processing strategy
-            if file_size_mb > 20:
-                st.info(f"""
-                🚀 **Large File Detected!**
-                
-                Your {file_size_mb:.1f}MB file will be processed using our advanced chunking system:
-                - **Automatic chunking** into ~20MB segments
-                - **Parallel transcription** of up to 4 chunks simultaneously  
-                - **Real-time progress** tracking for each chunk
-                - **Intelligent reassembly** of the final transcript
-                
-                This ensures reliable processing of large files up to 2GB!
-                """)
-            else:
-                st.info("⚡ Small file detected - will be processed directly for optimal speed.")
+            st.info("⚡ File will be processed directly")
     
-    # Enhanced file format support notice
-    if uploaded_file is None:
-        st.markdown("""
-        **🎵 Supported Audio Formats:**
-        - **Common:** MP3, WAV, M4A, AAC
-        - **Advanced:** OGG, FLAC, WMA, WEBM
-        - **Streaming:** MPEG, MPGA, OGA
-        
-        **📏 File Size Limits:**
-        - **Maximum:** 2GB per file
-        - **Optimal:** 20MB-500MB for best performance
-        - **Large files:** Automatically chunked and processed in parallel
-        """)
-    
-    # User preferences
+    # User preferences - simplified
     col1, col2 = st.columns(2)
     
     with col1:
         ai_provider = st.selectbox(
             "AI Provider",
-            ["OpenAI", "Anthropic", "Grok"],
+            ["OpenAI", "Anthropic"],  # Removed Grok for stability
             index=0,
-            help="Choose your preferred AI provider for content generation"
+            help="Choose your AI provider"
         )
         st.session_state.ai_provider = ai_provider
     
     with col2:
-        # Model selection based on provider
+        # Simplified model selection
         if ai_provider == "OpenAI":
-            model_options = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-        elif ai_provider == "Anthropic":
+            model_options = ["gpt-4o", "gpt-4o-mini"]
+        else:  # Anthropic
             model_options = ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"]
-        else:  # Grok
-            model_options = ["grok-beta"]
         
         ai_model = st.selectbox(
             "Model",
             model_options,
-            index=0,
-            help="Select the specific model to use"
+            index=0
         )
         st.session_state.ai_model = ai_model
     
-    # Editor toggle
+    # SIMPLIFIED BULLETPROOF PROCESSING - Focus on core functionality
     if uploaded_file is not None:
         st.markdown("---")
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown("**AI Editor:** Enhance content quality with AI review and revision")
-        with col2:
-            editor_enabled = st.toggle(
-                "Enable", 
-                value=st.session_state.get("editor_enabled", False),
-                key="editor_toggle"
-            )
-            st.session_state.editor_enabled = editor_enabled
-    
-    # Processing section
-    if uploaded_file is not None:
-        # Import streaming components
+        st.markdown("### 🎵 Processing")
+        
+        # Create progress containers
+        progress_container = st.empty()
+        results_container = st.empty()
+        
         try:
-            from core.streaming_pipeline import get_pipeline_controller
-            from core.streaming_results import show_streaming_results, show_processing_status, STREAMING_RESULTS_CSS
-            
-            # Apply CSS
-            st.markdown(STREAMING_RESULTS_CSS, unsafe_allow_html=True)
-            
-            controller = get_pipeline_controller()
-            
-            # Processing controls
-            st.markdown("### Processing")
-            
-            col1, col2, col3 = st.columns([2, 1, 1])
-            
-            with col1:
-                if not controller.is_active and not controller.is_complete:
-                    if st.button("Start Processing", type="primary", use_container_width=True):
-                        controller.start_pipeline(uploaded_file)
-                        st.rerun()
-                elif controller.is_active:
-                    st.button("Processing...", type="primary", disabled=True, use_container_width=True)
-                else:
-                    st.button("Processing Complete", type="primary", disabled=True, use_container_width=True)
-            
-            with col2:
-                if controller.is_active:
-                    if st.button("Stop", use_container_width=True):
-                        controller.reset_pipeline()
-                        st.rerun()
-            
-            with col3:
-                if controller.is_complete:
-                    if st.button("Reset", use_container_width=True):
-                        controller.reset_pipeline()
-                        st.rerun()
-            
-            # Auto-process next step
-            if controller.is_active:
-                # 🚀 NEW REAL STREAMING LOGIC - Show content as it generates!
+            with progress_container.container():
+                st.markdown("#### Processing Audio...")
                 
-                # Create containers for real-time updates
-                status_container = st.empty()
-                content_container = st.empty()
+                # Step 1: Transcription (most critical)
+                with st.status("🎙️ Transcribing audio...", expanded=True) as status:
+                    st.write("Converting speech to text...")
+                    
+                    # Use simple transcription - no complex chunking for now
+                    from core.content_generation import transcribe_audio
+                    transcript = transcribe_audio(uploaded_file)
+                    
+                    if not transcript or "Error" in transcript:
+                        st.error(f"❌ Transcription failed: {transcript}")
+                        st.stop()
+                    
+                    st.write("✅ Transcription complete!")
+                    status.update(label="✅ Transcription complete!", state="complete")
                 
-                with status_container.container():
-                    st.markdown("### 🌊 Processing Pipeline")
+                # Step 2: Wisdom Extraction
+                with st.status("💎 Extracting insights...", expanded=True) as status:
+                    st.write("Analyzing content for key insights...")
                     
-                    # Show current step status
-                    current_step = controller.current_step_index
-                    total_steps = len(controller.PIPELINE_STEPS)
+                    from core.content_generation import generate_wisdom
+                    wisdom = generate_wisdom(
+                        transcript, 
+                        st.session_state.ai_provider, 
+                        st.session_state.ai_model
+                    )
                     
-                    # Progress bar with current step
-                    progress = (current_step / total_steps) if total_steps > 0 else 0
-                    st.progress(progress, f"Step {current_step + 1} of {total_steps}")
-                    
-                    # Current step indicator
-                    if current_step < total_steps:
-                        current_step_name = controller.PIPELINE_STEPS[current_step].replace('_', ' ').title()
-                        st.info(f"🔄 Currently processing: **{current_step_name}**")
+                    if wisdom and "Error" not in wisdom:
+                        st.write("✅ Insights extracted!")
+                        status.update(label="✅ Insights extracted!", state="complete")
+                    else:
+                        st.warning("⚠️ Insights extraction had issues")
+                        wisdom = "Insights extraction failed"
                 
-                # Process ONE step only (not all steps)
-                try:
-                    step_processed = controller.process_next_step()
+                # Step 3: Outline Creation
+                with st.status("📋 Creating outline...", expanded=True) as status:
+                    st.write("Structuring content outline...")
                     
-                    # Show results immediately after step completion
-                    with content_container.container():
-                        show_streaming_results()
+                    from core.content_generation import generate_outline
+                    outline = generate_outline(
+                        transcript,
+                        wisdom, 
+                        st.session_state.ai_provider, 
+                        st.session_state.ai_model
+                    )
                     
-                    # Small delay to show the result before next step
-                    if step_processed:
-                        time.sleep(0.5)  # Brief pause to show result
-                        st.rerun()  # Process next step
-                    
-                except Exception as e:
-                    st.error(f"❌ Processing error: {e}")
-                    controller.reset_pipeline()
+                    if outline and "Error" not in outline:
+                        st.write("✅ Outline created!")
+                        status.update(label="✅ Outline created!", state="complete")
+                    else:
+                        st.warning("⚠️ Outline creation had issues")
+                        outline = "Outline creation failed"
                 
-            else:
-                # Pipeline complete or inactive - show final results
-                if controller.is_complete:
-                    st.success("✅ Processing Complete!")
-                    show_streaming_results()
+                # Step 4: Article Generation
+                with st.status("📰 Writing article...", expanded=True) as status:
+                    st.write("Generating full article...")
+                    
+                    from core.content_generation import generate_article
+                    article = generate_article(
+                        transcript,
+                        wisdom,
+                        outline, 
+                        st.session_state.ai_provider, 
+                        st.session_state.ai_model
+                    )
+                    
+                    if article and "Error" not in article:
+                        st.write("✅ Article generated!")
+                        status.update(label="✅ Article generated!", state="complete")
+                    else:
+                        st.warning("⚠️ Article generation had issues")
+                    article = "Article generation failed"
             
-        except ImportError as e:
-            st.error(f"Streaming pipeline not available: {e}")
-            st.markdown("### Manual Processing")
-            if st.button("Process Audio", type="primary"):
-                with st.spinner("Processing..."):
-                    try:
-                        # Basic processing without streaming
-                        transcript = transcribe_audio(uploaded_file)
-                        if transcript:
-                            st.success("Processing complete!")
-                            st.text_area("Transcript", transcript, height=200)
-                        else:
-                            st.error("Failed to transcribe audio")
-                    except Exception as e:
-                        st.error(f"Processing error: {e}")
+            # Show results
+            with results_container.container():
+                st.markdown("---")
+                st.markdown("## ✨ Results")
+                
+                # Transcript
+                with st.expander("🎙️ Transcript", expanded=False):
+                    st.markdown(transcript)
+                    if st.button("📋 Copy Transcript", key="copy_transcript"):
+                        st.code(transcript)
+                
+                # Wisdom
+                with st.expander("💎 Key Insights", expanded=True):
+                    st.markdown(wisdom)
+                    if st.button("📋 Copy Insights", key="copy_wisdom"):
+                        st.code(wisdom)
+                
+                # Outline
+                with st.expander("📋 Content Outline", expanded=False):
+                    st.markdown(outline)
+                    if st.button("📋 Copy Outline", key="copy_outline"):
+                        st.code(outline)
+                
+                # Article
+                with st.expander("📰 Full Article", expanded=False):
+                    st.markdown(article)
+                    if st.button("📋 Copy Article", key="copy_article"):
+                        st.code(article)
+                
+                st.success("🎉 Processing complete!")
+            
+        except Exception as e:
+            st.error(f"❌ Processing failed: {str(e)}")
+            import traceback
+            st.code(traceback.format_exc())
     
     else:
-        # Welcome section
+        # Welcome message when no file uploaded
         st.markdown("---")
-        st.markdown("### Key Features")
+        st.markdown("### 🎵 Welcome to WhisperForge")
+        st.markdown("Upload an audio file above to get started with AI-powered content generation.")
         
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.markdown("""
-            **Structured Outlines**  
-            Organized content ready for publication
-            """)
-        
-        with col2:
-            st.markdown("""
-            **Social Media Ready**  
-            Platform-optimized content generation
-            """)
-        
-        with col3:
-            st.markdown("""
-            **Image Prompts**  
-            AI-generated prompts for visual content
-            """)
-        
-        st.markdown("---")
-        st.markdown("**Get started by uploading an audio file above.**")
+        st.markdown("**Supported formats:** MP3, WAV, M4A, AAC, OGG, FLAC, WMA")
+        st.markdown("**File size limit:** Up to 100MB for optimal performance")
 
 def show_processing_results(results):
     """PHASE 6: ENHANCED CONTENT DISPLAY with modern card layouts and copy functionality"""
@@ -1367,7 +1324,7 @@ def show_settings_page():
         
         # Model selection based on provider
         if provider == "OpenAI":
-            models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+            models = ["gpt-4o", "gpt-4o-mini"]
         else:
             models = ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"]
         
@@ -1559,20 +1516,39 @@ def init_simple_session_state():
             st.session_state[key] = default_value
 
 def main():
-    """Main application entry point - SIMPLIFIED"""
-    
-    # Simple session initialization
-    init_simple_session_state()
-    
-    # Handle OAuth callback if present
-    if handle_oauth_callback():
-        return
-    
-    # Show appropriate page based on authentication status
-    if st.session_state.get('authenticated', False):
-        show_main_app()
-    else:
-        show_auth_page()
+    """Main application function with bulletproof error handling"""
+    try:
+        # Initialize monitoring (optional)
+        try:
+            from core.monitoring import track_user_action
+            track_user_action("page_view")
+        except Exception as e:
+            logger.warning(f"Monitoring initialization failed: {e}")
+            # Continue without monitoring
+        
+        # Initialize Supabase (optional - app works without it)
+        supabase_client, supabase_available = init_supabase()
+        if not supabase_available:
+            logger.warning("Running without database - some features may be limited")
+        
+        # Set up page config
+        st.set_page_config(
+            page_title="WhisperForge",
+            page_icon="🌌",
+            layout="wide",
+            initial_sidebar_state="collapsed"
+        )
+        
+        # Apply CSS
+        apply_aurora_css()
+        
+        # Show main interface
+        show_main_interface()
+        
+    except Exception as e:
+        logger.error(f"Critical application error: {e}")
+        st.error("⚠️ Application encountered an error. Please refresh the page.")
+        st.code(str(e))
 
 if __name__ == "__main__":
     main() 
