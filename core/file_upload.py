@@ -15,7 +15,7 @@ import os
 import tempfile
 import math
 from pathlib import Path
-from pydub import AudioSegment
+# from pydub import AudioSegment  # Removed for simplified deployment
 import logging
 
 logger = logging.getLogger(__name__)
