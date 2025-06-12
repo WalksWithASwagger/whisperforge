@@ -818,7 +818,7 @@ def show_main_app():
     
     # Show the selected page with monitoring
     page = st.session_state.current_page
-    track_page(page.lower().replace(" ", "_"))
+    # track_page(page.lower().replace(" ", "_"))  # DISABLED
     
     if page == "Content Pipeline":
         show_home_page()
@@ -1591,7 +1591,7 @@ def show_health_page():
     st.markdown("# 📊 System Health & Monitoring")
     
     # Show development metrics in sidebar
-    show_dev_metrics()
+    # show_dev_metrics()  # DISABLED
     
     # Get health status
     health_status = health_checker.get_health_status()
@@ -1706,10 +1706,10 @@ def main():
         
         # Show appropriate page based on authentication status
         if st.session_state.get('authenticated', False):
-            track_action("app_access", authenticated=True)
+            # track_action("app_access", authenticated=True)  # DISABLED
             show_main_app()
         else:
-            track_action("app_access", authenticated=False)
+            # track_action("app_access", authenticated=False)  # DISABLED
             show_auth_page()
             
     except Exception as e:
