@@ -431,6 +431,19 @@ def handle_oauth_callback():
 def show_auth_page():
     """Clean, modern authentication page"""
     
+    # 🔧 LOCAL TESTING BYPASS - Skip auth when database unavailable
+    db, db_available = init_supabase()
+    if not db_available:
+        st.warning("⚠️ Database not available - Running in local testing mode")
+        if st.button("🧪 Continue to Test App", type="primary", use_container_width=True):
+            # Set minimal session state for testing
+            st.session_state.authenticated = True
+            st.session_state.user_id = "test_user"
+            st.session_state.user_email = "test@local.dev"
+            st.rerun()
+        st.info("💡 This bypass allows testing core functionality without database connection")
+        st.markdown("---")
+    
     # Load the stable CSS framework
     try:
         from core.ui_components import load_aurora_css
