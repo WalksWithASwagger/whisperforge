@@ -29,11 +29,12 @@ class SupabaseClient:
     
     def __init__(self):
         self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SUPABASE_ANON_KEY")
+        # Handle both SUPABASE_KEY and SUPABASE_ANON_KEY for backward compatibility
+        self.key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
         self.service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
         
         if not self.url or not self.key:
-            raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+            raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY (or SUPABASE_KEY) must be set in environment variables")
         
         self.client: Client = create_client(self.url, self.key)
         self.admin_client: Optional[Client] = None

@@ -1,0 +1,6 @@
+{"step": "test_step", "status": "started", "timestamp": "2025-06-12T10:19:49.452737", "data": {}}
+{"step": "test_step", "status": "completed", "timestamp": "2025-06-12T10:19:49.453013", "data": {}}
+{"step": "test_step", "status": "failed", "timestamp": "2025-06-12T10:19:49.453119", "data": {"error": "Test error"}}
+{"event": "file_upload", "filename": "test.wav", "size_mb": 1.5, "file_type": "audio/wav", "timestamp": "2025-06-12T10:19:49.453552"}
+{"event": "error", "error_type": "ValueError", "error_message": "Test error", "context": "Test context", "traceback": "Traceback (most recent call last):\n  File \"/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py\", line 32, in test_logging_functionality\n    raise ValueError(\"Test error\")\nValueError: Test error\n", "timestamp": "2025-06-12T10:19:49.454341"}
+{"event": "error", "error_type": "ValueError", "error_message": "Test error for logging", "context": "Test error context", "traceback": "Traceback (most recent call last):\n  File \"/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py\", line 167, in test_logging_error_handling\n    raise ValueError(\"Test error for logging\")\nValueError: Test error for logging\n", "timestamp": "2025-06-12T10:19:49.615323"}

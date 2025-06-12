@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+- Replace print() with logger, unless line ends with # pragma: allow-print
+- Replace logging.basicConfig with utils.logging_config.setup_logger()
+- Import logger from core.logging_config: `from core.logging_config import logger`
+- Use logger.logger.info(), logger.logger.error(), etc. for structured logging
+- Scripts in scripts/ directory may use print() with # pragma: allow-print comment
+

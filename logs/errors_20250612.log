@@ -1,0 +1,24 @@
+2025-06-12 09:42:29 | [31mERROR[0m | whisperforge | create_prompts_table:36 | ❌ Failed to create prompts table: {'message': 'Could not find the function public.exec_sql(sql) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.exec_sql with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}
+2025-06-12 09:42:29 | [31mERROR[0m | whisperforge | create_api_keys_table:64 | ❌ Failed to create api_keys table: {'message': 'Could not find the function public.exec_sql(sql) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.exec_sql with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}
+2025-06-12 09:42:29 | [31mERROR[0m | whisperforge | create_sessions_table:99 | ❌ Failed to create sessions table: {'message': 'Could not find the function public.exec_sql(sql) in the schema cache', 'code': 'PGRST202', 'hint': None, 'details': 'Searched for the function public.exec_sql with parameter sql or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.'}
+2025-06-12 09:42:29 | [31mERROR[0m | whisperforge | test_table_creation:124 | ❌ Sessions table test failed: {'message': 'relation "public.sessions" does not exist', 'code': '42P01', 'hint': None, 'details': None}
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-12 10:19:49 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-12 10:20:15 | [31mERROR[0m | whisperforge | main:136 | ❌ Missing required environment variables: SUPABASE_ANON_KEY
+2025-06-12 10:20:15 | [31mERROR[0m | whisperforge | main:137 | Please set them before running this script.

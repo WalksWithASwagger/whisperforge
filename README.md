@@ -82,12 +82,31 @@ Transform your audio recordings into structured, actionable content with advance
    ```
 
 3. **Environment Setup**
-   Create `.env` file:
+   Create `.env` file or set environment variables:
    ```env
+   # Required - Supabase Database
    SUPABASE_URL=your_supabase_url
    SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # Optional for admin features
+   
+   # Required - AI Providers (at least one)
    OPENAI_API_KEY=your_openai_key
    ANTHROPIC_API_KEY=your_anthropic_key
+   GROK_API_KEY=your_grok_key  # Optional
+   
+   # Optional - Integrations
+   NOTION_API_KEY=your_notion_key
+   NOTION_DATABASE_ID=your_notion_database_id
+   OAUTH_REDIRECT_URL=http://localhost:8501  # For OAuth flows
+   
+   # Optional - Security & Monitoring
+   JWT_SECRET=your_jwt_secret_key
+   SENTRY_DSN=your_sentry_dsn  # For error tracking
+   
+   # Optional - Development
+   DEBUG=true
+   LOG_LEVEL=INFO
+   ENVIRONMENT=development
    ```
 
 4. **Run Application**

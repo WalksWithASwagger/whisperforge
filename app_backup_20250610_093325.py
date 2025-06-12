@@ -51,7 +51,7 @@ from core.notifications import (
 )
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+# Logging configured via core.logging_config
 logger = logging.getLogger(__name__)
 
 # Initialize monitoring

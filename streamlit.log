@@ -1,0 +1,17 @@
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://0.0.0.0:8501
+
+WARNING:core.monitoring:SENTRY_DSN not set - error tracking disabled
+INFO:core.monitoring:User action: page_view
+WARNING:core.monitoring:SENTRY_DSN not set - error tracking disabled
+INFO:core.monitoring:User action: page_view
+WARNING:core.monitoring:SENTRY_DSN not set - error tracking disabled
+INFO:core.monitoring:User action: page_view
+WARNING:core.monitoring:SENTRY_DSN not set - error tracking disabled
+INFO:core.monitoring:User action: page_view
+WARNING:core.monitoring:SENTRY_DSN not set - error tracking disabled
+INFO:core.monitoring:User action: page_view
+ERROR:__main__:Failed to initialize Supabase client
+  Stopping...

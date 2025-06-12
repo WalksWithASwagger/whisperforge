@@ -1,0 +1,1142 @@
+2025-06-11 17:13:19 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:13:19 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:13:19 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:13:19 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:13:19 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 17:20:35 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 161, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 17:21:14 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:21:14 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:21:14 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:21:14 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:21:14 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:21:15 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 17:21:15 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 17:21:15 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 165, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 17:21:33 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:21:33 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:21:33 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:21:33 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:21:33 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:21:34 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 17:21:34 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 17:21:34 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 17:25:36 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 17:25:37 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:25:37 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:25:37 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:25:37 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:25:37 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_core_functionality.py", line 294, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 17:27:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 53, in authenticate_user
+    logger.info(f"Authentication attempt for: {email}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for nonexistent@example.com
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 53, in authenticate_user
+    logger.info(f"Authentication attempt for: {email}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 53, in authenticate_user
+    logger.info(f"Authentication attempt for: {email}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 53, in authenticate_user
+    logger.info(f"Authentication attempt for: {email}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Registration error for new@example.com
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 139, in register_user
+    logger.info(f"User registered successfully: {email}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Error updating API key openai_api_key
+2025-06-11 19:07:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 229, in update_api_key
+    logger.info(f"API key updated: {key_name}")
+    ^^^^^^^^^^^
+AttributeError: 'WhisperForgeLogger' object has no attribute 'info'
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:27 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:48 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:13:58 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:144 | 💥 SupabaseException: Invalid API key
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 19:15:55 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 38, in __init__
+    self.client: Client = create_client(self.url, self.key)
+                          ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 341, in create_client
+    return SyncClient.create(
+           ~~~~~~~~~~~~~~~~~^
+        supabase_url=supabase_url, supabase_key=supabase_key, options=options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 103, in create
+    client = cls(supabase_url, supabase_key, options)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/supabase/_sync/client.py", line 64, in __init__
+    raise SupabaseException("Invalid API key")
+supabase._sync.client.SupabaseException: Invalid API key
+
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:19:04 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:23:22 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 19:23:22 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 19:23:22 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 19:23:22 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 19:23:22 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 19:23:23 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:13:19 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 20:13:19 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 20:13:19 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 20:13:19 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 20:13:19 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 20:13:20 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 20:13:20 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 20:13:20 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:13:21 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 20:32:45 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | _load_preferences:32 | Error loading preferences: Expecting value: line 1 column 1 (char 0)
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | _save_preferences:47 | Error saving preferences: [Errno 30] Read-only file system: '/root'
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:32:47 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-11 20:34:08 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | _load_preferences:32 | Error loading preferences: Expecting value: line 1 column 1 (char 0)
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | _save_preferences:47 | Error saving preferences: [Errno 30] Read-only file system: '/root'
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:144 | 💥 KeyError: 'key_value'
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to load user preferences
+2025-06-11 20:34:09 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 183, in _load_user_preferences
+    api_keys[item["key_name"]] = item["key_value"]
+                                 ~~~~^^^^^^^^^^^^^
+KeyError: 'key_value'
+
+2025-06-11 23:48:52 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-11 23:48:52 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-11 23:48:52 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
