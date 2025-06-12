@@ -59,18 +59,18 @@ from core.logging_config import (
     log_database_operation, log_user_action, log_error
 )
 
-# Production monitoring system
-from core.streamlit_monitoring import (
-    init_monitoring as init_streamlit_monitoring, track_page, track_action, 
-    track_error as track_monitoring_error, track_operation, monitor_pipeline, 
-    show_dev_metrics, streamlit_page, streamlit_component
-)
-from core.health_check import health_checker
-from core.metrics_exporter import export_prometheus_metrics, export_json_metrics
+# Production monitoring system - TEMPORARILY DISABLED TO FIX PRODUCTION
+# from core.streamlit_monitoring import (
+#     init_monitoring as init_streamlit_monitoring, track_page, track_action, 
+#     track_error as track_monitoring_error, track_operation, monitor_pipeline, 
+#     show_dev_metrics, streamlit_page, streamlit_component
+# )
+# from core.health_check import health_checker
+# from core.metrics_exporter import export_prometheus_metrics, export_json_metrics
 
 # Initialize monitoring systems
 init_monitoring()  # Legacy monitoring
-init_streamlit_monitoring()  # New structured monitoring
+# init_streamlit_monitoring()  # New structured monitoring - DISABLED
 
 # Removed unused run_content_pipeline - replaced by streaming_pipeline.py
 
@@ -1585,7 +1585,7 @@ def show_settings_page():
             else:
                 st.error("Failed to clear preferences")
 
-@streamlit_page("health")
+# @streamlit_page("health")  # TEMPORARILY DISABLED
 def show_health_page():
     """System health check page with enhanced monitoring"""
     st.markdown("# 📊 System Health & Monitoring")
@@ -1693,7 +1693,7 @@ def init_simple_session_state():
         if key not in st.session_state:
             st.session_state[key] = default_value
 
-@streamlit_page("main")
+# @streamlit_page("main")  # TEMPORARILY DISABLED
 def main():
     """Main application entry point - FULL FEATURED"""
     try:
