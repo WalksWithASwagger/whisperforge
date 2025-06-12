@@ -15,7 +15,15 @@ import os
 import tempfile
 import math
 from pathlib import Path
-# from pydub import AudioSegment  # Removed for simplified deployment
+
+# Audio processing with graceful fallback
+try:
+    from pydub import AudioSegment
+    AUDIO_PROCESSING_AVAILABLE = True
+except ImportError:
+    AudioSegment = None
+    AUDIO_PROCESSING_AVAILABLE = False
+
 import logging
 
 logger = logging.getLogger(__name__)
