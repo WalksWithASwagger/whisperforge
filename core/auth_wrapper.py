@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from .session_manager import get_session_manager, UserSession
 from .supabase_integration import get_supabase_client
 from .utils import hash_password, verify_password, legacy_hash_password
-from .logging_config import logger
+from core.logging_config import logger
 
 
 class AuthWrapper:

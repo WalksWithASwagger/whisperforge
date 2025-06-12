@@ -4,7 +4,9 @@ Create missing database tables for WhisperForge
 """
 
 import os
+import sys
 from core.supabase_integration import get_supabase_client
+from core.logging_config import logger
 
 def create_prompts_table(client):
     """Create the prompts table"""
@@ -28,10 +30,10 @@ def create_prompts_table(client):
     
     try:
         result = client.client.rpc('exec_sql', {'sql': sql}).execute()
-        print("✅ Prompts table created successfully")
+        logger.logger.info("✅ Prompts table created successfully")
         return True
     except Exception as e:
-        print(f"❌ Failed to create prompts table: {e}")
+        logger.logger.error(f"❌ Failed to create prompts table: {e}")
         return False
 
 def create_api_keys_table(client):
@@ -56,10 +58,45 @@ def create_api_keys_table(client):
     
     try:
         result = client.client.rpc('exec_sql', {'sql': sql}).execute()
-        print("✅ API keys table created successfully")
+        logger.logger.info("✅ API keys table created successfully")
         return True
     except Exception as e:
-        print(f"❌ Failed to create api_keys table: {e}")
+        logger.logger.error(f"❌ Failed to create api_keys table: {e}")
+        return False
+
+def create_sessions_table(client):
+    """Create the sessions table for persistent user sessions"""
+    sql = """
+    CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        session_id VARCHAR(255) UNIQUE NOT NULL,
+        user_id VARCHAR(255),
+        session_data JSONB NOT NULL,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+    
+    -- Auto-cleanup expired sessions function
+    CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
+    RETURNS void AS $$
+    BEGIN
+        DELETE FROM sessions WHERE expires_at < NOW();
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+    
+    try:
+        result = client.client.rpc('exec_sql', {'sql': sql}).execute()
+        logger.logger.info("✅ Sessions table created successfully")
+        return True
+    except Exception as e:
+        logger.logger.error(f"❌ Failed to create sessions table: {e}")
         return False
 
 def test_table_creation(client):
@@ -68,38 +105,55 @@ def test_table_creation(client):
     # Test prompts table
     try:
         result = client.client.table('prompts').select('*').limit(1).execute()
-        print("✅ Prompts table accessible")
+        logger.logger.info("✅ Prompts table accessible")
     except Exception as e:
-        print(f"❌ Prompts table test failed: {e}")
+        logger.logger.error(f"❌ Prompts table test failed: {e}")
     
     # Test api_keys table
     try:
         result = client.client.table('api_keys').select('*').limit(1).execute()
-        print("✅ API keys table accessible")
+        logger.logger.info("✅ API keys table accessible")
     except Exception as e:
-        print(f"❌ API keys table test failed: {e}")
+        logger.logger.error(f"❌ API keys table test failed: {e}")
+    
+    # Test sessions table
+    try:
+        result = client.client.table('sessions').select('*').limit(1).execute()
+        logger.logger.info("✅ Sessions table accessible")
+    except Exception as e:
+        logger.logger.error(f"❌ Sessions table test failed: {e}")
 
 def main():
-    # Set environment variables
-    os.environ['SUPABASE_URL'] = 'https://utyjhedtqaagihuogyuy.supabase.co'
-    os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0eWpoZWR0cWFhZ2lodW9neXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMjEyMDUsImV4cCI6MjA2NDg5NzIwNX0.vpRRn7anpmCokYcje5yJr3r2iC_8s11_LXQcCTgxtR8'
+    # Check for required environment variables
+    required_vars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY']
+    missing_vars = []
     
-    print("🔧 Creating Missing Database Tables")
-    print("=" * 50)
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+    
+    if missing_vars:
+        logger.logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
+        logger.logger.error("Please set them before running this script.")
+        sys.exit(1)
+    
+    logger.logger.info("🔧 Creating Missing Database Tables")
+    logger.logger.info("=" * 50)
     
     client = get_supabase_client()
     if not client:
-        print("❌ Failed to initialize Supabase client")
+        logger.logger.error("❌ Failed to initialize Supabase client")
         return
     
-    print("✅ Supabase client initialized")
+    logger.logger.info("✅ Supabase client initialized")
     
     # Create missing tables
-    print("\n📋 Creating Tables:")
+    logger.logger.info("\n📋 Creating Tables:")
     create_prompts_table(client)
     create_api_keys_table(client)
+    create_sessions_table(client)
     
-    print("\n🧪 Testing Table Access:")
+    logger.logger.info("\n🧪 Testing Table Access:")
     test_table_creation(client)
 
 if __name__ == "__main__":

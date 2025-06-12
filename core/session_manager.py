@@ -15,7 +15,8 @@ import hashlib
 import os
 
 # Enhanced logging
-from .logging_config import logger
+from core.logging_config import logger
+from core.supabase_integration import get_supabase_client
 
 
 @dataclass
@@ -86,17 +87,34 @@ class UserSession:
 class SessionManager:
     """
     Comprehensive session manager for Streamlit apps
-    Provides persistent authentication, preference caching, and secure token management
+    Uses Supabase for persistent storage with local file fallback
     """
     
     def __init__(self, app_name: str = "whisperforge"):
         self.app_name = app_name
-        self.session_dir = Path.home() / f".{app_name}_sessions"
-        self.session_dir.mkdir(exist_ok=True)
         
-                # Initialize session tracking
+        # Try to get Supabase client for cloud storage
+        try:
+            self.supabase = get_supabase_client()
+            self.use_database = True
+            logger.logger.info("SessionManager using Supabase storage")
+        except Exception as e:
+            self.supabase = None
+            self.use_database = False
+            logger.logger.warning(f"Supabase not available, using memory-only sessions: {e}")
+        
+        # Local fallback directory (only used if Supabase unavailable)
+        self.session_dir = None
+        if not self.use_database:
+            try:
+                self.session_dir = Path.home() / f".{app_name}_sessions"
+                self.session_dir.mkdir(exist_ok=True)
+                logger.logger.info("Using local session storage fallback")
+            except Exception as e:
+                logger.logger.warning(f"Local session storage unavailable: {e}")
+        
+        # Initialize session tracking
         self._init_session_tracking()
-
         logger.logger.info(f"SessionManager initialized for {app_name}")
     
     def _init_session_tracking(self):
@@ -115,8 +133,10 @@ class SessionManager:
                 logger.logger.info("New session created")
     
     def _get_session_file_path(self, session_id: str) -> Path:
-        """Get file path for session storage"""
-        return self.session_dir / f"{session_id}.json"
+        """Get file path for session storage (fallback only)"""
+        if self.session_dir:
+            return self.session_dir / f"{session_id}.json"
+        return None
     
     def _generate_session_token(self, user_id: str) -> str:
         """Generate secure session token"""
@@ -124,55 +144,100 @@ class SessionManager:
         return hashlib.sha256(data.encode()).hexdigest()
     
     def _persist_session(self, session: UserSession) -> bool:
-        """Persist session to secure local storage"""
+        """Persist session to Supabase or local storage"""
         try:
-            session_file = self._get_session_file_path(session.session_id)
-            
             # Update last activity
             session.last_activity = datetime.now()
+            session_data = session.to_dict()
             
-            with open(session_file, 'w') as f:
-                json.dump(session.to_dict(), f, indent=2)
+            if self.use_database and self.supabase:
+                # Store in Supabase sessions table
+                try:
+                    result = self.supabase.client.table("sessions").upsert({
+                        "session_id": session.session_id,
+                        "user_id": session.user_id,
+                        "session_data": json.dumps(session_data),
+                        "expires_at": (datetime.now() + timedelta(days=7)).isoformat(),
+                        "updated_at": datetime.now().isoformat()
+                    }).execute()
+                    
+                    if result.data:
+                        logger.logger.debug(f"Session persisted to Supabase: {session.session_id}")
+                        return True
+                    else:
+                        raise Exception("No data returned from upsert")
+                        
+                except Exception as db_error:
+                    logger.logger.warning(f"Supabase session storage failed, trying local fallback: {db_error}")
+                    # Fall through to local storage
             
-            # Set file permissions (readable only by user)
-            os.chmod(session_file, 0o600)
+            # Local file fallback
+            if self.session_dir:
+                session_file = self._get_session_file_path(session.session_id)
+                if session_file:
+                    with open(session_file, 'w') as f:
+                        json.dump(session_data, f, indent=2)
+                    
+                    # Set file permissions (readable only by user)
+                    os.chmod(session_file, 0o600)
+                    logger.logger.debug(f"Session persisted locally: {session.session_id}")
+                    return True
             
-            logger.logger.debug(f"Session persisted: {session.session_id}")
-            return True
+            # If we get here, no storage method worked
+            logger.logger.warning("No session storage available - session will not persist")
+            return False
             
         except Exception as e:
             logger.log_error(e, "Failed to persist session")
             return False
     
     def _restore_session(self) -> Optional[UserSession]:
-        """Restore session from persistent storage"""
+        """Restore session from Supabase or local storage"""
         try:
-            # Look for existing session files
-            session_files = list(self.session_dir.glob("*.json"))
-            
-            if not session_files:
-                return None
-            
-            # Find the most recent valid session
-            for session_file in sorted(session_files, key=lambda f: f.stat().st_mtime, reverse=True):
+            # Try Supabase first
+            if self.use_database and self.supabase:
                 try:
-                    with open(session_file, 'r') as f:
-                        session_data = json.load(f)
+                    # Look for valid sessions for any user (we'll validate expiry)
+                    result = self.supabase.client.table("sessions").select("*").gte(
+                        "expires_at", datetime.now().isoformat()
+                    ).order("updated_at", desc=True).limit(1).execute()
                     
-                    session = UserSession.from_dict(session_data)
-                    
-                    # Check if session is still valid (within 7 days)
-                    if self._validate_session(session):
-                        logger.logger.info(f"Restored session: {session.session_id}")
-                        return session
-                    else:
-                        # Clean up expired session
-                        session_file.unlink()
-                        logger.logger.info(f"Cleaned up expired session: {session_file.name}")
+                    if result.data:
+                        session_record = result.data[0]
+                        session_data = json.loads(session_record["session_data"])
+                        session = UserSession.from_dict(session_data)
                         
-                except Exception as e:
-                    logger.logger.warning(f"Failed to restore session from {session_file}: {e}")
-                    continue
+                        if self._validate_session(session):
+                            logger.logger.info(f"Restored session from Supabase: {session.session_id}")
+                            return session
+                            
+                except Exception as db_error:
+                    logger.logger.warning(f"Failed to restore from Supabase: {db_error}")
+            
+            # Try local file fallback
+            if self.session_dir and self.session_dir.exists():
+                session_files = list(self.session_dir.glob("*.json"))
+                
+                if session_files:
+                    # Find the most recent valid session
+                    for session_file in sorted(session_files, key=lambda f: f.stat().st_mtime, reverse=True):
+                        try:
+                            with open(session_file, 'r') as f:
+                                session_data = json.load(f)
+                            
+                            session = UserSession.from_dict(session_data)
+                            
+                            if self._validate_session(session):
+                                logger.logger.info(f"Restored session from local file: {session.session_id}")
+                                return session
+                            else:
+                                # Clean up expired session
+                                session_file.unlink()
+                                logger.logger.info(f"Cleaned up expired local session: {session_file.name}")
+                                
+                        except Exception as e:
+                            logger.logger.warning(f"Failed to restore session from {session_file}: {e}")
+                            continue
             
             return None
             
@@ -195,22 +260,34 @@ class SessionManager:
         return True
     
     def _cleanup_expired_sessions(self):
-        """Clean up expired session files"""
+        """Clean up expired session files and database records"""
         try:
-            for session_file in self.session_dir.glob("*.json"):
+            # Clean up Supabase sessions
+            if self.use_database and self.supabase:
                 try:
-                    with open(session_file, 'r') as f:
-                        session_data = json.load(f)
-                    
-                    session = UserSession.from_dict(session_data)
-                    
-                    if not self._validate_session(session):
-                        session_file.unlink()
-                        logger.logger.info(f"Cleaned up expired session: {session_file.name}")
-                        
+                    self.supabase.client.table("sessions").delete().lt(
+                        "expires_at", datetime.now().isoformat()
+                    ).execute()
+                    logger.logger.debug("Cleaned up expired Supabase sessions")
                 except Exception as e:
-                    logger.logger.warning(f"Error cleaning up session {session_file}: {e}")
-                    
+                    logger.logger.warning(f"Failed to cleanup Supabase sessions: {e}")
+            
+            # Clean up local files
+            if self.session_dir and self.session_dir.exists():
+                for session_file in self.session_dir.glob("*.json"):
+                    try:
+                        with open(session_file, 'r') as f:
+                            session_data = json.load(f)
+                        
+                        session = UserSession.from_dict(session_data)
+                        
+                        if not self._validate_session(session):
+                            session_file.unlink()
+                            logger.logger.info(f"Cleaned up expired local session: {session_file.name}")
+                            
+                    except Exception as e:
+                        logger.logger.warning(f"Error cleaning up session {session_file}: {e}")
+                        
         except Exception as e:
             logger.log_error(e, "Error during session cleanup")
     
@@ -249,13 +326,13 @@ class SessionManager:
             session.session_token = self._generate_session_token(user_id)
             session.last_activity = datetime.now()
             
-            # Persist to storage
+            # Persist to storage (will try Supabase then local fallback)
             if self._persist_session(session):
                 logger.logger.info(f"User authenticated: {user_email}")
                 return True
             else:
-                logger.log_error(Exception(f"Failed to persist authenticated session for {user_email}"), "Authentication failed")
-                return False
+                logger.logger.warning(f"Session persisted in memory only for {user_email}")
+                return True  # Still allow login even if persistence fails
                 
         except Exception as e:
             logger.log_error(e, "Authentication failed")
@@ -266,10 +343,19 @@ class SessionManager:
         try:
             session = st.session_state["user_session"]
             
-            # Clear session file
-            if session.session_id:
+            # Clear from Supabase
+            if self.use_database and self.supabase and session.session_id:
+                try:
+                    self.supabase.client.table("sessions").delete().eq(
+                        "session_id", session.session_id
+                    ).execute()
+                except Exception as e:
+                    logger.logger.warning(f"Failed to delete session from Supabase: {e}")
+            
+            # Clear local session file
+            if self.session_dir and session.session_id:
                 session_file = self._get_session_file_path(session.session_id)
-                if session_file.exists():
+                if session_file and session_file.exists():
                     session_file.unlink()
             
             # Reset session in memory
