@@ -240,3 +240,15 @@ Traceback (most recent call last):
     raise ValueError("Test error for logging")
 ValueError: Test error for logging
 
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 NameError: name 'track_page' is not defined
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Application error
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/app.py", line 1719, in main
+    show_main_app()
+    ~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/app.py", line 830, in show_main_app
+    track_page(page.lower().replace(" ", "_"))  # RE-ENABLED
+    ^^^^^^^^^^
+NameError: name 'track_page' is not defined
+

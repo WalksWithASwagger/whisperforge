@@ -1059,3 +1059,21 @@ ValueError: Test error for logging
 2025-06-12 15:16:57 | [32mINFO[0m | whisperforge | authenticate_user:86 | Authentication attempt for: test@whisperforge.dev
 2025-06-12 15:16:57 | [32mINFO[0m | whisperforge | authenticate_user:128 | User authenticated successfully: test@whisperforge.dev
 2025-06-12 15:16:57 | DEBUG | whisperforge | _load_user_preferences:231 | Loaded preferences for user: 21
+2025-06-12 15:40:31 | [32mINFO[0m | whisperforge | authenticate_user:87 | Authentication attempt for: test@whisperforge.dev
+2025-06-12 15:40:31 | [32mINFO[0m | whisperforge | authenticate_user:129 | User authenticated successfully: test@whisperforge.dev
+2025-06-12 15:40:32 | DEBUG | whisperforge | _load_user_preferences:232 | Loaded preferences for user: 21
+2025-06-12 15:41:42 | [32mINFO[0m | whisperforge | authenticate_user:87 | Authentication attempt for: test@whisperforge.dev
+2025-06-12 15:41:43 | [32mINFO[0m | whisperforge | authenticate_user:129 | User authenticated successfully: test@whisperforge.dev
+2025-06-12 15:41:43 | DEBUG | whisperforge | _load_user_preferences:232 | Loaded preferences for user: 21
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:144 | 💥 NameError: name 'track_page' is not defined
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:146 | Context: Application error
+2025-06-12 15:41:43 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/app.py", line 1719, in main
+    show_main_app()
+    ~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/app.py", line 830, in show_main_app
+    track_page(page.lower().replace(" ", "_"))  # RE-ENABLED
+    ^^^^^^^^^^
+NameError: name 'track_page' is not defined
+

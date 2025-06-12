@@ -24,6 +24,10 @@ def track_user_action(action: str, user_id: Optional[str] = None):
     """Track user action - minimal implementation"""
     logger.info(f"User action: {action} | User: {user_id}")
 
+def track_page(page: str, user_id: Optional[str] = None):
+    """Track page view - minimal implementation"""
+    logger.info(f"Page view: {page} | User: {user_id}")
+
 def get_health_status() -> Dict[str, Any]:
     """Get health status - minimal implementation"""
     return {

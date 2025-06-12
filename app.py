@@ -72,6 +72,10 @@ def track_user_action(action, user_id=None):
     """Simple user action tracking"""
     logger.info(f"User action: {action} | User: {user_id}")
 
+def track_page(page, user_id=None):
+    """Simple page tracking"""
+    logger.info(f"Page view: {page} | User: {user_id}")
+
 def get_health_status():
     """Simple health status"""
     return {"status": "healthy", "timestamp": time.time()}
