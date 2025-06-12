@@ -54,9 +54,13 @@ class StreamlitMonitor:
         """Get current page name from Streamlit"""
         try:
             # Try to get from query params or session state
-            query_params = st.experimental_get_query_params()
-            if 'page' in query_params:
-                return query_params['page'][0]
+            query_params = st.query_params
+            page_param = query_params.get('page')
+            # st.query_params may return a string or list depending on how set
+            if page_param:
+                if isinstance(page_param, list):
+                    return page_param[0]
+                return str(page_param)
             return getattr(st.session_state, 'current_page', 'home')
         except:
             return 'unknown'
