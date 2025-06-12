@@ -1,0 +1,115 @@
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | DEBUG | whisperforge | _persist_session:183 | Session persisted locally: ee45d417-ce40-4729-837e-1aefe91b472b
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _restore_session:231 | Restored session from local file: ee45d417-ce40-4729-837e-1aefe91b472b
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _validate_session:257 | Session expired: 7c661bff-9518-4e79-9908-f9280de56e50
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | DEBUG | whisperforge | _persist_session:183 | Session persisted locally: 9522a1c2-7dec-49ab-b414-0b735563eb55
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | authenticate_user:331 | User authenticated: test@example.com
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | logout:369 | User logged out successfully
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | __init__:104 | Supabase not available, using memory-only sessions: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:112 | Using local session storage fallback
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | _init_session_tracking:133 | New session created
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | __init__:118 | SessionManager initialized for test_app
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | authenticate_user:53 | Authentication attempt for: nonexistent@example.com
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | authenticate_user:63 | User not found: nonexistent@example.com
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | authenticate_user:53 | Authentication attempt for: test@example.com
+2025-06-12 09:32:03 | [33mWARNING[0m | whisperforge | authenticate_user:105 | Invalid password for user: test@example.com
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:164 | 🧪 Starting test session
+2025-06-12 09:32:03 | [32mINFO[0m | whisperforge | setup_logging:166 | 🧪 Test session completed

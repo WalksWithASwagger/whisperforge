@@ -4,6 +4,13 @@
 import streamlit as st
 from pathlib import Path
 
+# Try to import streamlit-hotkeys, fallback gracefully
+try:
+    from streamlit_hotkeys import streamlit_hotkeys
+    HOTKEYS_AVAILABLE = True
+except ImportError:
+    HOTKEYS_AVAILABLE = False
+
 def load_aurora_css():
     """Load the Aurora CSS framework with beautiful animations"""
     css_file = Path(__file__).parent.parent / "static" / "css" / "whisperforge_ui.css"
@@ -330,6 +337,72 @@ def handle_email_auth_section():
     """Handle email auth section safely with Aurora styling"""
     return ErrorBoundary.safe_render(lambda: st.container())
 
+def show_quick_help():
+    """Show quick help modal with keyboard shortcuts and FAQ"""
+    help_content = """
+    # 🚀 WhisperForge Quick Help
+    
+    ## Keyboard Shortcuts
+    - **⌘ K** (Mac) / **Ctrl+K** (Windows/Linux): Open this help modal
+    - **⌘ Enter** / **Ctrl+Enter**: Start processing (when file is uploaded)
+    - **Escape**: Close modals and dialogs
+    
+    ## File Upload Tips
+    - **Supported formats**: MP3, WAV, M4A, AAC, OGG, FLAC, WEBM
+    - **File size limit**: Up to 2GB
+    - **Large files**: Automatically chunked for optimal processing
+    - **Progress tracking**: Real-time progress bars and status updates
+    
+    ## AI Features
+    - **Multiple providers**: OpenAI, Anthropic, Grok
+    - **Custom prompts**: Personalize content generation in Settings
+    - **AI Editor**: Enable for enhanced content quality
+    - **Research enrichment**: Automatic supporting links
+    
+    ## UI Preferences
+    - **Theme toggle**: Switch between light and dark themes
+    - **Prompt caching**: Remember your last used prompts
+    - **Settings persistence**: All preferences saved automatically
+    
+    ## Troubleshooting
+    - **Upload fails**: Check file format and size limits
+    - **Processing stuck**: Try refreshing the page
+    - **API errors**: Verify your API keys in Settings
+    - **Performance issues**: Use smaller files or enable chunking
+    
+    ## Need More Help?
+    - Check the **Settings** page for configuration options
+    - Visit the **Health Check** page for system status
+    - Review **Content History** for past processing results
+    
+    ---
+    *Press Escape or click outside to close this help*
+    """
+    
+    # Show help content in expander for better UX
+    with st.expander("📚 Quick Help & Shortcuts", expanded=True):
+        st.markdown(help_content)
+
+def register_keyboard_shortcuts():
+    """Register keyboard shortcuts for the application"""
+    if not HOTKEYS_AVAILABLE:
+        return None
+    
+    try:
+        # Register ⌘K / Ctrl+K for quick help
+        hotkey_pressed = streamlit_hotkeys(
+            key_bindings={
+                "cmd+k,ctrl+k": "help",
+                "cmd+enter,ctrl+enter": "process",
+                "escape": "close"
+            },
+            key="global_hotkeys"
+        )
+        return hotkey_pressed
+    except Exception as e:
+        st.error(f"Keyboard shortcuts unavailable: {e}")
+        return None
+
 # Export all Aurora classes and functions
 __all__ = [
     'AuroraContainer',
@@ -341,5 +414,8 @@ __all__ = [
     'create_auth_layout',
     'create_main_layout',
     'handle_oauth_section',
-    'handle_email_auth_section'
+    'handle_email_auth_section',
+    'show_quick_help',
+    'register_keyboard_shortcuts',
+    'HOTKEYS_AVAILABLE'
 ] 

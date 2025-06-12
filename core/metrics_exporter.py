@@ -13,8 +13,7 @@ from dataclasses import dataclass
 from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 
-from .monitoring import structured_logger
-from .health_check import health_checker
+import logging
 
 
 @dataclass
@@ -33,7 +32,7 @@ class PrometheusExporter:
     """Exports metrics in Prometheus format"""
     
     def __init__(self):
-        self.logger = structured_logger
+        self.logger = logging.getLogger(__name__)
         self.metrics = defaultdict(list)
         self.counters = defaultdict(float)
         self.gauges = defaultdict(float)
@@ -118,6 +117,8 @@ class PrometheusExporter:
     def update_health_metrics(self):
         """Update health-related metrics"""
         try:
+            from .health_check import HealthChecker
+            health_checker = HealthChecker()
             health_status = health_checker.get_health_status()
             
             # Convert health status to numeric
@@ -142,6 +143,8 @@ class PrometheusExporter:
     def update_slo_metrics(self):
         """Update SLO-related metrics"""
         try:
+            from .health_check import HealthChecker
+            health_checker = HealthChecker()
             slo_metrics = health_checker.get_slo_metrics()
             
             # Active users

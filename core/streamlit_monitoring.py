@@ -13,12 +13,12 @@ from functools import wraps
 from contextlib import contextmanager
 
 from .monitoring import (
-    structured_logger, 
-    performance_tracker, 
-    error_tracker,
-    set_trace_context,
-    trace_operation,
-    monitor_function
+    init_monitoring as init_base_monitoring,
+    track_error as base_track_error,
+    track_performance as base_track_performance,
+    track_user_action as base_track_user_action,
+    get_health_status,
+    init_session_tracking as base_init_session_tracking
 )
 
 
@@ -26,9 +26,8 @@ class StreamlitMonitor:
     """Streamlit-specific monitoring wrapper"""
     
     def __init__(self):
-        self.logger = structured_logger
-        self.performance = performance_tracker
-        self.errors = error_tracker
+        import logging
+        self.logger = logging.getLogger(__name__)
     
     def init_session_monitoring(self):
         """Initialize monitoring for Streamlit session"""
@@ -37,16 +36,9 @@ class StreamlitMonitor:
             import uuid
             st.session_state.trace_id = str(uuid.uuid4())
         
-        # Set trace context
+        # Set session info
         user_id = getattr(st.session_state, 'user_id', None)
         session_id = getattr(st.session_state, 'session_id', None)
-        
-        set_trace_context(
-            trace_id=st.session_state.trace_id,
-            user_id=user_id,
-            session_id=session_id,
-            operation='streamlit_session'
-        )
         
         # Log session start if new
         if 'session_monitored' not in st.session_state:
@@ -73,11 +65,9 @@ class StreamlitMonitor:
         """Track page view"""
         st.session_state.current_page = page_name
         
-        self.logger.user_action(
-            'page_view',
-            user_id=getattr(st.session_state, 'user_id', None),
-            page=page_name,
-            authenticated=bool(getattr(st.session_state, 'user_id', None))
+        base_track_user_action(
+            'page_view', 
+            {'page': page_name, 'authenticated': bool(getattr(st.session_state, 'user_id', None))}
         )
     
     def track_user_action(self, action: str, **context):
@@ -90,7 +80,7 @@ class StreamlitMonitor:
             **context
         }
         
-        self.logger.user_action(action, user_id=user_id, **action_context)
+        base_track_user_action(action, action_context)
     
     def track_error(self, error: Exception, context: Dict[str, Any] = None):
         """Track error with Streamlit context"""
@@ -101,7 +91,7 @@ class StreamlitMonitor:
             **(context or {})
         }
         
-        self.errors.capture_exception(error, error_context)
+        base_track_error(error, error_context)
     
     @contextmanager
     def track_operation(self, operation_name: str, **context):
@@ -112,7 +102,7 @@ class StreamlitMonitor:
             **context
         }
         
-        with self.performance.track_operation(operation_name, **operation_context):
+        with base_track_performance(operation_name, operation_context):
             yield
     
     def monitor_pipeline(self, pipeline_type: str):
@@ -123,7 +113,7 @@ class StreamlitMonitor:
                 user_id = getattr(st.session_state, 'user_id', None)
                 
                 # Log pipeline start
-                self.logger.pipeline_start(pipeline_type, user_id=user_id)
+                base_track_user_action('pipeline_start', {'pipeline_type': pipeline_type, 'user_id': user_id})
                 
                 start_time = time.time()
                 try:
@@ -131,12 +121,20 @@ class StreamlitMonitor:
                         result = func(*args, **kwargs)
                     
                     duration = time.time() - start_time
-                    self.logger.pipeline_complete(pipeline_type, duration, success=True)
+                    base_track_user_action('pipeline_complete', {
+                        'pipeline_type': pipeline_type, 
+                        'duration': duration, 
+                        'success': True
+                    })
                     return result
                     
                 except Exception as e:
                     duration = time.time() - start_time
-                    self.logger.pipeline_complete(pipeline_type, duration, success=False)
+                    base_track_user_action('pipeline_complete', {
+                        'pipeline_type': pipeline_type, 
+                        'duration': duration, 
+                        'success': False
+                    })
                     self.track_error(e, {'pipeline_type': pipeline_type})
                     raise
             
@@ -167,6 +165,7 @@ streamlit_monitor = StreamlitMonitor()
 # Convenience functions for easy integration
 def init_monitoring():
     """Initialize Streamlit monitoring - call at app start"""
+    init_base_monitoring()
     streamlit_monitor.init_session_monitoring()
 
 

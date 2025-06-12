@@ -15,6 +15,13 @@ from streamlit.testing.v1 import AppTest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Load environment variables from .env file if it exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed, skip
+
 from core.logging_config import logger
 from core.supabase_integration import get_supabase_client
 
@@ -25,7 +32,7 @@ def test_env():
     original_env = {}
     test_vars = {
         'SUPABASE_URL': os.getenv('SUPABASE_URL', 'https://test.supabase.co'),
-        'SUPABASE_KEY': os.getenv('SUPABASE_KEY', 'test-key'),
+        'SUPABASE_ANON_KEY': os.getenv('SUPABASE_ANON_KEY', 'test-anon-key'),
         'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', 'test-openai-key'),
         'ANTHROPIC_API_KEY': os.getenv('ANTHROPIC_API_KEY', 'test-anthropic-key'),
         'GROQ_API_KEY': os.getenv('GROQ_API_KEY', 'test-groq-key'),

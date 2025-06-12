@@ -255,6 +255,7 @@ class LargeFileUploadManager:
                     return {"success": False, "error": transcript or "Transcription failed"}
                 
                 progress_bar.progress(1.0, "✅ Transcription complete!")
+                st.toast("Upload successful!", icon="✅")
                 
                 return {
                     "success": True,
@@ -265,6 +266,7 @@ class LargeFileUploadManager:
                 
             except Exception as e:
                 progress_bar.progress(1.0, f"❌ Error: {str(e)}")
+                st.toast(f"Upload failed: {str(e)}", icon="⚠️")
                 return {"success": False, "error": str(e)}
     
     def _process_large_file_chunked(self, uploaded_file) -> Dict[str, Any]:
@@ -304,6 +306,7 @@ class LargeFileUploadManager:
             # Success!
             with progress_container.container():
                 st.success("✅ Large file processing complete!")
+                st.toast("Large file upload successful!", icon="🎉")
                 st.markdown(f"""
                 **Processing Summary:**
                 - Total chunks: {total_chunks}
@@ -321,6 +324,7 @@ class LargeFileUploadManager:
         except Exception as e:
             logger.exception("Error in large file processing:")
             st.error(f"❌ Large file processing failed: {str(e)}")
+            st.toast(f"Large file upload failed: {str(e)}", icon="⚠️")
             return {"success": False, "error": str(e)}
     
     def _create_audio_chunks(self, uploaded_file) -> Dict[str, Any]:

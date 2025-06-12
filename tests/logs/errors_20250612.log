@@ -1,0 +1,39 @@
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:146 | Context: Failed to initialize Supabase
+2025-06-12 09:32:03 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 30, in _init_supabase
+    self.supabase_client = get_supabase_client()
+                           ~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 397, in get_supabase_client
+    _supabase_client = SupabaseClient()
+  File "/Users/kk/Code/whisperforge--prime/core/supabase_integration.py", line 36, in __init__
+    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+ValueError: SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables
+

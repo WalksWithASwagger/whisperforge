@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from .monitoring import structured_logger
+import logging
 
 
 @dataclass
@@ -43,7 +43,7 @@ class HealthChecker:
     """Health check and metrics provider"""
     
     def __init__(self):
-        self.logger = structured_logger
+        self.logger = logging.getLogger(__name__)
         self.start_time = time.time()
         self.metrics_cache = {}
         self.cache_ttl = 60  # Cache for 60 seconds
