@@ -124,13 +124,18 @@ def test_table_creation(client):
         logger.logger.error(f"❌ Sessions table test failed: {e}")
 
 def main():
-    # Check for required environment variables
-    required_vars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY']
+    # Accept SUPABASE_KEY as a fallback if SUPABASE_ANON_KEY is not set
+    required_primary = ['SUPABASE_URL']
     missing_vars = []
-    
-    for var in required_vars:
+
+    # Check primary required variables
+    for var in required_primary:
         if not os.getenv(var):
             missing_vars.append(var)
+
+    # Supabase anon key can be provided via either SUPABASE_ANON_KEY or legacy SUPABASE_KEY
+    if not (os.getenv('SUPABASE_ANON_KEY') or os.getenv('SUPABASE_KEY')):
+        missing_vars.append('SUPABASE_ANON_KEY (or SUPABASE_KEY)')
     
     if missing_vars:
         logger.logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")

@@ -3,6 +3,14 @@
 # WhisperForge Startup Script
 echo "🚀 Starting WhisperForge with real Supabase credentials..."
 
+# Auto-load environment variables from .env if present
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
+fi
+
 # Check for required environment variables
 if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
     echo "❌ Missing required environment variables:"
