@@ -92,7 +92,7 @@ def init_supabase():
             return None, False
             
     except Exception as e:
-        logger.error(f"Supabase initialization failed: {e}")
+        logger.log_error(e, "Supabase initialization failed")
         # Don't crash the app - continue without database
         return None, False
 
@@ -104,7 +104,7 @@ def register_user_supabase(email: str, password: str) -> bool:
     try:
         db, _ = init_supabase()
         if not db:
-            logger.error("Failed to initialize Supabase client")
+            logger.log_error(Exception("Failed to initialize Supabase client"), "Registration error")
             return False
         
         # Check if user already exists
@@ -123,7 +123,7 @@ def register_user_supabase(email: str, password: str) -> bool:
             logger.error(f"Failed to create user: {email}")
             return False
     except Exception as e:
-        logger.error(f"Registration error: {e}")
+        logger.log_error(e, "Registration error")
         return False
 
 def get_user_api_keys_supabase() -> dict:
@@ -1713,8 +1713,8 @@ def main():
             show_auth_page()
             
     except Exception as e:
-        logger.error(f"Application error: {e}")
-        track_monitoring_error(e, {"page": "main", "function": "main"})
+        logger.log_error(e, f"Application error")
+        # track_monitoring_error(e, {"page": "main", "function": "main"})  # DISABLED
         st.error("An unexpected error occurred. Please refresh the page.")
         st.exception(e)
 
