@@ -50,9 +50,11 @@ from core.notifications import (
     create_loading_spinner
 )
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Enhanced logging system
+from core.logging_config import (
+    logger, log_pipeline_step, log_file_upload, log_ai_request,
+    log_database_operation, log_user_action, log_error
+)
 
 # Initialize monitoring
 init_monitoring()
@@ -85,15 +87,19 @@ def init_supabase():
 def authenticate_user(email, password):
     """Simple authentication - no complex token management"""
     try:
+        log_user_action("login_attempt", details={"email": email})
+        
         db, success = init_supabase()
         if not success:
+            log_database_operation("connect", "users", False, "Supabase initialization failed")
             return False
         
         # Get user by email
         result = db.client.table("users").select("*").eq("email", email).execute()
+        log_database_operation("select", "users", True)
         
         if not result.data:
-            logger.warning(f"No user found with email: {email}")
+            log_user_action("login_failed", details={"email": email, "reason": "user_not_found"})
             return False
             
         user = result.data[0]
@@ -107,7 +113,7 @@ def authenticate_user(email, password):
                 st.session_state.authenticated = True
                 st.session_state.user_id = user["id"]
                 st.session_state.user_email = email
-                logger.info(f"User authenticated: {email}")
+                log_user_action("login_success", user["id"], {"email": email})
                 return True
         else:
             # Legacy password handling
@@ -116,17 +122,19 @@ def authenticate_user(email, password):
                 # Migrate to bcrypt and authenticate
                 new_hash = hash_password(password)
                 db.client.table("users").update({"password": new_hash}).eq("id", user["id"]).execute()
+                log_database_operation("update", "users", True, "Password migrated to bcrypt")
                 
                 st.session_state.authenticated = True
                 st.session_state.user_id = user["id"]
                 st.session_state.user_email = email
-                logger.info(f"User authenticated and password migrated: {email}")
+                log_user_action("login_success", user["id"], {"email": email, "password_migrated": True})
                 return True
                 
+        log_user_action("login_failed", details={"email": email, "reason": "invalid_password"})
         return False
         
     except Exception as e:
-        logger.error(f"Authentication error: {e}")
+        log_error(e, f"Authentication failed for {email}")
         return False
 
 def register_user_supabase(email: str, password: str) -> bool:
