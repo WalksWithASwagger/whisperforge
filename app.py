@@ -529,7 +529,7 @@ def show_auth_page():
         st.markdown('</div>', unsafe_allow_html=True)
         return
     
-    # OAuth login with Supabase
+    # OAuth login with Supabase (Simplified)
     st.markdown("### 🔐 Sign in with Google")
     
     # Generate OAuth URL
@@ -543,17 +543,14 @@ def show_auth_page():
             oauth_url = f"{db.url}/auth/v1/authorize?provider=google&redirect_to={redirect_url}"
             
             if st.button("Continue with Google", type="primary", use_container_width=True):
-                # Use JavaScript redirect for better OAuth flow
-                st.markdown(f"""
-                <script>
-                window.open('{oauth_url}', '_self');
-                </script>
-                """, unsafe_allow_html=True)
-                st.info("🔄 Redirecting to Google...")
+                st.info("🔄 Opening Google login in new tab...")
+                st.markdown(f'<a href="{oauth_url}" target="_blank">Click here if redirect doesn\'t work</a>', unsafe_allow_html=True)
+                # Use meta refresh for better compatibility
+                st.markdown(f'<meta http-equiv="refresh" content="1;url={oauth_url}">', unsafe_allow_html=True)
         else:
-            st.error("Database connection not available")
+            st.warning("Database connection not available - OAuth disabled")
     except Exception as e:
-        st.error(f"OAuth setup error: {e}")
+        st.warning(f"OAuth temporarily unavailable: {str(e)[:50]}...")
         st.info("Please use email/password login below")
     
 

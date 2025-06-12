@@ -10,33 +10,34 @@ from typing import Optional, Dict, Any
 # Simple session management replacement
 class SimpleSessionManager:
     def is_authenticated(self):
-        return st.session_state.get("authenticated", False)
+        return st.session_state.get('authenticated', False)
     
     def get_user_id(self):
-        return st.session_state.get("user_id")
+        return st.session_state.get('user_id')
     
     def get_user_email(self):
-        return st.session_state.get("user_email")
+        return st.session_state.get('user_email')
     
     def authenticate_user(self, user_id, email):
         st.session_state.authenticated = True
-        st.session_state.user_id = user_id
+        st.session_state.user_id = str(user_id)
         st.session_state.user_email = email
         return True
     
     def logout(self):
-        st.session_state.authenticated = False
-        st.session_state.user_id = None
-        st.session_state.user_email = None
+        for key in ['authenticated', 'user_id', 'user_email']:
+            if key in st.session_state:
+                del st.session_state[key]
         return True
     
     def set_preference(self, key, value):
-        if "preferences" not in st.session_state:
+        if not hasattr(st.session_state, 'preferences'):
             st.session_state.preferences = {}
         st.session_state.preferences[key] = value
+        return True
     
     def get_preference(self, key, default=None):
-        return st.session_state.get("preferences", {}).get(key, default)
+        return getattr(st.session_state, 'preferences', {}).get(key, default)
 
 def get_session_manager():
     return SimpleSessionManager()
