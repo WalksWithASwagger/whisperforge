@@ -844,7 +844,15 @@ def show_home_page():
         
         # Show file validation and processing info
         if uploaded_file is not None:
-            file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
+            # Use attribute to avoid loading entire file into memory
+            file_size_bytes = getattr(uploaded_file, "size", None)
+            if file_size_bytes is None:
+                try:
+                    file_size_bytes = len(uploaded_file.getvalue())
+                except Exception:
+                    file_size_bytes = 0
+
+            file_size_mb = file_size_bytes / (1024 * 1024)
             
             # File info display
             st.markdown(f"""
@@ -1525,7 +1533,7 @@ def show_settings_page():
                 if save_knowledge_base_file_supabase(uploaded_kb.name, content):
                     st.success(f"Saved {uploaded_kb.name}!")
                     st.rerun()
-    
+
     with tab5:
         st.markdown("#### UI Preferences")
         

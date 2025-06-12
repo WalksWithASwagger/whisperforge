@@ -623,21 +623,37 @@ class LargeFileUploadManager:
                 logger.warning(f"Failed to cleanup chunk file {chunk['file_path']}: {e}")
     
     def validate_large_file(self, file) -> Dict[str, Any]:
-        """Validate large file upload"""
+        """Validate large file upload (Render-safe: cap at 50 MB)"""
         if not file:
             return {"valid": False, "error": "No file provided"}
-        
-        # Check file size
-        file_size = len(file.getvalue())
+
+        # Prefer attribute-based size to avoid reading full buffer
+        file_size = getattr(file, "size", None)
+        if file_size is None:
+            try:
+                file_size = len(file.getvalue())
+            except Exception:
+                file_size = 0
+
+        # Temporary Render safeguard: hard-cap at 50 MB
+        max_render_bytes = 50 * 1024 * 1024  # 50 MB
+        if file_size > max_render_bytes:
+            size_mb = file_size / (1024 * 1024)
+            return {
+                "valid": False,
+                "error": f"File too large: {size_mb:.1f} MB (max 50 MB on current deployment)"
+            }
+
+        # Existing guard against >2 GB (kept for completeness)
         if file_size > self.max_file_size:
             size_gb = file_size / (1024 * 1024 * 1024)
-            return {"valid": False, "error": f"File too large: {size_gb:.1f}GB (max 2GB)"}
-        
+            return {"valid": False, "error": f"File too large: {size_gb:.1f} GB (max 2 GB)"}
+
         # Check file type
         file_extension = os.path.splitext(file.name)[1].lower()
         if file_extension not in self.supported_formats['audio']:
             return {"valid": False, "error": f"Unsupported format: {file_extension}"}
-        
+
         return {"valid": True}
 
 
