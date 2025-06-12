@@ -22,3 +22,221 @@ ValueError: Test error for logging
 
 2025-06-12 10:20:15 | [31mERROR[0m | whisperforge | main:136 | ❌ Missing required environment variables: SUPABASE_ANON_KEY
 2025-06-12 10:20:15 | [31mERROR[0m | whisperforge | main:137 | Please set them before running this script.
+2025-06-12 11:41:56 | [31mERROR[0m | whisperforge | main:136 | ❌ Missing required environment variables: SUPABASE_ANON_KEY
+2025-06-12 11:41:56 | [31mERROR[0m | whisperforge | main:137 | Please set them before running this script.
+2025-06-12 11:42:44 | [31mERROR[0m | whisperforge | create_prompts_table:36 | ❌ Failed to create prompts table: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:42:48 | [31mERROR[0m | whisperforge | create_api_keys_table:64 | ❌ Failed to create api_keys table: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:42:51 | [31mERROR[0m | whisperforge | create_sessions_table:99 | ❌ Failed to create sessions table: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:43:04 | [31mERROR[0m | whisperforge | test_table_creation:110 | ❌ Prompts table test failed: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:43:28 | [31mERROR[0m | whisperforge | test_table_creation:117 | ❌ API keys table test failed: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:43:31 | [31mERROR[0m | whisperforge | test_table_creation:124 | ❌ Sessions table test failed: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:56:13 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:56:13 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-12 11:56:13 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 11:56:21 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 11:56:21 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for nonexistent@example.com
+2025-06-12 11:56:21 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-12 11:56:24 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-12 12:43:04 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 12:43:04 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-12 12:43:04 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 12:43:07 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 12:43:07 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for nonexistent@example.com
+2025-06-12 12:43:07 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-12 12:43:18 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+
+2025-06-12 12:46:56 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 12:46:56 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for test@example.com
+2025-06-12 12:46:56 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 12:47:35 | [31mERROR[0m | whisperforge | log_error:144 | 💥 APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+2025-06-12 12:47:35 | [31mERROR[0m | whisperforge | log_error:146 | Context: Authentication error for nonexistent@example.com
+2025-06-12 12:47:35 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 77, in execute
+    json_obj = APIErrorFromJSON.model_validate_json(r.content)
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/pydantic/main.py", line 746, in model_validate_json
+    return cls.__pydantic_validator__.validate_json(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        json_data, strict=strict, context=context, by_alias=by_alias, by_name=by_name
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for APIErrorFromJSON
+  Invalid JSON: expected value at line 1 column 1 [type=json_invalid, input_value=b'Project not specified.', input_type=bytes]
+    For further information visit https://errors.pydantic.dev/2.11/v/json_invalid
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/core/auth_wrapper.py", line 60, in authenticate_user
+    result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
+  File "/Users/kk/Code/whisperforge--prime/venv/lib/python3.13/site-packages/postgrest/_sync/request_builder.py", line 80, in execute
+    raise APIError(generate_default_error_message(r))
+postgrest.exceptions.APIError: {'message': 'JSON could not be generated', 'code': 400, 'hint': 'Refer to full message for details', 'details': "b'Project not specified.'"}
+
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_pipeline_step:82 | ❌ Pipeline step failed: test_step
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_pipeline_step:84 | Error details: Test error
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test context
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 32, in test_logging_functionality
+    raise ValueError("Test error")
+ValueError: Test error
+
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:144 | 💥 ValueError: Test error for logging
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:146 | Context: Test error context
+2025-06-12 12:48:25 | [31mERROR[0m | whisperforge | log_error:149 | Traceback:
+Traceback (most recent call last):
+  File "/Users/kk/Code/whisperforge--prime/tests/test_basic_functionality.py", line 167, in test_logging_error_handling
+    raise ValueError("Test error for logging")
+ValueError: Test error for logging
+

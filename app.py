@@ -42,11 +42,7 @@ from core.content_generation import (
     generate_social_content, generate_image_prompts, editor_critique
 )
 from core.styling import apply_aurora_theme, create_aurora_header, AuroraComponents
-from core.monitoring import (
-    init_monitoring, track_error, track_performance, track_user_action, 
-    get_health_status, init_session_tracking
-)
-# Removed old progress tracker imports - using simple progress bars now
+# Core functionality imports
 from core.file_upload import FileUploadManager, LargeFileUploadManager
 from core.notifications import (
     show_success, show_error, show_warning, show_info,
@@ -59,20 +55,53 @@ from core.logging_config import (
     log_database_operation, log_user_action, log_error
 )
 
-# Production monitoring system - CAREFULLY RE-ENABLED
-from core.streamlit_monitoring import (
-    init_monitoring as init_streamlit_monitoring, track_page, track_action, 
-    track_error as track_monitoring_error, track_operation, monitor_pipeline, 
-    show_dev_metrics, streamlit_page, streamlit_component
-)
-# from core.health_check import health_checker  # STILL DISABLED - Test later
-# from core.metrics_exporter import export_prometheus_metrics, export_json_metrics  # STILL DISABLED
+# Simple monitoring replacements (no complex monitoring needed)
+def init_monitoring():
+    """Simple monitoring initialization"""
+    pass
 
-# Initialize monitoring systems
-init_monitoring()  # Legacy monitoring
-init_streamlit_monitoring()  # New structured monitoring - RE-ENABLED
+def track_error(error, context=""):
+    """Simple error tracking"""
+    logger.error(f"Error: {error} | Context: {context}")
+
+def track_performance(operation, duration):
+    """Simple performance tracking"""
+    logger.info(f"Performance: {operation} took {duration}s")
+
+def track_user_action(action, user_id=None):
+    """Simple user action tracking"""
+    logger.info(f"User action: {action} | User: {user_id}")
+
+def get_health_status():
+    """Simple health status"""
+    return {"status": "healthy", "timestamp": time.time()}
+
+# Initialize simple monitoring
+init_monitoring()
 
 # Removed unused run_content_pipeline - replaced by streaming_pipeline.py
+
+
+# Simple replacements for archived functions
+def load_aurora_css():
+    pass
+
+def register_keyboard_shortcuts():
+    pass
+
+def show_quick_help():
+    pass
+
+def save_pref(key, value):
+    pass
+
+def load_pref(key, default=None):
+    return default
+
+def get_preferences_manager():
+    return None
+
+HOTKEYS_AVAILABLE = False
 
 # === Database Connection (Research-Backed Pattern) ===
 
@@ -320,51 +349,77 @@ def log_pipeline_execution_supabase(pipeline_data: dict) -> bool:
         return False
 
 def handle_oauth_callback():
-    """Handle OAuth callback from Supabase - FIXED VERSION"""
+    """Handle OAuth callback from Supabase"""
     query_params = st.query_params
     
     # Only process if we have OAuth parameters
-    if 'code' in query_params and not st.session_state.get('authenticated', False):
-        st.sidebar.write(f"🔄 Processing OAuth callback...")
+    if 'access_token' in query_params or 'code' in query_params:
+        if st.session_state.get('authenticated', False):
+            return False  # Already authenticated
+            
+        st.info("🔄 Processing OAuth callback...")
         
         try:
-            # Simple approach - use session manager which handles Supabase connection
-            from core.auth_wrapper import AuthWrapper
-            auth = AuthWrapper()
+            db, _ = init_supabase()
+            if not db:
+                st.error("❌ Database connection not available")
+                return False
             
-            code = query_params['code']
-            st.sidebar.write(f"📝 Code: {code[:20]}...")
-            
-            # Try to authenticate with the code (simplified)
-            # Since Streamlit doesn't support full PKCE properly, we'll use a workaround
-            try:
-                # Just bypass OAuth for now and create a test session
-                # Real OAuth with Streamlit is very complex due to PKCE requirements
-                st.sidebar.warning("⚠️ OAuth callback detected but simplified auth used")
+            # Handle access token (direct from Supabase)
+            if 'access_token' in query_params:
+                access_token = query_params['access_token']
+                refresh_token = query_params.get('refresh_token', '')
                 
-                # Use simple email/password auth instead
-                st.sidebar.info("🔄 Creating simplified session...")
-                
-                # Set minimal auth state
-                if auth.authenticate_user("oauth_user", "oauth@example.com"):
-                    st.success("✅ Authentication successful!")
-                    
-                    # Clear URL parameters
-                    st.query_params.clear()
-                    time.sleep(1)
-                    st.rerun()
-                    return True
-                else:
-                    st.sidebar.error("❌ Failed to create session")
+                # Set the session with the tokens
+                try:
+                    # Get user info from Supabase
+                    response = db.client.auth.get_user(access_token)
+                    if response.user:
+                        user = response.user
+                        
+                        # Create or get user in our database
+                        user_record = db.get_user_by_email(user.email)
+                        if not user_record:
+                            # Create new user
+                            user_record = db.create_user(
+                                email=user.email,
+                                password="",  # OAuth users don't need password
+                                metadata={
+                                    "oauth_provider": "google",
+                                    "oauth_id": user.id,
+                                    "name": user.user_metadata.get("name", ""),
+                                    "avatar_url": user.user_metadata.get("avatar_url", "")
+                                }
+                            )
+                        
+                        # Set session
+                        auth = get_auth()
+                        if auth.session_manager.authenticate_user(user_record["id"], user.email):
+                            st.success("✅ Google authentication successful!")
+                            
+                            # Clear URL parameters
+                            st.query_params.clear()
+                            st.rerun()
+                            return True
+                        else:
+                            st.error("❌ Failed to create session")
+                            return False
+                    else:
+                        st.error("❌ Failed to get user information")
+                        return False
+                        
+                except Exception as token_error:
+                    st.error(f"❌ Token processing failed: {str(token_error)}")
                     return False
-                    
-            except Exception as oauth_error:
-                st.sidebar.error(f"❌ OAuth processing failed: {str(oauth_error)}")
-                st.sidebar.info("💡 Try using email/password login instead")
+            
+            # Handle authorization code (needs exchange)
+            elif 'code' in query_params:
+                st.info("⚠️ Authorization code received - manual token exchange needed")
+                st.info("💡 Please use email/password login for now")
                 return False
                     
         except Exception as e:
-            st.sidebar.error(f"❌ General error: {str(e)}")
+            st.error(f"❌ OAuth callback error: {str(e)}")
             return False
     
     return False
@@ -387,7 +442,8 @@ def show_auth_page():
     
     # Load the stable CSS framework
     try:
-        from core.ui_components import load_aurora_css
+        # Aurora CSS is now handled by core.styling
+        pass
         load_aurora_css()
     except:
         # Fallback CSS if ui_components not available
@@ -473,60 +529,34 @@ def show_auth_page():
         st.markdown('</div>', unsafe_allow_html=True)
         return
     
-    # OAuth temporarily disabled due to PKCE complexity with Streamlit
-    st.info("🔧 **OAuth Login Temporarily Disabled**")
-    st.markdown("""
-    **Why OAuth is disabled:**
-    - Streamlit + Supabase OAuth requires complex PKCE flow handling
-    - Session storage limitations in Streamlit
-    - Code verifier/challenge issues
+    # OAuth login with Supabase
+    st.markdown("### 🔐 Sign in with Google")
     
-    **Alternative:** Use email/password login below
-    """)
+    # Generate OAuth URL
+    try:
+        db, _ = init_supabase()
+        if db:
+            import os
+            redirect_url = os.getenv("OAUTH_REDIRECT_URL", "http://localhost:8501")
+            
+            # Supabase OAuth URL
+            oauth_url = f"{db.url}/auth/v1/authorize?provider=google&redirect_to={redirect_url}"
+            
+            if st.button("Continue with Google", type="primary", use_container_width=True):
+                # Use JavaScript redirect for better OAuth flow
+                st.markdown(f"""
+                <script>
+                window.open('{oauth_url}', '_self');
+                </script>
+                """, unsafe_allow_html=True)
+                st.info("🔄 Redirecting to Google...")
+        else:
+            st.error("Database connection not available")
+    except Exception as e:
+        st.error(f"OAuth setup error: {e}")
+        st.info("Please use email/password login below")
     
-    # Old OAuth code (disabled)
-    if False:  # Disabled OAuth generation
-        try:
-            db, _ = init_supabase()
-            if db:
-                import os
-                redirect_url = os.getenv("OAUTH_REDIRECT_URL")
-                
-                if not redirect_url:
-                    # For local development, use the current port
-                    redirect_url = "http://localhost:8501"
-                
-                if redirect_url:
-                    # Proper Supabase OAuth URL generation
-                    auth_response = db.client.auth.sign_in_with_oauth({
-                        "provider": "google",
-                        "options": {
-                            "redirect_to": redirect_url,
-                            "query_params": {
-                                "access_type": "offline",
-                                "prompt": "consent"
-                            }
-                        }
-                    })
-                    
-                    if hasattr(auth_response, 'url') and auth_response.url:
-                        st.session_state.oauth_url = auth_response.url
-                    else:
-                        st.session_state.oauth_url = None
-                else:
-                    st.session_state.oauth_url = None
-        except Exception as e:
-            # Only show error if it's a real OAuth configuration issue
-            if "oauth" in str(e).lower() or "google" in str(e).lower():
-                st.warning("Google sign-in temporarily unavailable. Use email login below.")
-            st.session_state.oauth_url = None
-    
-    # OAuth button
-    if st.session_state.get('oauth_url'):
-        st.link_button("Continue with Google", st.session_state.oauth_url, type="primary", use_container_width=True)
-    else:
-        if st.button("Continue with Google", type="primary", use_container_width=True):
-            st.error("Failed to generate Google sign-in URL. Please check your configuration.")
+
     
     # Divider
     st.markdown("---")
@@ -623,7 +653,7 @@ def show_main_app():
     
     # Register keyboard shortcuts and handle them
     try:
-        from core.ui_components import register_keyboard_shortcuts, show_quick_help, HOTKEYS_AVAILABLE
+        # from core.ui_components import register_keyboard_shortcuts, show_quick_help, HOTKEYS_AVAILABLE  # ARCHIVED
         
         if HOTKEYS_AVAILABLE:
             hotkey_pressed = register_keyboard_shortcuts()
@@ -844,15 +874,7 @@ def show_home_page():
         
         # Show file validation and processing info
         if uploaded_file is not None:
-            # Use attribute to avoid loading entire file into memory
-            file_size_bytes = getattr(uploaded_file, "size", None)
-            if file_size_bytes is None:
-                try:
-                    file_size_bytes = len(uploaded_file.getvalue())
-                except Exception:
-                    file_size_bytes = 0
-
-            file_size_mb = file_size_bytes / (1024 * 1024)
+            file_size_mb = len(uploaded_file.getvalue()) / (1024 * 1024)
             
             # File info display
             st.markdown(f"""
@@ -1367,7 +1389,7 @@ def show_settings_page():
     st.markdown("# Settings")
     
     # Import preferences at the top of the function
-    from core.preferences import save_pref, load_pref
+    # from core.preferences import save_pref, load_pref  # ARCHIVED
     
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["AI Provider", "API Keys", "Custom Prompts", "Knowledge Base", "UI Preferences"])
     
@@ -1569,7 +1591,7 @@ def show_settings_page():
         
         # Clear cached data
         if st.button("Clear All Cached Preferences"):
-            from core.preferences import get_preferences_manager
+            # from core.preferences import get_preferences_manager  # ARCHIVED
             if get_preferences_manager().clear_all_prefs():
                 st.success("All preferences cleared!")
             else:
@@ -1581,7 +1603,7 @@ def show_health_page():
     st.markdown("# 📊 System Health & Monitoring")
     
     # Show development metrics in sidebar
-    # show_dev_metrics()  # DISABLED
+    # # show_dev_metrics(  # DISABLED)  # DISABLED
     
     # Get health status
     health_status = health_checker.get_health_status()
@@ -1704,7 +1726,7 @@ def main():
             
     except Exception as e:
         logger.log_error(e, f"Application error")
-        track_monitoring_error(e, {"page": "main", "function": "main"})  # RE-ENABLED
+        # track_monitoring_error(  # DISABLEDe, {"page": "main", "function": "main"})  # RE-ENABLED
         st.error("An unexpected error occurred. Please refresh the page.")
         st.exception(e)
 

@@ -91,6 +91,15 @@ class SupabaseClient:
             logger.error(f"Error fetching user: {e}")
             return None
     
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email"""
+        try:
+            result = self.client.table("users").select("*").eq("email", email).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"Error fetching user by email: {e}")
+            return None
+    
     def update_user_usage(self, user_id: int, usage_seconds: int) -> bool:
         """Update user's current usage"""
         try:

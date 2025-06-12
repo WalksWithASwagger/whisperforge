@@ -167,6 +167,19 @@ class WhisperForgeLogger:
         except Exception as e:
             self.logger.error(f"Failed to write structured log: {e}")
 
+    # -------------------------------------------------------------------
+    # Delegation helpers
+    # -------------------------------------------------------------------
+
+    def __getattr__(self, name):
+        """Delegate unknown attributes to the underlying `logging.Logger`.
+
+        This allows callers to use `logger.info`, `logger.debug`, etc. directly
+        on the global `WhisperForgeLogger` instance without having to reference
+        the internal `.logger` attribute.
+        """
+        return getattr(self.logger, name)
+
 class ColoredFormatter(logging.Formatter):
     """Colored console formatter"""
     

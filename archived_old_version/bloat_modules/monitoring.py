@@ -243,4 +243,87 @@ def init_session_tracking():
     track_user_action("page_view", {
         "page": st.session_state.get("current_page", "Home"),
         "authenticated": st.session_state.get("authenticated", False)
-    }) 
+    })
+
+# ---------------------------------------------------------------------------
+# Lightweight wrappers for backward-compatibility with monitoring tests
+# ---------------------------------------------------------------------------
+
+from contextlib import contextmanager as _ctx_mngr
+from typing import Callable as _Callable, Any as _Any
+
+class _StructuredLoggerAdapter(logging.LoggerAdapter):
+    """Passthrough adapter that attaches arbitrary kwargs as extra."""
+
+    def process(self, msg, kwargs):
+        extra = kwargs.pop("extra", {})
+        extra.update(kwargs)  # treat arbitrary kwargs as extra
+        return msg, {"extra": extra}
+
+    # Convenience wrappers used in tests
+    def pipeline_start(self, pipeline: str, **kwargs):
+        self.info("🔄 Pipeline start", pipeline=pipeline, **kwargs)
+
+    def pipeline_complete(self, pipeline: str, duration: float, success: bool = True, **kwargs):
+        level = logging.INFO if success else logging.WARNING
+        self.log(level, "✅ Pipeline complete", pipeline=pipeline, duration=duration, success=success, **kwargs)
+
+# Expose a structured_logger that accepts **kwargs in log calls
+structured_logger = _StructuredLoggerAdapter(logger, {})  # type: ignore
+
+# Simple trace context using a thread-local store
+_trace_context: Dict[str, Any] = {}
+
+def set_trace_context(**kwargs):
+    """Set global trace context (very lightweight)."""
+    _trace_context.update(kwargs)
+    return _trace_context.get("trace_id", "no-trace")
+
+@_ctx_mngr
+def trace_operation(name: str, **kwargs):
+    """Context manager that logs the start/end of an operation."""
+    structured_logger.info("🔄 trace_operation start", operation=name, **kwargs)
+    start = time.time()
+    try:
+        yield
+    finally:
+        structured_logger.info(
+            "✅ trace_operation end",
+            operation=name,
+            duration=time.time() - start,
+            **kwargs,
+        )
+
+class _ErrorTracker:
+    def capture_exception(self, exc: Exception, context: Optional[Dict[str, Any]] = None):
+        structured_logger.error(f"Captured exception: {exc}", context=context)
+
+    def capture_message(self, message: str, level: str = "info", context: Optional[Dict[str, Any]] = None):
+        getattr(structured_logger, level, structured_logger.info)(message, context=context)
+
+error_tracker = _ErrorTracker()
+
+class _PerformanceTracker:
+    @_ctx_mngr
+    def track_operation(self, name: str):
+        with trace_operation(name):
+            yield
+
+    def track_pipeline_performance(self, pipeline: str, duration: float, success: bool, **kwargs):
+        structured_logger.info(
+            "Pipeline performance",
+            pipeline=pipeline,
+            duration=duration,
+            success=success,
+            **kwargs,
+        )
+
+performance_tracker = _PerformanceTracker()
+
+def monitor_function(name: str):
+    def decorator(fn: _Callable[..., _Any]):
+        def wrapper(*args, **kwargs):
+            with trace_operation(name):
+                return fn(*args, **kwargs)
+        return wrapper
+    return decorator 
