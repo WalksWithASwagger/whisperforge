@@ -32,6 +32,9 @@ load_dotenv()
 # Import Supabase integration
 from core.supabase_integration import get_supabase_client, get_mcp_integration
 
+# Import enhanced authentication system
+from core.auth_wrapper import get_auth, authenticate_user, register_user_supabase, get_user_api_keys_supabase, update_api_key_supabase, get_user_prompts_supabase, save_user_prompt_supabase
+
 # Import utility functions (avoiding app.py imports)
 from core.utils import hash_password, DEFAULT_PROMPTS, get_prompt
 from core.content_generation import (
@@ -56,8 +59,18 @@ from core.logging_config import (
     log_database_operation, log_user_action, log_error
 )
 
-# Initialize monitoring
-init_monitoring()
+# Production monitoring system
+from core.streamlit_monitoring import (
+    init_monitoring as init_streamlit_monitoring, track_page, track_action, 
+    track_error as track_monitoring_error, track_operation, monitor_pipeline, 
+    show_dev_metrics, streamlit_page, streamlit_component
+)
+from core.health_check import health_checker
+from core.metrics_exporter import export_prometheus_metrics, export_json_metrics
+
+# Initialize monitoring systems
+init_monitoring()  # Legacy monitoring
+init_streamlit_monitoring()  # New structured monitoring
 
 # Removed unused run_content_pipeline - replaced by streaming_pipeline.py
 
@@ -83,59 +96,8 @@ def init_supabase():
         # Don't crash the app - continue without database
         return None, False
 
-# Database operations using Supabase
-def authenticate_user(email, password):
-    """Simple authentication - no complex token management"""
-    try:
-        log_user_action("login_attempt", details={"email": email})
-        
-        db, success = init_supabase()
-        if not success:
-            log_database_operation("connect", "users", False, "Supabase initialization failed")
-            return False
-        
-        # Get user by email
-        result = db.client.table("users").select("*").eq("email", email).execute()
-        log_database_operation("select", "users", True)
-        
-        if not result.data:
-            log_user_action("login_failed", details={"email": email, "reason": "user_not_found"})
-            return False
-            
-        user = result.data[0]
-        stored_password = user.get("password", "")
-        
-        # Verify password (bcrypt or legacy)
-        if stored_password.startswith('$2b$'):
-            from core.utils import verify_password
-            if verify_password(password, stored_password):
-                # Simple session state - no tokens
-                st.session_state.authenticated = True
-                st.session_state.user_id = user["id"]
-                st.session_state.user_email = email
-                log_user_action("login_success", user["id"], {"email": email})
-                return True
-        else:
-            # Legacy password handling
-            from core.utils import legacy_hash_password, hash_password
-            if legacy_hash_password(password) == stored_password:
-                # Migrate to bcrypt and authenticate
-                new_hash = hash_password(password)
-                db.client.table("users").update({"password": new_hash}).eq("id", user["id"]).execute()
-                log_database_operation("update", "users", True, "Password migrated to bcrypt")
-                
-                st.session_state.authenticated = True
-                st.session_state.user_id = user["id"]
-                st.session_state.user_email = email
-                log_user_action("login_success", user["id"], {"email": email, "password_migrated": True})
-                return True
-                
-        log_user_action("login_failed", details={"email": email, "reason": "invalid_password"})
-        return False
-        
-    except Exception as e:
-        log_error(e, f"Authentication failed for {email}")
-        return False
+# Database operations using new authentication system
+# authenticate_user is now imported from core.auth_wrapper
 
 def register_user_supabase(email: str, password: str) -> bool:
     """Register new user using Supabase"""
@@ -666,12 +628,40 @@ def _generate_nav_buttons():
 def show_main_app():
     """Main application with clean layout and integrated navigation"""
     
-    # Simple authentication check - no complex session validation
-    if not st.session_state.get('authenticated', False):
+    # Enhanced authentication check using new session manager
+    auth = get_auth()
+    if not auth.is_authenticated():
         st.error("Please log in to continue.")
-        st.session_state.authenticated = False
+        # Clear any old session state
+        for key in ['authenticated', 'user_id', 'user_email']:
+            if key in st.session_state:
+                del st.session_state[key]
         st.rerun()
         return
+    
+    # Register keyboard shortcuts and handle them
+    try:
+        from core.ui_components import register_keyboard_shortcuts, show_quick_help, HOTKEYS_AVAILABLE
+        
+        if HOTKEYS_AVAILABLE:
+            hotkey_pressed = register_keyboard_shortcuts()
+            
+            # Handle keyboard shortcuts
+            if hotkey_pressed == "help":
+                st.session_state.show_help = True
+            elif hotkey_pressed == "process" and st.session_state.get('uploaded_file'):
+                st.session_state.start_processing = True
+            elif hotkey_pressed == "close":
+                st.session_state.show_help = False
+        
+        # Show help modal if triggered
+        if st.session_state.get('show_help', False):
+            show_quick_help()
+            if st.button("Close Help", key="close_help_btn"):
+                st.session_state.show_help = False
+    except Exception as e:
+        # Gracefully handle missing dependencies
+        pass
     
     # Check for page navigation via query params
     query_params = st.query_params
@@ -817,23 +807,26 @@ def show_main_app():
     import time
     
     if create_aurora_nav_buttons():
-        # User clicked logout - simple logout
-        st.session_state.authenticated = False
-        st.session_state.user_id = None
-        st.session_state.user_email = None
-        st.success("Logged out successfully!")
-        time.sleep(1)  # Brief pause to show message
-        st.session_state.current_page = "Content Pipeline"
-        st.rerun()
+        # User clicked logout - use new auth system
+        auth = get_auth()
+        if auth.logout():
+            st.success("Logged out successfully!")
+            time.sleep(1)  # Brief pause to show message
+            st.rerun()
+        else:
+            st.error("Logout failed")
     
-    # Show the selected page
-    if st.session_state.current_page == "Content Pipeline":
+    # Show the selected page with monitoring
+    page = st.session_state.current_page
+    track_page(page.lower().replace(" ", "_"))
+    
+    if page == "Content Pipeline":
         show_home_page()
-    elif st.session_state.current_page == "Content History":
+    elif page == "Content History":
         show_content_history_page()
-    elif st.session_state.current_page == "Settings":
+    elif page == "Settings":
         show_settings_page()
-    elif st.session_state.current_page == "Health Check":
+    elif page == "Health Check":
         show_health_page()
 
 def show_home_page():
@@ -1383,7 +1376,10 @@ def show_settings_page():
     """Settings page with clean layout"""
     st.markdown("# Settings")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["AI Provider", "API Keys", "Custom Prompts", "Knowledge Base"])
+    # Import preferences at the top of the function
+    from core.preferences import save_pref, load_pref
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["AI Provider", "API Keys", "Custom Prompts", "Knowledge Base", "UI Preferences"])
     
     with tab1:
         st.markdown("#### AI Provider Settings")
@@ -1488,7 +1484,12 @@ def show_settings_page():
         for prompt_type in prompt_types:
             st.markdown(f"##### {prompt_type.replace('_', ' ').title()}")
             
-            current_prompt = st.session_state.prompts.get(prompt_type, "")
+            # Load cached prompt if caching is enabled
+            cache_enabled = load_pref("cache_prompts", True)
+            cached_prompt = load_pref(f"last_prompt_{prompt_type}", "") if cache_enabled else ""
+            
+            # Use cached prompt if available, otherwise use saved prompt
+            current_prompt = cached_prompt or st.session_state.prompts.get(prompt_type, "")
             
             # Text area with on_change callback for immediate saving
             new_prompt = st.text_area(
@@ -1497,8 +1498,12 @@ def show_settings_page():
                 height=100,
                 key=f"prompt_{prompt_type}",
                 on_change=save_prompt_callback(prompt_type),
-                help="Changes are saved automatically when you modify the text"
+                help="Changes are saved automatically when you modify the text. Last used values are cached if enabled in UI Preferences."
             )
+            
+            # Cache the prompt value if caching is enabled
+            if cache_enabled and new_prompt != current_prompt:
+                save_pref(f"last_prompt_{prompt_type}", new_prompt)
             
             # Show save status if available
             if f"save_status_{prompt_type}" in st.session_state:
@@ -1538,35 +1543,133 @@ def show_settings_page():
                 if save_knowledge_base_file_supabase(uploaded_kb.name, content):
                     st.success(f"Saved {uploaded_kb.name}!")
                     st.rerun()
-
-def show_health_page():
-    """System health check page"""
-    st.markdown("# System Health")
     
-    health = get_health_status()
+    with tab5:
+        st.markdown("#### UI Preferences")
+        
+        # Theme toggle
+        current_theme = load_pref("theme", "dark")
+        theme_options = ["dark", "light"]
+        theme_index = theme_options.index(current_theme) if current_theme in theme_options else 0
+        
+        new_theme = st.selectbox(
+            "Theme",
+            theme_options,
+            index=theme_index,
+            help="Choose your preferred theme (requires page refresh to take effect)"
+        )
+        
+        if new_theme != current_theme:
+            if save_pref("theme", new_theme):
+                st.success(f"Theme changed to {new_theme}! Please refresh the page to see changes.")
+                st.session_state.theme = new_theme
+        
+        # Last used prompt caching
+        st.markdown("##### Prompt Caching")
+        
+        cache_prompts = st.checkbox(
+            "Remember last used prompts",
+            value=load_pref("cache_prompts", True),
+            help="Automatically restore your last used prompt text when you return"
+        )
+        
+        if cache_prompts != load_pref("cache_prompts", True):
+            save_pref("cache_prompts", cache_prompts)
+            st.success("Prompt caching preference saved!")
+        
+        # Clear cached data
+        if st.button("Clear All Cached Preferences"):
+            from core.preferences import get_preferences_manager
+            if get_preferences_manager().clear_all_prefs():
+                st.success("All preferences cleared!")
+            else:
+                st.error("Failed to clear preferences")
+
+@streamlit_page("health")
+def show_health_page():
+    """System health check page with enhanced monitoring"""
+    st.markdown("# 📊 System Health & Monitoring")
+    
+    # Show development metrics in sidebar
+    show_dev_metrics()
+    
+    # Get health status
+    health_status = health_checker.get_health_status()
+    slo_metrics = health_checker.get_slo_metrics()
+    violations = health_checker.check_slo_violations()
     
     # Overall status
-    if health["status"] == "healthy":
-        st.success("✅ System is healthy")
-    elif health["status"] == "degraded":
-        st.warning("⚠️ System is degraded")
-    else:
-        st.error("❌ System is unhealthy")
+    col1, col2, col3 = st.columns(3)
     
-    # Detailed checks
-    st.markdown("### System Checks")
-    for check, status in health["checks"].items():
-        if isinstance(status, dict):
-            st.markdown(f"**{check.title()}:**")
-            for key, value in status.items():
-                st.write(f"  - {key}: {value}")
+    with col1:
+        if health_status.status == "healthy":
+            st.success("✅ System Healthy")
+        elif health_status.status == "degraded":
+            st.warning("⚠️ System Degraded")
         else:
-            if "error" in str(status).lower() or "unhealthy" in str(status).lower():
-                st.error(f"**{check.title()}:** {status}")
-            elif "missing" in str(status).lower():
-                st.warning(f"**{check.title()}:** {status}")
+            st.error("❌ System Unhealthy")
+    
+    with col2:
+        st.metric("Uptime", f"{health_status.uptime_seconds/3600:.1f}h")
+    
+    with col3:
+        compliance = 100.0 if not violations else max(0, 100 - len(violations) * 10)
+        st.metric("SLO Compliance", f"{compliance:.1f}%")
+    
+    # SLO Metrics
+    st.markdown("### 📈 SLO Metrics (Last Hour)")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        color = "normal" if slo_metrics.error_rate_5xx < 1.0 else "inverse"
+        st.metric("5xx Error Rate", f"{slo_metrics.error_rate_5xx:.2f}%", 
+                 delta=f"Target: <1%", delta_color=color)
+    
+    with col2:
+        color = "normal" if slo_metrics.median_response_time < 30000 else "inverse"
+        st.metric("Median Response Time", f"{slo_metrics.median_response_time:.0f}ms",
+                 delta=f"Target: <30s", delta_color=color)
+    
+    with col3:
+        st.metric("Active Users", slo_metrics.active_users_1h)
+    
+    with col4:
+        st.metric("Total Requests", slo_metrics.total_requests_1h)
+    
+    # Violations
+    if violations:
+        st.markdown("### 🚨 SLO Violations")
+        for violation in violations:
+            severity_color = "🔴" if violation["severity"] == "critical" else "🟡"
+            st.error(f"{severity_color} **{violation['type']}**: {violation['message']}")
+    
+    # Detailed health checks
+    st.markdown("### 🔍 Detailed Health Checks")
+    
+    for check_name, check_data in health_status.checks.items():
+        with st.expander(f"{check_name.title()} - {check_data.get('status', 'unknown')}"):
+            if isinstance(check_data, dict):
+                for key, value in check_data.items():
+                    if key != 'status':
+                        st.write(f"**{key}**: {value}")
             else:
-                st.success(f"✅ **{check.title()}:** {status}")
+                st.write(str(check_data))
+    
+    # Metrics Export
+    st.markdown("### 📤 Metrics Export")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("📊 Export Prometheus Metrics"):
+            metrics_text = export_prometheus_metrics()
+            st.text_area("Prometheus Metrics", metrics_text, height=300)
+    
+    with col2:
+        if st.button("📋 Export JSON Metrics"):
+            metrics_json = export_json_metrics()
+            st.json(metrics_json)
 
 def init_simple_session_state():
     """Simple session initialization - research-backed approach"""
@@ -1590,21 +1693,30 @@ def init_simple_session_state():
         if key not in st.session_state:
             st.session_state[key] = default_value
 
+@streamlit_page("main")
 def main():
     """Main application entry point - FULL FEATURED"""
-    
-    # Simple session initialization
-    init_simple_session_state()
-    
-    # Handle OAuth callback if present
-    if handle_oauth_callback():
-        return
-    
-    # Show appropriate page based on authentication status
-    if st.session_state.get('authenticated', False):
-        show_main_app()
-    else:
-        show_auth_page()
+    try:
+        # Simple session initialization
+        init_simple_session_state()
+        
+        # Handle OAuth callback if present
+        if handle_oauth_callback():
+            return
+        
+        # Show appropriate page based on authentication status
+        if st.session_state.get('authenticated', False):
+            track_action("app_access", authenticated=True)
+            show_main_app()
+        else:
+            track_action("app_access", authenticated=False)
+            show_auth_page()
+            
+    except Exception as e:
+        logger.error(f"Application error: {e}")
+        track_monitoring_error(e, {"page": "main", "function": "main"})
+        st.error("An unexpected error occurred. Please refresh the page.")
+        st.exception(e)
 
 if __name__ == "__main__":
     main() 
