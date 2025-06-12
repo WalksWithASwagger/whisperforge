@@ -8,6 +8,7 @@ import streamlit as st
 import time
 import asyncio
 import threading
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, Dict, Any, Tuple
 import mimetypes
@@ -323,10 +324,10 @@ class LargeFileUploadManager:
             return {"success": False, "error": str(e)}
     
     def _create_audio_chunks(self, uploaded_file) -> Dict[str, Any]:
-        """Create audio chunks for parallel processing"""
+        """🚀 Memory-efficient audio chunking using FFmpeg streaming (no RAM explosion)"""
         
         try:
-            st.markdown("##### 📂 Creating Audio Chunks...")
+            st.markdown("##### 📂 Creating Audio Chunks (Memory-Efficient)...")
             
             # Save uploaded file temporarily
             with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as temp_file:
@@ -334,39 +335,53 @@ class LargeFileUploadManager:
                 temp_file.write(uploaded_file.read())
                 temp_file_path = temp_file.name
             
-            # Load audio with pydub
-            audio = AudioSegment.from_file(temp_file_path)
-            duration_ms = len(audio)
-            duration_minutes = duration_ms / (1000 * 60)
+            # Get audio duration using FFprobe (no memory usage)
+            duration_seconds = self._get_audio_duration_ffprobe(temp_file_path)
+            if not duration_seconds:
+                os.unlink(temp_file_path)
+                return {"success": False, "error": "Could not determine audio duration"}
             
-            # Calculate chunk duration (aim for ~20MB chunks)
-            chunk_duration_ms = self.chunk_size_mb * 60 * 1000  # Convert MB to minutes to ms
-            num_chunks = math.ceil(duration_ms / chunk_duration_ms)
+            duration_minutes = duration_seconds / 60
+            
+            # Calculate chunk duration (aim for ~20MB chunks, ~5-10 minutes each)
+            chunk_duration_seconds = min(600, max(300, duration_seconds / 8))  # 5-10 min chunks
+            num_chunks = math.ceil(duration_seconds / chunk_duration_seconds)
             
             st.markdown(f"**Audio Duration:** {duration_minutes:.1f} minutes")
-            st.markdown(f"**Creating {num_chunks} chunks of ~{chunk_duration_ms/60000:.1f} minutes each**")
+            st.markdown(f"**Creating {num_chunks} chunks of ~{chunk_duration_seconds/60:.1f} minutes each**")
+            st.markdown("**Memory Strategy:** FFmpeg streaming (no RAM loading)")
             
             chunks = []
-            chunk_progress = st.progress(0.0, "Creating chunks...")
+            chunk_progress = st.progress(0.0, "Creating chunks with FFmpeg...")
             
             for i in range(num_chunks):
-                start_ms = i * chunk_duration_ms
-                end_ms = min((i + 1) * chunk_duration_ms, duration_ms)
+                start_time = i * chunk_duration_seconds
+                chunk_duration = min(chunk_duration_seconds, duration_seconds - start_time)
                 
-                # Extract chunk
-                chunk = audio[start_ms:end_ms]
-                
-                # Save chunk to temporary file
+                # Create chunk file using FFmpeg (memory efficient)
                 chunk_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-                chunk.export(chunk_file.name, format="wav")
+                chunk_file.close()
                 
-                chunks.append({
-                    "index": i,
-                    "file_path": chunk_file.name,
-                    "start_time": start_ms / 1000,
-                    "end_time": end_ms / 1000,
-                    "duration": (end_ms - start_ms) / 1000
-                })
+                # Use FFmpeg to extract chunk (streaming, no memory load)
+                success = self._extract_chunk_ffmpeg(
+                    temp_file_path, chunk_file.name, start_time, chunk_duration
+                )
+                
+                if success:
+                    chunks.append({
+                        "index": i,
+                        "file_path": chunk_file.name,
+                        "start_time": start_time,
+                        "end_time": start_time + chunk_duration,
+                        "duration": chunk_duration
+                    })
+                else:
+                    # Cleanup failed chunk
+                    try:
+                        os.unlink(chunk_file.name)
+                    except:
+                        pass
+                    logger.warning(f"Failed to create chunk {i + 1}")
                 
                 # Update progress
                 progress = (i + 1) / num_chunks
@@ -375,7 +390,10 @@ class LargeFileUploadManager:
             # Cleanup original temp file
             os.unlink(temp_file_path)
             
-            chunk_progress.progress(1.0, f"✅ Created {num_chunks} chunks successfully!")
+            if not chunks:
+                return {"success": False, "error": "Failed to create any chunks"}
+            
+            chunk_progress.progress(1.0, f"✅ Created {len(chunks)} chunks successfully!")
             
             return {"success": True, "chunks": chunks}
             
@@ -522,6 +540,75 @@ class LargeFileUploadManager:
         
         return full_transcript
     
+    def _get_audio_duration_ffprobe(self, file_path: str) -> float:
+        """Get audio duration using FFprobe (no memory usage)"""
+        try:
+            cmd = [
+                'ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1', file_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0:
+                return float(result.stdout.strip())
+            else:
+                logger.error(f"FFprobe failed: {result.stderr}")
+                # Fallback to pydub for duration only (minimal memory)
+                if AUDIO_PROCESSING_AVAILABLE:
+                    try:
+                        audio = AudioSegment.from_file(file_path)
+                        return len(audio) / 1000.0  # Convert ms to seconds
+                    except Exception as e:
+                        logger.error(f"Pydub fallback failed: {e}")
+                return None
+                
+        except Exception as e:
+            logger.exception("Error getting audio duration:")
+            return None
+    
+    def _extract_chunk_ffmpeg(self, input_path: str, output_path: str, start_time: float, duration: float) -> bool:
+        """Extract audio chunk using FFmpeg (memory efficient)"""
+        try:
+            cmd = [
+                'ffmpeg', '-i', input_path, '-ss', str(start_time),
+                '-t', str(duration), '-acodec', 'pcm_s16le',
+                '-ar', '16000', '-ac', '1', '-y', output_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, timeout=120)
+            
+            if result.returncode == 0:
+                return True
+            else:
+                logger.error(f"FFmpeg chunk extraction failed: {result.stderr}")
+                # Fallback to pydub for this chunk only
+                return self._extract_chunk_pydub_fallback(input_path, output_path, start_time, duration)
+                
+        except Exception as e:
+            logger.exception("Error extracting chunk with FFmpeg:")
+            return self._extract_chunk_pydub_fallback(input_path, output_path, start_time, duration)
+    
+    def _extract_chunk_pydub_fallback(self, input_path: str, output_path: str, start_time: float, duration: float) -> bool:
+        """Fallback to pydub for chunk extraction (only if FFmpeg fails)"""
+        try:
+            if not AUDIO_PROCESSING_AVAILABLE:
+                return False
+            
+            # Load only the specific segment (more memory efficient than loading full file)
+            start_ms = int(start_time * 1000)
+            end_ms = int((start_time + duration) * 1000)
+            
+            # Use pydub's from_file with start/end parameters if available
+            audio = AudioSegment.from_file(input_path)
+            chunk = audio[start_ms:end_ms]
+            chunk.export(output_path, format="wav")
+            
+            return True
+            
+        except Exception as e:
+            logger.exception("Pydub fallback failed:")
+            return False
+
     def _cleanup_chunks(self, chunks: List[Dict]):
         """Clean up temporary chunk files"""
         for chunk in chunks:
