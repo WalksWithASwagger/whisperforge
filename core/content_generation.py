@@ -123,11 +123,11 @@ def generate_social_content(wisdom: str, outline: str, article: str, custom_prom
         return f"Error generating social content: {str(e)}"
 
 def transcribe_audio(audio_file) -> str:
-    """Transcribe audio using OpenAI Whisper"""
+    """Transcribe audio using OpenAI Whisper - clean and simple"""
     try:
         openai_client = get_openai_client()
         if not openai_client:
-            return "Error: OpenAI API key is not configured."
+            return "Error: OpenAI client not available."
         
         # Reset file pointer to beginning
         audio_file.seek(0)
@@ -140,5 +140,4 @@ def transcribe_audio(audio_file) -> str:
         return response.text
         
     except Exception as e:
-        logger.exception("Error in audio transcription:")
-        return f"Error transcribing audio: {str(e)}" 
+        return f"Transcription failed: {str(e)}" 

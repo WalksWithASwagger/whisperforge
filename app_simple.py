@@ -768,127 +768,134 @@ def show_results(results):
 
 # === NAVIGATION & PAGES ===
 def create_aurora_navigation():
-    """Create Aurora-styled navigation with enhanced bioluminescent effects"""
+    """Stable high-end Aurora bioluminescent navigation"""
     st.markdown("""
     <div style="
         background: linear-gradient(135deg, 
-            rgba(10, 15, 28, 0.95) 0%, 
-            rgba(13, 20, 33, 0.95) 25%,
-            rgba(16, 33, 62, 0.95) 50%,
-            rgba(15, 52, 96, 0.95) 75%,
-            rgba(10, 15, 28, 0.95) 100%);
-        padding: 2rem;
-        border-radius: 25px;
+            #0a0f1c 0%, 
+            #0d1421 15%,
+            #102142 35%,
+            #1a2d4a 55%,
+            #0f3460 75%,
+            #0a0f1c 100%);
+        padding: 3rem 2rem;
+        border-radius: 30px;
         margin-bottom: 2rem;
-        border: 2px solid rgba(64, 224, 208, 0.4);
+        border: 3px solid rgba(64, 224, 208, 0.6);
         box-shadow: 
-            0 0 40px rgba(64, 224, 208, 0.2),
-            inset 0 0 40px rgba(64, 224, 208, 0.05);
+            0 0 60px rgba(64, 224, 208, 0.3),
+            0 0 120px rgba(64, 224, 208, 0.1),
+            inset 0 0 60px rgba(64, 224, 208, 0.08);
         position: relative;
-        overflow: hidden;
+        text-align: center;
     ">
+        <!-- Top bioluminescent accent -->
         <div style="
             position: absolute;
             top: 0;
-            left: -100%;
-            width: 100%;
-            height: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
             background: linear-gradient(90deg, 
                 transparent, 
-                rgba(64, 224, 208, 0.8), 
-                rgba(125, 249, 255, 0.8), 
-                rgba(64, 224, 208, 0.8), 
+                rgba(64, 224, 208, 0.9), 
+                rgba(125, 249, 255, 1), 
+                rgba(64, 224, 208, 0.9), 
                 transparent);
-            animation: aurora-scan 6s ease-in-out infinite;
+            border-radius: 2px;
         "></div>
         
-        <div style="text-align: center; position: relative; z-index: 1;">
+        <!-- Main content -->
+        <div style="position: relative; z-index: 1;">
             <h1 style="
                 color: #40E0D0;
                 text-shadow: 
-                    0 0 20px rgba(64, 224, 208, 0.6),
-                    0 0 40px rgba(64, 224, 208, 0.4),
-                    0 0 60px rgba(64, 224, 208, 0.2);
-                margin: 0 0 1rem 0;
-                font-size: 2.5rem;
-                font-weight: 700;
-                background: linear-gradient(45deg, #40E0D0, #7DF9FF, #00FFFF);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                animation: aurora-pulse 3s ease-in-out infinite;
+                    0 0 30px rgba(64, 224, 208, 0.8),
+                    0 0 60px rgba(64, 224, 208, 0.5),
+                    0 0 90px rgba(64, 224, 208, 0.3);
+                margin: 0 0 1.5rem 0;
+                font-size: 3rem;
+                font-weight: 800;
+                letter-spacing: 2px;
             ">🌌 WhisperForge Aurora</h1>
+            
             <p style="
-                color: rgba(255, 255, 255, 0.9); 
-                margin: 0;
-                font-size: 1.3rem;
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                color: rgba(255, 255, 255, 0.95); 
+                margin: 0 0 2rem 0;
+                font-size: 1.4rem;
+                text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+                font-weight: 300;
             ">Transform Audio into Structured Content with AI Magic ✨</p>
             
+            <!-- Bioluminescent pipeline badges -->
             <div style="
-                margin-top: 1.5rem;
                 display: flex;
                 justify-content: center;
-                gap: 20px;
+                gap: 15px;
                 flex-wrap: wrap;
+                margin-top: 2rem;
             ">
                 <div style="
-                    background: rgba(64, 224, 208, 0.1);
-                    border: 1px solid rgba(64, 224, 208, 0.3);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 0.9rem;
+                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
+                    border: 2px solid rgba(64, 224, 208, 0.4);
+                    border-radius: 25px;
+                    padding: 12px 20px;
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 1rem;
+                    font-weight: 500;
+                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
                 ">🎙️ Transcription</div>
                 <div style="
-                    background: rgba(64, 224, 208, 0.1);
-                    border: 1px solid rgba(64, 224, 208, 0.3);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 0.9rem;
+                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
+                    border: 2px solid rgba(64, 224, 208, 0.4);
+                    border-radius: 25px;
+                    padding: 12px 20px;
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 1rem;
+                    font-weight: 500;
+                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
                 ">💡 Wisdom</div>
                 <div style="
-                    background: rgba(64, 224, 208, 0.1);
-                    border: 1px solid rgba(64, 224, 208, 0.3);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 0.9rem;
+                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
+                    border: 2px solid rgba(64, 224, 208, 0.4);
+                    border-radius: 25px;
+                    padding: 12px 20px;
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 1rem;
+                    font-weight: 500;
+                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
                 ">📝 Article</div>
                 <div style="
-                    background: rgba(64, 224, 208, 0.1);
-                    border: 1px solid rgba(64, 224, 208, 0.3);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 0.9rem;
+                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
+                    border: 2px solid rgba(64, 224, 208, 0.4);
+                    border-radius: 25px;
+                    padding: 12px 20px;
+                    color: rgba(255, 255, 255, 0.9);
+                    font-size: 1rem;
+                    font-weight: 500;
+                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
                 ">🌌 Notion</div>
             </div>
         </div>
+        
+        <!-- Bottom bioluminescent accent -->
+        <div style="
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(64, 224, 208, 0.6), 
+                rgba(125, 249, 255, 0.8), 
+                rgba(64, 224, 208, 0.6), 
+                transparent);
+            border-radius: 1px;
+        "></div>
     </div>
-    
-    <style>
-    @keyframes aurora-scan {
-        0%, 100% { left: -100%; }
-        50% { left: 100%; }
-    }
-    
-    @keyframes aurora-pulse {
-        0%, 100% { 
-            text-shadow: 
-                0 0 20px rgba(64, 224, 208, 0.6),
-                0 0 40px rgba(64, 224, 208, 0.4),
-                0 0 60px rgba(64, 224, 208, 0.2);
-        }
-        50% { 
-            text-shadow: 
-                0 0 30px rgba(64, 224, 208, 0.8),
-                0 0 60px rgba(64, 224, 208, 0.6),
-                0 0 90px rgba(64, 224, 208, 0.4);
-        }
-    }
-    </style>
     """, unsafe_allow_html=True)
     
     # Navigation tabs
@@ -908,25 +915,34 @@ def show_transform_page():
     # Aurora-styled header
     st.markdown("""
     <div style="
-        background: linear-gradient(135deg, rgba(64, 224, 208, 0.1) 0%, rgba(138, 43, 226, 0.1) 100%);
-        padding: 2rem;
-        border-radius: 20px;
+        background: linear-gradient(135deg, 
+            rgba(64, 224, 208, 0.12) 0%, 
+            rgba(138, 43, 226, 0.12) 50%,
+            rgba(64, 224, 208, 0.08) 100%);
+        padding: 2.5rem;
+        border-radius: 25px;
         text-align: center;
         margin-bottom: 2rem;
-        border: 1px solid rgba(64, 224, 208, 0.3);
-        box-shadow: 0 8px 32px rgba(64, 224, 208, 0.1);
+        border: 2px solid rgba(64, 224, 208, 0.4);
+        box-shadow: 
+            0 0 40px rgba(64, 224, 208, 0.15),
+            inset 0 0 40px rgba(64, 224, 208, 0.05);
     ">
         <h2 style="
             color: #40E0D0;
-            text-shadow: 0 0 20px rgba(64, 224, 208, 0.5);
+            text-shadow: 
+                0 0 25px rgba(64, 224, 208, 0.7),
+                0 0 50px rgba(64, 224, 208, 0.4);
             margin: 0 0 1rem 0;
-            font-size: 2.5rem;
+            font-size: 2.8rem;
+            font-weight: 700;
         ">🎵 Transform Audio</h2>
         <p style="
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.3rem;
             margin: 0;
-        ">Upload your audio and watch it transform into structured content in real-time</p>
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        ">Upload your audio and watch it transform into structured content</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1122,11 +1138,16 @@ def show_content_library():
                         
                         # Show generated content
                         if item.get('wisdom'):
-                            create_aurora_content_card("💡 Wisdom", item['wisdom'], "text")
+                            st.markdown("**💡 Wisdom:**")
+                            st.text_area("", item['wisdom'], height=100, disabled=True, key=f"wisdom_{item.get('id')}")
+                        
                         if item.get('article'):
-                            create_aurora_content_card("📰 Article", item['article'], "text")
+                            st.markdown("**📰 Article:**") 
+                            st.text_area("", item['article'], height=150, disabled=True, key=f"article_{item.get('id')}")
+                        
                         if item.get('social_content'):
-                            create_aurora_content_card("📱 Social Content", item['social_content'], "text")
+                            st.markdown("**📱 Social Content:**")
+                            st.text_area("", item['social_content'], height=100, disabled=True, key=f"social_{item.get('id')}")
             else:
                 st.info("📭 No content found. Process some audio files to see them here!")
         else:
