@@ -571,16 +571,50 @@ def show_results(results):
             else:
                 st.info("No editor notes available.")
 
-# === MAIN APP ===
-def show_main_app():
-    """Main application interface"""
-    create_aurora_header()
+# === NAVIGATION & PAGES ===
+def create_aurora_navigation():
+    """Create Aurora-styled navigation"""
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        padding: 1rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(64, 224, 208, 0.3);
+        box-shadow: 0 8px 32px rgba(64, 224, 208, 0.1);
+    ">
+        <div style="text-align: center;">
+            <h2 style="
+                color: #40E0D0;
+                text-shadow: 0 0 20px rgba(64, 224, 208, 0.5);
+                margin: 0;
+                font-size: 1.8rem;
+            ">🌌 WhisperForge Aurora</h2>
+            <p style="color: rgba(255, 255, 255, 0.8); margin: 0.5rem 0 0 0;">
+                Transform Audio into Structured Content with AI
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
+    # Navigation tabs
+    tabs = st.tabs([
+        "🎵 Transform", 
+        "📚 Content Library", 
+        "⚙️ Settings", 
+        "🧠 Knowledge Base",
+        "📝 Prompts"
+    ])
+    
+    return tabs
+
+def show_transform_page():
+    """Main transformation page"""
     st.markdown("### 🎵 Transform Audio into Structured Content")
     
-    # API Key setup
+    # Sidebar settings (moved from main app)
     with st.sidebar:
-        st.markdown("### ⚙️ Settings")
+        st.markdown("### ⚙️ Quick Settings")
         
         # OpenAI API Key
         api_key = st.text_input("OpenAI API Key", type="password", 
@@ -612,7 +646,7 @@ def show_main_app():
             st.info("ℹ️ Configure Notion for auto-publishing")
         
         st.markdown("---")
-        st.markdown("### 🔍 Research Settings")
+        st.markdown("### 🔍 Pipeline Settings")
         
         # Research enrichment toggle
         research_enabled = st.checkbox(
@@ -683,6 +717,373 @@ def show_main_app():
     # Show results if available
     if 'current_results' in st.session_state:
         show_results(st.session_state.current_results)
+
+def show_content_library():
+    """Content library/history page"""
+    st.markdown("### 📚 Content Library")
+    
+    # Get content from database
+    try:
+        db = get_supabase_client()
+        if db:
+            # Fetch recent content
+            response = db.client.table('content').select('*').order('created_at', desc=True).limit(20).execute()
+            
+            if response.data:
+                st.success(f"📊 Found {len(response.data)} content items")
+                
+                # Search and filter
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    search_term = st.text_input("🔍 Search content", placeholder="Search by title or content...")
+                with col2:
+                    content_type = st.selectbox("Filter by type", ["All", "Article", "Social", "Outline"])
+                
+                # Display content cards
+                for item in response.data:
+                    if search_term and search_term.lower() not in item.get('title', '').lower():
+                        continue
+                    
+                    with st.expander(f"📄 {item.get('title', 'Untitled')} - {item.get('created_at', '')[:10]}"):
+                        col1, col2 = st.columns([3, 1])
+                        
+                        with col1:
+                            st.markdown(f"**Created:** {item.get('created_at', 'Unknown')}")
+                            if item.get('transcript'):
+                                st.markdown("**Transcript Preview:**")
+                                st.text(item['transcript'][:200] + "..." if len(item['transcript']) > 200 else item['transcript'])
+                        
+                        with col2:
+                            if st.button(f"🔄 Reprocess", key=f"reprocess_{item.get('id')}"):
+                                st.info("Reprocessing feature coming soon!")
+                            
+                            if st.button(f"📤 Export", key=f"export_{item.get('id')}"):
+                                st.info("Export feature coming soon!")
+                        
+                        # Show generated content
+                        if item.get('wisdom'):
+                            create_aurora_content_card("💡 Wisdom", item['wisdom'], "text")
+                        if item.get('article'):
+                            create_aurora_content_card("📰 Article", item['article'], "text")
+                        if item.get('social_content'):
+                            create_aurora_content_card("📱 Social Content", item['social_content'], "text")
+            else:
+                st.info("📭 No content found. Process some audio files to see them here!")
+        else:
+            st.error("❌ Database connection failed")
+    except Exception as e:
+        st.error(f"❌ Error loading content library: {e}")
+
+def show_settings_page():
+    """Settings and configuration page"""
+    st.markdown("### ⚙️ Settings & Configuration")
+    
+    # API Keys section
+    st.markdown("#### 🔑 API Keys")
+    with st.expander("🔧 API Configuration", expanded=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # OpenAI settings
+            st.markdown("**OpenAI Configuration**")
+            openai_key = st.text_input("OpenAI API Key", type="password", 
+                                      value=os.getenv("OPENAI_API_KEY", ""),
+                                      help="Your OpenAI API key")
+            if openai_key:
+                os.environ["OPENAI_API_KEY"] = openai_key
+                st.success("✅ OpenAI key configured")
+            
+            # Model selection
+            model_choice = st.selectbox("OpenAI Model", 
+                                       ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+                                       help="Choose the OpenAI model for content generation")
+            st.session_state.openai_model = model_choice
+        
+        with col2:
+            # Notion settings
+            st.markdown("**Notion Configuration**")
+            notion_key = st.text_input("Notion API Key", type="password",
+                                      value=os.getenv("NOTION_API_KEY", ""),
+                                      help="Your Notion integration token")
+            if notion_key:
+                os.environ["NOTION_API_KEY"] = notion_key
+            
+            notion_db = st.text_input("Notion Database ID",
+                                     value=os.getenv("NOTION_DATABASE_ID", ""),
+                                     help="Your Notion database ID")
+            if notion_db:
+                os.environ["NOTION_DATABASE_ID"] = notion_db
+            
+            if notion_key and notion_db:
+                st.success("✅ Notion configured")
+    
+    # Pipeline settings
+    st.markdown("#### 🔄 Pipeline Configuration")
+    with st.expander("⚙️ Processing Pipeline", expanded=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Core Features**")
+            research_enabled = st.checkbox("Enable Research Enrichment", 
+                                         value=st.session_state.get('research_enabled', True))
+            st.session_state.research_enabled = research_enabled
+            
+            editor_enabled = st.checkbox("Enable AI Editor Review", 
+                                        value=st.session_state.get('editor_enabled', False))
+            st.session_state.editor_enabled = editor_enabled
+            
+            auto_notion = st.checkbox("Auto-publish to Notion", 
+                                     value=st.session_state.get('auto_notion', True))
+            st.session_state.auto_notion = auto_notion
+        
+        with col2:
+            st.markdown("**Quality Settings**")
+            content_length = st.selectbox("Article Length", 
+                                        ["Short (500-800 words)", "Medium (800-1200 words)", "Long (1200+ words)"])
+            
+            tone_style = st.selectbox("Content Tone", 
+                                    ["Professional", "Conversational", "Academic", "Creative"])
+            
+            st.session_state.content_length = content_length
+            st.session_state.tone_style = tone_style
+    
+    # System status
+    st.markdown("#### 🔍 System Status")
+    with st.expander("📊 Connection Status", expanded=False):
+        if st.button("🧪 Test All Connections"):
+            with st.spinner("Testing all connections..."):
+                # Test OpenAI
+                try:
+                    if os.getenv("OPENAI_API_KEY"):
+                        st.success("✅ OpenAI API key configured")
+                    else:
+                        st.error("❌ OpenAI API key missing")
+                except Exception as e:
+                    st.error(f"❌ OpenAI error: {e}")
+                
+                # Test Supabase
+                try:
+                    db = get_supabase_client()
+                    if db and db.test_connection():
+                        st.success("✅ Supabase connected")
+                    else:
+                        st.error("❌ Supabase connection failed")
+                except Exception as e:
+                    st.error(f"❌ Supabase error: {e}")
+                
+                # Test Notion
+                try:
+                    if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
+                        from notion_client import Client
+                        client = Client(auth=os.getenv("NOTION_API_KEY"))
+                        database = client.databases.retrieve(database_id=os.getenv("NOTION_DATABASE_ID"))
+                        st.success("✅ Notion connected")
+                    else:
+                        st.warning("⚠️ Notion not configured")
+                except Exception as e:
+                    st.error(f"❌ Notion error: {e}")
+
+def show_knowledge_base():
+    """Knowledge base management page"""
+    st.markdown("### 🧠 Knowledge Base")
+    
+    # Check if knowledge base files exist
+    kb_path = "prompts/default/knowledge_base"
+    
+    st.markdown("""
+    The knowledge base provides context and expertise to enhance content generation.
+    Add domain-specific information, style guides, and reference materials here.
+    """)
+    
+    # Knowledge base sections
+    tabs = st.tabs(["📖 View Knowledge", "➕ Add Knowledge", "🔧 Manage Files"])
+    
+    with tabs[0]:
+        st.markdown("#### 📖 Current Knowledge Base")
+        try:
+            if os.path.exists(kb_path):
+                files = [f for f in os.listdir(kb_path) if f.endswith('.md')]
+                if files:
+                    selected_file = st.selectbox("Select knowledge file:", files)
+                    if selected_file:
+                        file_path = os.path.join(kb_path, selected_file)
+                        with open(file_path, 'r') as f:
+                            content = f.read()
+                        
+                        st.markdown(f"**File:** `{selected_file}`")
+                        create_aurora_content_card("Knowledge Content", content, "text")
+                else:
+                    st.info("📭 No knowledge files found")
+            else:
+                st.info("📁 Knowledge base directory not found")
+        except Exception as e:
+            st.error(f"❌ Error reading knowledge base: {e}")
+    
+    with tabs[1]:
+        st.markdown("#### ➕ Add New Knowledge")
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            kb_title = st.text_input("Knowledge Title", placeholder="e.g., 'Marketing Guidelines'")
+        with col2:
+            kb_category = st.selectbox("Category", ["General", "Style Guide", "Domain Expertise", "Templates"])
+        
+        kb_content = st.text_area("Knowledge Content", 
+                                 placeholder="Enter your knowledge content here...",
+                                 height=300)
+        
+        if st.button("💾 Save Knowledge", type="primary"):
+            if kb_title and kb_content:
+                try:
+                    os.makedirs(kb_path, exist_ok=True)
+                    filename = f"{kb_title.lower().replace(' ', '_')}.md"
+                    file_path = os.path.join(kb_path, filename)
+                    
+                    with open(file_path, 'w') as f:
+                        f.write(f"# {kb_title}\n\n")
+                        f.write(f"**Category:** {kb_category}\n\n")
+                        f.write(kb_content)
+                    
+                    st.success(f"✅ Knowledge saved as `{filename}`")
+                except Exception as e:
+                    st.error(f"❌ Error saving knowledge: {e}")
+            else:
+                st.error("❌ Please provide both title and content")
+    
+    with tabs[2]:
+        st.markdown("#### 🔧 Manage Knowledge Files")
+        
+        try:
+            if os.path.exists(kb_path):
+                files = [f for f in os.listdir(kb_path) if f.endswith('.md')]
+                if files:
+                    for file in files:
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        with col1:
+                            st.markdown(f"📄 `{file}`")
+                        with col2:
+                            if st.button("📝 Edit", key=f"edit_{file}"):
+                                st.info("Edit functionality coming soon!")
+                        with col3:
+                            if st.button("🗑️ Delete", key=f"delete_{file}"):
+                                try:
+                                    os.remove(os.path.join(kb_path, file))
+                                    st.success(f"✅ Deleted `{file}`")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Error deleting file: {e}")
+                else:
+                    st.info("📭 No knowledge files found")
+            else:
+                st.info("📁 Knowledge base directory not found")
+        except Exception as e:
+            st.error(f"❌ Error managing files: {e}")
+
+def show_prompts_page():
+    """Prompts management page"""
+    st.markdown("### 📝 Prompts Management")
+    
+    st.markdown("""
+    Customize the AI prompts used in each step of the content generation pipeline.
+    Fine-tune the output style, format, and focus for your specific needs.
+    """)
+    
+    # Prompt categories
+    prompt_types = {
+        "wisdom": "💡 Wisdom Extraction",
+        "outline": "📋 Content Outline", 
+        "article": "📰 Article Generation",
+        "social": "📱 Social Media Posts",
+        "research": "🔍 Research Enrichment",
+        "editor": "📝 Editor Review"
+    }
+    
+    tabs = st.tabs(list(prompt_types.values()) + ["🔧 Advanced"])
+    
+    for i, (prompt_key, prompt_name) in enumerate(prompt_types.items()):
+        with tabs[i]:
+            st.markdown(f"#### {prompt_name}")
+            
+            # Load current prompt
+            prompt_file = f"prompts/default/{prompt_key}_prompt.md"
+            current_prompt = ""
+            
+            try:
+                if os.path.exists(prompt_file):
+                    with open(prompt_file, 'r') as f:
+                        current_prompt = f.read()
+                else:
+                    current_prompt = f"# {prompt_name} Prompt\n\nDefault prompt for {prompt_key} generation."
+            except Exception as e:
+                st.error(f"❌ Error loading prompt: {e}")
+            
+            # Edit prompt
+            new_prompt = st.text_area(
+                f"Edit {prompt_name} Prompt",
+                value=current_prompt,
+                height=400,
+                help=f"Customize the prompt used for {prompt_key} generation"
+            )
+            
+            col1, col2, col3 = st.columns([1, 1, 2])
+            with col1:
+                if st.button(f"💾 Save", key=f"save_{prompt_key}"):
+                    try:
+                        os.makedirs("prompts/default", exist_ok=True)
+                        with open(prompt_file, 'w') as f:
+                            f.write(new_prompt)
+                        st.success(f"✅ {prompt_name} prompt saved!")
+                    except Exception as e:
+                        st.error(f"❌ Error saving prompt: {e}")
+            
+            with col2:
+                if st.button(f"🔄 Reset", key=f"reset_{prompt_key}"):
+                    st.info("Reset to default functionality coming soon!")
+            
+            with col3:
+                st.markdown(f"**File:** `{prompt_file}`")
+    
+    # Advanced settings
+    with tabs[-1]:
+        st.markdown("#### 🔧 Advanced Prompt Settings")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Global Settings**")
+            temperature = st.slider("Temperature (Creativity)", 0.0, 1.0, 0.7, 0.1)
+            max_tokens = st.number_input("Max Tokens", 100, 4000, 2000)
+            
+        with col2:
+            st.markdown("**Prompt Templates**")
+            if st.button("📥 Import Prompt Set"):
+                st.info("Import functionality coming soon!")
+            if st.button("📤 Export Prompt Set"):
+                st.info("Export functionality coming soon!")
+        
+        st.session_state.temperature = temperature
+        st.session_state.max_tokens = max_tokens
+
+# === MAIN APP ===
+def show_main_app():
+    """Main application interface with navigation"""
+    # Create navigation
+    tabs = create_aurora_navigation()
+    
+    # Show different pages based on selected tab
+    with tabs[0]:  # Transform
+        show_transform_page()
+    
+    with tabs[1]:  # Content Library
+        show_content_library()
+    
+    with tabs[2]:  # Settings
+        show_settings_page()
+    
+    with tabs[3]:  # Knowledge Base
+        show_knowledge_base()
+    
+    with tabs[4]:  # Prompts
+        show_prompts_page()
 
 # === ENTRY POINT ===
 def main():

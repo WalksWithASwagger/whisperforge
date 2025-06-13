@@ -1,5 +1,35 @@
 # 📋 WhisperForge Changelog
 
+## [2.6.0] - 2025-01-15 🌌 **Complete Navigation & Feature Enhancement**
+
+### 🌌 **MAJOR NEW FEATURES**
+- **🎵 Multi-Page Navigation**: Beautiful Aurora-styled navigation with 5 dedicated pages
+- **📚 Content Library**: Browse, search, and manage all processed content with Aurora cards
+- **⚙️ Advanced Settings**: Comprehensive configuration for API keys, pipeline settings, and system status
+- **🧠 Knowledge Base Management**: Add, view, edit, and manage knowledge files for enhanced content generation
+- **📝 Prompts Management**: Customize AI prompts for each pipeline step with live editing and saving
+
+### 🎨 **ENHANCED USER EXPERIENCE**
+- **Aurora Navigation Header**: Stunning gradient navigation with bioluminescent styling
+- **Content History**: Full searchable history of all processed audio content with filters
+- **Settings Dashboard**: Centralized configuration for OpenAI, Notion, and pipeline settings
+- **Knowledge Base**: File management system for domain expertise and style guides
+- **Prompt Customization**: Fine-tune AI behavior for wisdom, outline, article, social, research, and editor steps
+
+### 🔧 **TECHNICAL IMPROVEMENTS**
+- **Modular Architecture**: Clean separation with dedicated page functions
+- **Enhanced Session Management**: Better state management across navigation pages
+- **File Management**: Robust knowledge base and prompt file handling
+- **Connection Testing**: Real-time status checks for all integrations
+- **Error Handling**: Improved user feedback and graceful error recovery
+
+### ✅ **COMPLETE FEATURE SET**
+- **🎵 Transform Page**: Core audio processing with Aurora styling
+- **📚 Library Page**: Content history with search, filter, and management
+- **⚙️ Settings Page**: API configuration, pipeline settings, and system status
+- **🧠 Knowledge Page**: Add/edit/manage knowledge files for better AI context
+- **📝 Prompts Page**: Customize all AI prompts with live editing and saving
+
 ## [2.5.0] - 2025-01-12 🌌 **Aurora UI Enhancement**
 
 ### 🌌 **AURORA VISUAL ENHANCEMENTS**
