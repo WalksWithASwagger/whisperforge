@@ -1,34 +1,25 @@
 """
-Enhanced File Upload Component for WhisperForge
-Beautiful drag-and-drop interface with progress tracking
-🚀 NEW: Large file support up to 2GB with chunking and parallel transcription
+Enhanced File Upload Module for WhisperForge v2.8.0
+Supports large file processing up to 2GB with intelligent chunking and parallel transcription
 """
 
-import streamlit as st
-import time
 import asyncio
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional, List, Dict, Any, Tuple
+import logging
+import math
 import mimetypes
 import os
 import tempfile
-import math
-from pathlib import Path
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional, List, Dict, Any, Tuple
 
-# Audio processing with graceful fallback
-try:
-    from pydub import AudioSegment
-    AUDIO_PROCESSING_AVAILABLE = True
-except ImportError:
-    AudioSegment = None
-    AUDIO_PROCESSING_AVAILABLE = False
+import streamlit as st
 
-import logging
-
+# Configure logging
 logger = logging.getLogger(__name__)
 
-class LargeFileUploadManager:
+class FileUploadManager:
     """🚀 ENHANCED: Large file upload manager with chunking and parallel processing"""
     
     def __init__(self):
@@ -550,14 +541,8 @@ class LargeFileUploadManager:
         return {"valid": True}
 
 
-# Legacy FileUploadManager for backward compatibility
-class FileUploadManager(LargeFileUploadManager):
-    """Legacy file upload manager - now inherits from LargeFileUploadManager"""
-    
-    def __init__(self):
-        super().__init__()
-        # Keep old max size for legacy methods
-        self.legacy_max_file_size = 25 * 1024 * 1024  # 25MB
+# Create alias for backward compatibility
+LargeFileUploadManager = FileUploadManager
 
 def create_upload_progress_indicator(filename: str, progress: float = 0.0):
     """Create a progress indicator for file upload"""

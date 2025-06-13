@@ -1,30 +1,153 @@
-# WhisperForge 🌌
+# WhisperForge v2.8.0 🌌
 
-**AI-Powered Audio Content Transformation Platform**
+**Transform audio into structured, intelligent content with AI-powered processing**
 
-Transform your audio recordings into structured, actionable content with advanced AI processing and real-time streaming results.
+WhisperForge is a powerful Streamlit application that converts audio files into comprehensive content packages including transcripts, insights, articles, and social media posts. Now with **revolutionary large file processing** supporting files up to **2GB**.
 
-## 🚀 Current Status - Version 2.2.0
+## ✨ Key Features
 
-### ✅ **Working Features**
-- **Audio Processing**: Transcription via OpenAI Whisper
-- **AI Content Generation**: Wisdom extraction, outlines, articles, social content
-- **🌌 Notion Auto-Publishing**: Automatic structured content publishing to Notion
-- **Modern Aurora UI**: 2025-style bioluminescent interface
-- **Database Integration**: Supabase backend with MCP integration
-- **Simple Authentication**: Streamlit session state (no over-engineering)
+- 🎙️ **Audio Transcription** - High-quality speech-to-text using OpenAI Whisper
+- 💡 **Wisdom Extraction** - AI-powered insights and key takeaways
+- 🔍 **Research Enrichment** - Entity extraction with curated research links
+- 📋 **Content Outline** - Structured organization and flow
+- 📰 **Article Generation** - Complete written content from audio
+- 📱 **Social Media Posts** - Platform-optimized content
+- 🖼️ **Image Prompts** - AI-generated visual concepts
+- 📝 **Editor Review** - Quality enhancement with AI critique
+- 📚 **Notion Integration** - Automatic publishing to Notion workspace
+- 🚀 **Large File Processing** - Handle files up to 2GB with intelligent chunking
+- 🌊 **Real-time Streaming** - Watch content generate step-by-step
+- 🎨 **Aurora Theme** - Beautiful bioluminescent UI design
 
-### 🌟 **Latest Features (v2.2.0)**
-- **Notion Integration**: Auto-publish all generated content to Notion with beautiful formatting
-- **6-Step Pipeline**: Enhanced workflow including automatic Notion publishing
-- **AI-Generated Titles**: Smart content titles generated from transcript analysis
-- **Dual MCP Support**: Both Supabase and Notion MCP integrations working seamlessly
-- **Enhanced Sidebar**: Notion configuration with connection testing
+## 🏗️ Project Structure
+
+```
+whisperforge--prime/
+├── app_simple.py          # Main Streamlit application (v2.8.0)
+├── app.py                 # Redirect to main app
+├── core/                  # Core functionality modules
+│   ├── content_generation.py
+│   ├── file_upload.py     # Enhanced large file processing
+│   ├── research_enrichment.py
+│   ├── supabase_integration.py
+│   └── ...
+├── prompts/               # Custom AI prompts
+├── static/                # CSS, JS, and assets
+├── tests/                 # Test suite
+├── docs/                  # Documentation
+└── requirements.txt       # Dependencies
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.8+
+- Supabase account (for data storage)
+- OpenAI API key (for AI processing)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-username/whisperforge.git
+   cd whisperforge
+   ```
+
+2. **Set up virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+   ```bash
+   cp env.example .env
+   # Edit .env with your API keys
+   ```
+
+5. **Run the application**
+   ```bash
+   streamlit run app_simple.py
+   ```
+
+## 🔧 Configuration
+
+Create a `.env` file with your API keys:
+
+```env
+# Required
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional
+ANTHROPIC_API_KEY=your_anthropic_api_key
+NOTION_API_KEY=your_notion_api_key
+NOTION_DATABASE_ID=your_notion_database_id
+```
+
+## 🎯 Usage
+
+1. **Upload Audio** - Support for MP3, WAV, M4A, and video files up to 2GB
+2. **Choose Processing Mode** - Standard (≤25MB) or Enhanced Large File (≤2GB)
+3. **Watch Real-time Processing** - See content generate step-by-step
+4. **Review Results** - Comprehensive content package with all outputs
+5. **Auto-publish** - Optional Notion integration for seamless publishing
+
+## 🧪 Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest tests/test_basic_functionality.py -v  # Specific test file
+```
+
+## 📚 Documentation
+
+- [Large File Processing Guide](docs/LARGE_FILE_PROCESSING_v2.8.0.md)
+- [Development Workflow](archived_docs/DEVELOPMENT_WORKFLOW.md)
+- [API Documentation](docs/API.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- OpenAI for Whisper and GPT models
+- Supabase for backend infrastructure
+- Streamlit for the amazing web framework
+- The open-source community for inspiration and tools
+
+---
+
+**WhisperForge v2.8.0** - Transform your audio into intelligent content 🌌
 
 ## 🎯 **Architecture Overview**
 
 ```
-├── app.py                 # Main Streamlit application
+├── app_simple.py          # Main Streamlit application (v2.8.0)
+├── app.py                 # Redirect to main app
 ├── core/
 │   ├── streaming_pipeline.py    # Step-by-step content processing
 │   ├── streaming_results.py     # Real-time content display
@@ -114,7 +237,7 @@ Transform your audio recordings into structured, actionable content with advance
 
 4. **Run Application**
    ```bash
-   streamlit run app.py
+   streamlit run app_simple.py
    ```
 
 ## 🎨 **Aurora Design System**

@@ -1,15 +1,17 @@
 """
 Content Generation Module for WhisperForge
-Handles AI-powered content generation without Streamlit dependencies
+Handles AI-powered content creation including transcription, wisdom extraction, and content generation
 """
 
-import os
-import time
 import logging
+import os
 import requests
+import time
 from typing import Dict, Optional, Any
+
 from .utils import get_openai_client, get_anthropic_client, get_grok_api_key, get_prompt, DEFAULT_PROMPTS, get_enhanced_prompt
 
+# Configure logging
 logger = logging.getLogger(__name__)
 
 def generate_wisdom(transcript: str, ai_provider: str, model: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:

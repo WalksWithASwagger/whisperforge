@@ -121,8 +121,8 @@ def real_supabase():
 
 @pytest.fixture
 def streamlit_app():
-    """Streamlit app test fixture"""
-    app = AppTest.from_file("app.py")
+    """Streamlit app test fixture - Updated to use app_simple.py"""
+    app = AppTest.from_file("app_simple.py")
     return app
 
 @pytest.fixture

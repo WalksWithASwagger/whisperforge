@@ -3,8 +3,9 @@ Minimal Visible Thinking Module for WhisperForge
 Provides stub functions to prevent import errors in streaming pipeline
 """
 
-import streamlit as st
 import logging
+
+import streamlit as st
 
 logger = logging.getLogger(__name__)
 
