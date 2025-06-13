@@ -19,7 +19,7 @@ st.set_page_config(
 
 # Core imports
 from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content
-from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, AuroraComponents
+from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, create_aurora_content_card, AuroraComponents
 from core.supabase_integration import get_supabase_client
 from core.file_upload import EnhancedLargeFileProcessor
 
@@ -1350,7 +1350,7 @@ def show_prompts_page():
         "wisdom": "💡 Wisdom Extraction",
         "outline": "📋 Content Outline", 
         "article": "📰 Article Generation",
-        "social": "�� Social Media Posts"
+        "social": "📱 Social Media Posts"
     }
     
     tabs = st.tabs(list(prompt_types.values()) + ["🔧 Advanced"])
