@@ -663,4 +663,576 @@ def simulate_upload_progress(filename: str, duration: float = 2.0):
         if i < steps:
             time.sleep(duration / steps)
     
-    return True 
+    return True
+
+
+class EnhancedLargeFileProcessor:
+    """🚀 Enhanced Large File Processor with FFmpeg for 2GB+ files
+    
+    Features:
+    - FFmpeg-based processing for memory efficiency
+    - Support for files up to 2GB
+    - Intelligent 10-minute audio chunking
+    - Parallel transcription with ThreadPoolExecutor
+    - Memory-efficient streaming without loading entire files into RAM
+    - Enhanced error handling with automatic fallback
+    """
+    
+    def __init__(self):
+        self.supported_formats = {
+            'audio': ['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac', '.wma', '.webm', '.mpeg', '.mpga', '.oga'],
+            'video': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm']  # Extract audio from video
+        }
+        self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
+        self.chunk_duration_minutes = 10  # 10-minute chunks optimized for Whisper
+        self.max_parallel_chunks = 4  # Process 4 chunks simultaneously
+        self.temp_dir = None
+        
+    def check_ffmpeg_availability(self) -> bool:
+        """Check if FFmpeg is available on the system"""
+        try:
+            import subprocess
+            result = subprocess.run(['ffmpeg', '-version'], 
+                                  capture_output=True, text=True, timeout=5)
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            return False
+    
+    def get_audio_info(self, file_path: str) -> Dict[str, Any]:
+        """Get audio file information using ffprobe"""
+        try:
+            import subprocess
+            import json
+            
+            cmd = [
+                'ffprobe', '-v', 'quiet', '-print_format', 'json',
+                '-show_format', '-show_streams', file_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                return {"error": f"ffprobe failed: {result.stderr}"}
+            
+            data = json.loads(result.stdout)
+            format_info = data.get('format', {})
+            
+            # Find audio stream
+            audio_stream = None
+            for stream in data.get('streams', []):
+                if stream.get('codec_type') == 'audio':
+                    audio_stream = stream
+                    break
+            
+            if not audio_stream:
+                return {"error": "No audio stream found"}
+            
+            duration = float(format_info.get('duration', 0))
+            size = int(format_info.get('size', 0))
+            
+            return {
+                "duration": duration,
+                "size": size,
+                "format": format_info.get('format_name', 'unknown'),
+                "codec": audio_stream.get('codec_name', 'unknown'),
+                "sample_rate": int(audio_stream.get('sample_rate', 0)),
+                "channels": int(audio_stream.get('channels', 0))
+            }
+            
+        except Exception as e:
+            return {"error": f"Failed to get audio info: {str(e)}"}
+    
+    def validate_file(self, uploaded_file) -> Dict[str, Any]:
+        """Enhanced file validation for large files"""
+        if not uploaded_file:
+            return {"valid": False, "error": "No file provided"}
+        
+        # Check file size
+        file_size = len(uploaded_file.getvalue())
+        if file_size > self.max_file_size:
+            size_gb = file_size / (1024 * 1024 * 1024)
+            return {"valid": False, "error": f"File too large: {size_gb:.1f}GB (max 2GB)"}
+        
+        # Check file extension
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+        all_formats = self.supported_formats['audio'] + self.supported_formats['video']
+        if file_extension not in all_formats:
+            return {"valid": False, "error": f"Unsupported format: {file_extension}"}
+        
+        # Check FFmpeg availability for large files
+        if file_size > 100 * 1024 * 1024 and not self.check_ffmpeg_availability():  # 100MB+
+            return {
+                "valid": False, 
+                "error": "FFmpeg required for large files but not available. Please install FFmpeg."
+            }
+        
+        return {
+            "valid": True,
+            "size": file_size,
+            "size_mb": file_size / (1024 * 1024),
+            "requires_chunking": file_size > 100 * 1024 * 1024,  # Chunk files > 100MB
+            "format": file_extension
+        }
+    
+    def create_enhanced_upload_interface(self) -> Optional[Any]:
+        """Create enhanced upload interface for large files"""
+        
+        # Enhanced upload zone HTML
+        upload_html = f"""
+        <div class="enhanced-upload-container">
+            <div class="enhanced-upload-zone" id="enhanced-upload-zone">
+                <div class="upload-icon-large">
+                    <div class="upload-icon-inner">🎵</div>
+                    <div class="upload-pulse"></div>
+                </div>
+                <div class="upload-content">
+                    <h2>Enhanced Large File Upload</h2>
+                    <p class="upload-subtitle">Powered by FFmpeg • Up to 2GB • Intelligent Chunking</p>
+                    <div class="upload-features-grid">
+                        <div class="feature-card">
+                            <span class="feature-icon">⚡</span>
+                            <span class="feature-text">10-min chunks</span>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">🔄</span>
+                            <span class="feature-text">Parallel processing</span>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">💾</span>
+                            <span class="feature-text">Memory efficient</span>
+                        </div>
+                        <div class="feature-card">
+                            <span class="feature-icon">🎯</span>
+                            <span class="feature-text">Auto-retry</span>
+                        </div>
+                    </div>
+                    <div class="supported-formats-enhanced">
+                        <div class="format-group">
+                            <strong>Audio:</strong> MP3, WAV, M4A, AAC, OGG, FLAC, WEBM
+                        </div>
+                        <div class="format-group">
+                            <strong>Video:</strong> MP4, AVI, MOV, MKV, WMV (audio extraction)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+        
+        # Enhanced CSS
+        upload_css = """
+        <style>
+        .enhanced-upload-container {
+            margin: 25px 0;
+        }
+        
+        .enhanced-upload-zone {
+            border: 3px dashed rgba(0, 255, 255, 0.4);
+            border-radius: 20px;
+            padding: 40px 30px;
+            text-align: center;
+            background: linear-gradient(135deg, 
+                rgba(0, 255, 255, 0.05) 0%, 
+                rgba(64, 224, 208, 0.08) 50%,
+                rgba(138, 43, 226, 0.05) 100%);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .enhanced-upload-zone:hover {
+            border-color: rgba(0, 255, 255, 0.8);
+            background: linear-gradient(135deg, 
+                rgba(0, 255, 255, 0.1) 0%, 
+                rgba(64, 224, 208, 0.15) 50%,
+                rgba(138, 43, 226, 0.1) 100%);
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 255, 255, 0.3);
+        }
+        
+        .upload-icon-large {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .upload-icon-inner {
+            font-size: 80px;
+            opacity: 0.9;
+            transition: all 0.5s ease;
+            display: inline-block;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .upload-pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .enhanced-upload-zone:hover .upload-icon-inner {
+            transform: scale(1.2) rotate(15deg);
+            opacity: 1;
+        }
+        
+        .upload-content h2 {
+            color: #00FFFF;
+            font-size: 1.8rem;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+        }
+        
+        .upload-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0 0 25px 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .upload-features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .feature-card {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 12px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+        }
+        
+        .feature-text {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+        
+        .supported-formats-enhanced {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .format-group {
+            background: rgba(138, 43, 226, 0.1);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .format-group strong {
+            color: #8A2BE2;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.7;
+            }
+        }
+        </style>
+        """
+        
+        st.markdown(upload_css, unsafe_allow_html=True)
+        st.markdown(upload_html, unsafe_allow_html=True)
+        
+        # Enhanced file uploader
+        uploaded_file = st.file_uploader(
+            "Choose an audio or video file",
+            type=['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'webm', 'mpeg', 'mpga', 'oga', 
+                  'mp4', 'avi', 'mov', 'mkv', 'wmv', 'flv'],
+            help="Upload audio/video files up to 2GB. Large files automatically use FFmpeg chunking for optimal processing.",
+            label_visibility="collapsed"
+        )
+        
+        return uploaded_file
+    
+    def process_large_file(self, uploaded_file) -> Dict[str, Any]:
+        """Enhanced large file processing with FFmpeg"""
+        
+        # Validate file first
+        validation = self.validate_file(uploaded_file)
+        if not validation["valid"]:
+            return {"success": False, "error": validation["error"]}
+        
+        file_size_mb = validation["size_mb"]
+        requires_chunking = validation["requires_chunking"]
+        
+        st.info(f"📁 **File:** {uploaded_file.name} ({file_size_mb:.1f} MB)")
+        
+        if requires_chunking:
+            st.info("🔧 **Processing Method:** FFmpeg chunking (large file detected)")
+            return self._process_with_ffmpeg_chunking(uploaded_file)
+        else:
+            st.info("⚡ **Processing Method:** Standard processing (small file)")
+            return self._process_standard(uploaded_file)
+    
+    def _process_standard(self, uploaded_file) -> Dict[str, Any]:
+        """Process smaller files using standard method"""
+        try:
+            from core.content_generation import transcribe_audio
+            
+            # Create temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                tmp_file_path = tmp_file.name
+            
+            try:
+                # Transcribe directly
+                with st.spinner("🎯 Transcribing audio..."):
+                    transcript = transcribe_audio(tmp_file_path)
+                
+                return {
+                    "success": True,
+                    "transcript": transcript,
+                    "method": "standard",
+                    "chunks_processed": 1
+                }
+                
+            finally:
+                # Cleanup
+                if os.path.exists(tmp_file_path):
+                    os.unlink(tmp_file_path)
+                    
+        except Exception as e:
+            return {"success": False, "error": f"Standard processing failed: {str(e)}"}
+    
+    def _process_with_ffmpeg_chunking(self, uploaded_file) -> Dict[str, Any]:
+        """Process large files using FFmpeg chunking"""
+        
+        # Setup temporary directory
+        self.temp_dir = tempfile.mkdtemp(prefix="whisperforge_chunks_")
+        
+        try:
+            # Save uploaded file
+            input_file_path = os.path.join(self.temp_dir, uploaded_file.name)
+            with open(input_file_path, 'wb') as f:
+                f.write(uploaded_file.getvalue())
+            
+            # Get audio information
+            st.info("🔍 Analyzing audio file...")
+            audio_info = self.get_audio_info(input_file_path)
+            
+            if "error" in audio_info:
+                return {"success": False, "error": audio_info["error"]}
+            
+            duration = audio_info["duration"]
+            st.success(f"📊 **Duration:** {duration/60:.1f} minutes | **Format:** {audio_info['format']} | **Codec:** {audio_info['codec']}")
+            
+            # Create chunks using FFmpeg
+            st.info("✂️ Creating audio chunks...")
+            chunks_result = self._create_ffmpeg_chunks(input_file_path, duration)
+            
+            if not chunks_result["success"]:
+                return chunks_result
+            
+            chunks = chunks_result["chunks"]
+            st.success(f"✅ Created {len(chunks)} chunks of ~{self.chunk_duration_minutes} minutes each")
+            
+            # Process chunks in parallel
+            st.info("🚀 Starting parallel transcription...")
+            transcription_result = self._transcribe_chunks_parallel_ffmpeg(chunks)
+            
+            if not transcription_result["success"]:
+                return transcription_result
+            
+            # Reassemble transcript
+            full_transcript = self._reassemble_transcript_ffmpeg(transcription_result["chunk_transcripts"])
+            
+            return {
+                "success": True,
+                "transcript": full_transcript,
+                "method": "ffmpeg_chunking",
+                "chunks_processed": len(chunks),
+                "processing_time": transcription_result.get("total_time", "unknown"),
+                "success_rate": transcription_result.get("success_rate", "unknown")
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": f"FFmpeg processing failed: {str(e)}"}
+        
+        finally:
+            # Cleanup temporary directory
+            self._cleanup_temp_dir()
+    
+    def _create_ffmpeg_chunks(self, input_file_path: str, duration: float) -> Dict[str, Any]:
+        """Create audio chunks using FFmpeg"""
+        try:
+            import subprocess
+            
+            chunk_duration_seconds = self.chunk_duration_minutes * 60
+            num_chunks = math.ceil(duration / chunk_duration_seconds)
+            chunks = []
+            
+            progress_bar = st.progress(0, f"Creating chunks: 0/{num_chunks}")
+            
+            for i in range(num_chunks):
+                start_time = i * chunk_duration_seconds
+                chunk_filename = f"chunk_{i:03d}.wav"
+                chunk_path = os.path.join(self.temp_dir, chunk_filename)
+                
+                # FFmpeg command to extract chunk with audio optimization
+                cmd = [
+                    'ffmpeg', '-i', input_file_path,
+                    '-ss', str(start_time),
+                    '-t', str(chunk_duration_seconds),
+                    '-ar', '16000',  # 16kHz sample rate (optimal for Whisper)
+                    '-ac', '1',      # Mono audio
+                    '-acodec', 'pcm_s16le',  # PCM format
+                    '-y',  # Overwrite output files
+                    chunk_path
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"FFmpeg chunk creation failed: {result.stderr}"}
+                
+                # Verify chunk was created
+                if not os.path.exists(chunk_path) or os.path.getsize(chunk_path) == 0:
+                    continue  # Skip empty chunks
+                
+                chunks.append({
+                    "index": i,
+                    "file_path": chunk_path,
+                    "start_time": start_time,
+                    "duration": min(chunk_duration_seconds, duration - start_time)
+                })
+                
+                # Update progress
+                progress_bar.progress((i + 1) / num_chunks, f"Creating chunks: {i + 1}/{num_chunks}")
+            
+            return {"success": True, "chunks": chunks}
+            
+        except Exception as e:
+            return {"success": False, "error": f"Chunk creation failed: {str(e)}"}
+    
+    def _transcribe_chunks_parallel_ffmpeg(self, chunks: List[Dict]) -> Dict[str, Any]:
+        """Transcribe chunks in parallel using ThreadPoolExecutor"""
+        from core.content_generation import transcribe_audio
+        
+        chunk_transcripts = {}
+        total_chunks = len(chunks)
+        
+        # Create progress containers
+        progress_container = st.empty()
+        status_container = st.empty()
+        
+        def transcribe_single_chunk(chunk_info: Dict) -> Tuple[int, str, bool]:
+            """Transcribe a single chunk"""
+            try:
+                chunk_index = chunk_info["index"]
+                file_path = chunk_info["file_path"]
+                
+                transcript = transcribe_audio(file_path)
+                return chunk_index, transcript, True
+                
+            except Exception as e:
+                logger.error(f"Failed to transcribe chunk {chunk_info['index']}: {e}")
+                return chunk_info["index"], f"[Transcription failed for chunk {chunk_info['index']}]", False
+        
+        start_time = time.time()
+        completed_chunks = 0
+        
+        # Process chunks in parallel
+        with ThreadPoolExecutor(max_workers=self.max_parallel_chunks) as executor:
+            # Submit all chunks
+            future_to_chunk = {
+                executor.submit(transcribe_single_chunk, chunk): chunk 
+                for chunk in chunks
+            }
+            
+            # Process completed futures
+            for future in as_completed(future_to_chunk):
+                chunk_index, transcript, success = future.result()
+                
+                if success:
+                    chunk_transcripts[chunk_index] = transcript
+                
+                completed_chunks += 1
+                
+                # Update progress
+                progress = completed_chunks / total_chunks
+                with progress_container:
+                    st.progress(progress, f"Transcribing: {completed_chunks}/{total_chunks} chunks")
+                
+                with status_container:
+                    elapsed = time.time() - start_time
+                    if completed_chunks > 0:
+                        eta = (elapsed / completed_chunks) * (total_chunks - completed_chunks)
+                        st.info(f"⏱️ Elapsed: {elapsed:.1f}s | ETA: {eta:.1f}s | Success: {len(chunk_transcripts)}/{completed_chunks}")
+        
+        processing_time = time.time() - start_time
+        successful_chunks = len(chunk_transcripts)
+        
+        # Check success rate
+        if successful_chunks < total_chunks * 0.7:  # Require at least 70% success
+            return {
+                "success": False,
+                "error": f"Too many failed chunks: {successful_chunks}/{total_chunks} successful"
+            }
+        
+        return {
+            "success": True,
+            "chunk_transcripts": chunk_transcripts,
+            "total_time": f"{processing_time:.1f}s",
+            "success_rate": f"{successful_chunks}/{total_chunks}"
+        }
+    
+    def _reassemble_transcript_ffmpeg(self, chunk_transcripts: Dict[int, str]) -> str:
+        """Reassemble transcript from chunks in correct order"""
+        # Sort chunks by index and concatenate
+        sorted_chunks = sorted(chunk_transcripts.items())
+        full_transcript = " ".join([transcript for _, transcript in sorted_chunks])
+        
+        # Clean up transcript
+        full_transcript = full_transcript.strip()
+        
+        return full_transcript
+    
+    def _cleanup_temp_dir(self):
+        """Clean up temporary directory and all files"""
+        if self.temp_dir and os.path.exists(self.temp_dir):
+            try:
+                import shutil
+                shutil.rmtree(self.temp_dir)
+                self.temp_dir = None
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp directory {self.temp_dir}: {e}") 

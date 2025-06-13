@@ -22,6 +22,7 @@ from core.content_generation import transcribe_audio, generate_wisdom, generate_
 from core.research_enrichment import generate_research_enrichment
 from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, AuroraComponents
 from core.supabase_integration import get_supabase_client
+from core.file_upload import EnhancedLargeFileProcessor
 
 # Apply beautiful theme
 apply_aurora_theme()
@@ -599,6 +600,282 @@ Provide an improved version that addresses the feedback while maintaining the co
         st.error(f"❌ Processing failed: {str(e)}")
         return None
 
+def process_audio_pipeline_with_transcript(transcript: str):
+    """Process audio pipeline with pre-transcribed content (for large file processing)"""
+    results = {'transcript': transcript}
+    
+    # Load custom prompts
+    custom_prompts = load_custom_prompts()
+    if custom_prompts:
+        st.info(f"📝 Using {len(custom_prompts)} custom prompts")
+    
+    # Progress tracking
+    progress_bar = st.progress(0.2)  # Start at 20% since transcription is done
+    status_text = st.empty()
+    
+    # Create real-time content display containers
+    st.markdown("### 🌌 Live Content Generation")
+    
+    # Create expandable sections for each step (skip transcription)
+    wisdom_container = st.expander("💡 Wisdom Extraction", expanded=False)
+    research_container = st.expander("🔍 Research Enrichment", expanded=False)
+    outline_container = st.expander("📋 Outline Creation", expanded=False)
+    article_container = st.expander("📝 Article Generation", expanded=False)
+    social_container = st.expander("📱 Social Content", expanded=False)
+    editor_container = st.expander("📝 Editor Review", expanded=False)
+    notion_container = st.expander("🌌 Notion Publishing", expanded=False)
+    
+    try:
+        # Show transcript info
+        st.success(f"✅ Using pre-transcribed content ({len(transcript)} characters)")
+        
+        # Step 2: Wisdom Extraction
+        status_text.text("💡 Extracting key insights...")
+        progress_bar.progress(0.3)
+        
+        # Use custom prompt if available
+        wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
+        wisdom = generate_wisdom(transcript, "OpenAI", "gpt-4", 
+                                custom_prompt=wisdom_prompt, knowledge_base={})
+        results['wisdom'] = wisdom
+        
+        # Stream wisdom to UI immediately
+        with wisdom_container:
+            st.markdown("**✅ Wisdom Extraction Complete**")
+            st.markdown(wisdom)
+        
+        st.success("✅ Wisdom extracted")
+        
+        # Step 3: Research Enrichment
+        if st.session_state.get('research_enabled', True):
+            status_text.text("🔍 Finding supporting research...")
+            progress_bar.progress(0.45)
+            
+            research = generate_research_enrichment(wisdom, transcript, "OpenAI", "gpt-4", enabled=True)
+            results['research'] = research
+            
+            # Stream research to UI immediately
+            with research_container:
+                st.markdown("**✅ Research Enrichment Complete**")
+                if research.get('entities'):
+                    for entity in research['entities'][:3]:  # Show first 3 entities
+                        st.markdown(f"**{entity.get('name', 'Entity')}**: {entity.get('why_matters', 'No description')}")
+                        if entity.get('links'):
+                            for link in entity['links'][:2]:  # Show first 2 links
+                                gem_icon = "💎" if link.get('is_gem') else "🔗"
+                                st.markdown(f"{gem_icon} [{link.get('title', 'Link')}]({link.get('url', '#')})")
+                else:
+                    st.markdown("No research entities found.")
+            
+            st.success(f"✅ Research enrichment complete ({research.get('total_entities', 0)} entities)")
+        else:
+            status_text.text("🔍 Research enrichment skipped...")
+            progress_bar.progress(0.45)
+            
+            results['research'] = {"entities": [], "total_entities": 0, "status": "disabled"}
+            
+            # Show disabled status in UI
+            with research_container:
+                st.markdown("**ℹ️ Research Enrichment Disabled**")
+                st.info("Enable in Settings to get research links and entities.")
+            
+            st.info("ℹ️ Research enrichment disabled")
+        
+        # Step 4: Outline Creation
+        status_text.text("📋 Creating structured outline...")
+        progress_bar.progress(0.6)
+        
+        # Use custom prompt if available
+        outline_prompt = get_prompt_for_step('outline', custom_prompts)
+        outline = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", 
+                                  custom_prompt=outline_prompt, knowledge_base={})
+        results['outline'] = outline
+        
+        # Stream outline to UI immediately
+        with outline_container:
+            st.markdown("**✅ Outline Creation Complete**")
+            st.markdown(outline)
+        
+        st.success("✅ Outline created")
+        
+        # Step 5: Article Generation
+        status_text.text("📝 Writing comprehensive article...")
+        progress_bar.progress(0.75)
+        
+        # Use custom prompt if available
+        article_prompt = get_prompt_for_step('article', custom_prompts)
+        article = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", 
+                                  custom_prompt=article_prompt, knowledge_base={})
+        results['article'] = article
+        
+        # Stream article to UI immediately
+        with article_container:
+            st.markdown("**✅ Article Generation Complete**")
+            st.markdown(article)
+        
+        st.success("✅ Article generated")
+        
+        # Step 6: Social Content
+        status_text.text("📱 Creating social media content...")
+        progress_bar.progress(0.85)
+        
+        # Use custom prompt if available
+        social_prompt = get_prompt_for_step('social', custom_prompts)
+        social = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", 
+                                        custom_prompt=social_prompt, knowledge_base={})
+        results['social_content'] = social
+        
+        # Stream social content to UI immediately
+        with social_container:
+            st.markdown("**✅ Social Content Creation Complete**")
+            st.markdown(social)
+        
+        st.success("✅ Social content created")
+        
+        # Step 7: Editor Review & Revision (if enabled)
+        if st.session_state.get('editor_enabled', False):
+            status_text.text("📝 Editor reviewing content...")
+            progress_bar.progress(0.9)
+            
+            # Generate editor notes for key content
+            editor_notes = {}
+            content_types = [
+                ('wisdom', wisdom),
+                ('outline', outline), 
+                ('article', article),
+                ('social_content', social)
+            ]
+            
+            for content_type, content in content_types:
+                if content:
+                    notes = editor_critique(content, content_type, "OpenAI", "gpt-4", knowledge_base={})
+                    editor_notes[content_type] = notes
+            
+            results['editor_notes'] = editor_notes
+            st.success(f"✅ Editor review complete ({len(editor_notes)} items reviewed)")
+            
+            # One revision pass with editor notes
+            status_text.text("🔄 Revising content with editor feedback...")
+            progress_bar.progress(0.92)
+            
+            revised_content = {}
+            for content_type, content in content_types:
+                if content and content_type in editor_notes:
+                    notes = editor_notes[content_type]
+                    
+                    revision_prompt = f"""Improve this {content_type} based on editor feedback:
+
+ORIGINAL:
+{content}
+
+EDITOR NOTES:
+{notes}
+
+Provide an improved version that addresses the feedback while maintaining the core message."""
+                    
+                    if content_type == 'wisdom':
+                        revised = generate_wisdom(transcript, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
+                    elif content_type == 'outline':
+                        revised = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
+                    elif content_type == 'article':
+                        revised = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
+                    elif content_type == 'social_content':
+                        revised = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
+                    
+                    revised_content[content_type] = revised
+            
+            results['revised_content'] = revised_content
+            
+            # Stream editor results to UI
+            with editor_container:
+                st.markdown("**✅ Editor Review & Revision Complete**")
+                st.markdown(f"**Editor Notes Generated:** {len(editor_notes)} items")
+                st.markdown(f"**Content Revised:** {len(revised_content)} items")
+                
+                # Show editor notes summary
+                for content_type, notes in editor_notes.items():
+                    with st.expander(f"📝 {content_type.title()} Notes"):
+                        st.markdown(notes[:500] + "..." if len(notes) > 500 else notes)
+            
+            st.success(f"✅ Content revision complete ({len(revised_content)} items revised)")
+        else:
+            # Show disabled status in UI
+            with editor_container:
+                st.markdown("**ℹ️ Editor Review Disabled**")
+                st.info("Enable in Settings to get AI editor feedback and content revisions.")
+            
+            st.info("ℹ️ Editor review disabled")
+        
+        # Step 8: Auto-publish to Notion
+        if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
+            status_text.text("🌌 Publishing to Notion...")
+            progress_bar.progress(0.95)
+            
+            # Generate AI title
+            ai_title = generate_ai_title(transcript)
+            
+            # Publish to Notion
+            notion_url = create_notion_page(ai_title, results)
+            if notion_url:
+                results['notion_url'] = notion_url
+                
+                # Stream Notion success to UI
+                with notion_container:
+                    st.markdown("**✅ Notion Publishing Complete**")
+                    st.markdown(f"**Page Title:** {ai_title}")
+                    st.markdown(f"🔗 [Open in Notion]({notion_url})")
+                
+                st.success(f"✅ Published to Notion!")
+                st.markdown(f"🔗 [Open in Notion]({notion_url})")
+            else:
+                # Stream Notion failure to UI
+                with notion_container:
+                    st.markdown("**⚠️ Notion Publishing Failed**")
+                    st.warning("Check your Notion API configuration in Settings.")
+                
+                st.warning("⚠️ Notion publishing skipped")
+        else:
+            # Show disabled status in UI
+            with notion_container:
+                st.markdown("**ℹ️ Notion Publishing Disabled**")
+                st.info("Configure Notion API in Settings to enable auto-publishing.")
+            
+            st.info("ℹ️ Configure Notion in sidebar for auto-publishing")
+        
+        # Complete with Aurora celebration
+        progress_bar.progress(1.0)
+        
+        # Aurora completion celebration
+        st.markdown("""
+        <div style="text-align: center; padding: 30px; margin: 20px 0;">
+            <h1 style="
+                color: var(--aurora-primary); 
+                text-shadow: var(--aurora-glow-strong); 
+                font-size: 3rem;
+                margin: 0;
+                animation: aurora-pulse 2s ease-in-out infinite;
+            ">🎉 Pipeline Complete! 🌌</h1>
+            <p style="color: var(--aurora-text); font-size: 1.3rem; margin: 15px 0;">
+                Your large file content has been transformed with AI magic ✨
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Aurora success message
+        AuroraComponents.success_message("🚀 All processing steps completed successfully!")
+        
+        # Save to Supabase database
+        try:
+            save_content_to_db(results)
+        except Exception as e:
+            st.warning(f"⚠️ Content saved locally but database save failed: {e}")
+        
+        return results
+        
+    except Exception as e:
+        st.error(f"❌ Processing failed: {str(e)}")
+        return None
+
 def save_content_to_db(content_data):
     """Save generated content to database"""
     try:
@@ -940,32 +1217,124 @@ def show_transform_page():
     
     st.markdown("---")
     
-    # File upload
-    uploaded_file = st.file_uploader(
-        "🎵 Upload your audio file",
-        type=['mp3', 'wav', 'm4a', 'flac', 'ogg'],
-        help="Upload audio file for processing (max 25MB)"
+    # Enhanced file upload selection
+    upload_method = st.radio(
+        "Choose upload method:",
+        ["🎵 Standard Upload (up to 25MB)", "🚀 Enhanced Large File Upload (up to 2GB)"],
+        help="Standard upload for smaller files, Enhanced upload for large files with FFmpeg processing"
     )
     
-    if uploaded_file:
-        # Show file info
-        file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-        st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
+    if upload_method == "🎵 Standard Upload (up to 25MB)":
+        # Standard file upload
+        uploaded_file = st.file_uploader(
+            "🎵 Upload your audio file",
+            type=['mp3', 'wav', 'm4a', 'flac', 'ogg'],
+            help="Upload audio file for processing (max 25MB)"
+        )
         
-        # Audio player
-        st.audio(uploaded_file.getvalue())
+        if uploaded_file:
+            # Show file info
+            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
+            st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
+            
+            # Audio player (only for smaller files)
+            if file_size < 50:  # Only show player for files under 50MB
+                st.audio(uploaded_file.getvalue())
+            else:
+                st.info("🎵 Audio preview disabled for large files to conserve memory")
+            
+            # Process button
+            if st.button("⚡ Transform Audio to Content", type="primary", use_container_width=True):
+                if not os.getenv("OPENAI_API_KEY"):
+                    st.error("❌ Please enter your OpenAI API key in the sidebar")
+                    return
+                
+                with st.container():
+                    results = process_audio_pipeline(uploaded_file)
+                    if results:
+                        # Store results in session state
+                        st.session_state.current_results = results
+    
+    else:
+        # Enhanced large file upload
+        st.markdown("### 🚀 Enhanced Large File Processing")
         
-        # Process button
-        if st.button("⚡ Transform Audio to Content", type="primary", use_container_width=True):
-            if not os.getenv("OPENAI_API_KEY"):
-                st.error("❌ Please enter your OpenAI API key in the sidebar")
+        # Initialize enhanced processor
+        processor = EnhancedLargeFileProcessor()
+        
+        # Create enhanced upload interface
+        uploaded_file = processor.create_enhanced_upload_interface()
+        
+        if uploaded_file:
+            # Validate file
+            validation = processor.validate_file(uploaded_file)
+            
+            if not validation["valid"]:
+                st.error(f"❌ {validation['error']}")
                 return
             
-            with st.container():
-                results = process_audio_pipeline(uploaded_file)
-                if results:
-                    # Store results in session state
-                    st.session_state.current_results = results
+            file_size_mb = validation["size_mb"]
+            requires_chunking = validation["requires_chunking"]
+            
+            # Show file info with enhanced details
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📁 File Size", f"{file_size_mb:.1f} MB")
+            with col2:
+                st.metric("🔧 Processing Method", "FFmpeg Chunking" if requires_chunking else "Standard")
+            with col3:
+                st.metric("🎯 Format", validation["format"].upper())
+            
+            # Audio preview disabled for large files to conserve memory
+            if file_size_mb < 50:
+                st.audio(uploaded_file.getvalue())
+            else:
+                st.info("🎵 Audio preview disabled for large files to conserve memory")
+            
+            # Enhanced process button
+            if st.button("🚀 Transform Large File to Content", type="primary", use_container_width=True):
+                if not os.getenv("OPENAI_API_KEY"):
+                    st.error("❌ Please enter your OpenAI API key in the sidebar")
+                    return
+                
+                with st.container():
+                    # Process with enhanced large file processor
+                    processing_result = processor.process_large_file(uploaded_file)
+                    
+                    if processing_result["success"]:
+                        transcript = processing_result["transcript"]
+                        
+                        # Show processing summary
+                        st.success(f"✅ Large file processing complete!")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("📝 Transcript Length", f"{len(transcript):,} chars")
+                        with col2:
+                            st.metric("🔧 Method", processing_result["method"])
+                        with col3:
+                            if "chunks_processed" in processing_result:
+                                st.metric("📊 Chunks Processed", processing_result["chunks_processed"])
+                        
+                        # Continue with pipeline using pre-transcribed content
+                        st.markdown("---")
+                        results = process_audio_pipeline_with_transcript(transcript)
+                        
+                        if results:
+                            # Store results in session state
+                            st.session_state.current_results = results
+                    else:
+                        st.error(f"❌ Large file processing failed: {processing_result['error']}")
+                        
+                        # Fallback to standard processing for smaller files
+                        if file_size_mb < 100:
+                            st.info("🔄 Attempting fallback to standard processing...")
+                            try:
+                                results = process_audio_pipeline(uploaded_file)
+                                if results:
+                                    st.session_state.current_results = results
+                            except Exception as e:
+                                st.error(f"❌ Fallback processing also failed: {str(e)}")
     
     # Show results if available
     if 'current_results' in st.session_state:
