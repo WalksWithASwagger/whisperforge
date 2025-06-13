@@ -1,5 +1,51 @@
 # 📋 WhisperForge Changelog
 
+## [2.3.0] - 2025-01-12 🔍📝 **Research Enrichment + Editor System**
+
+### 🔍 **RESEARCH ENRICHMENT RESTORED**
+- **Entity Extraction**: AI identifies key people, organizations, technologies, and concepts
+- **Research Links**: Generates authoritative supporting links for each entity
+- **Gem Links**: Marks the best resource for each entity with 💎 icon
+- **Smart Integration**: Research data beautifully formatted in Notion pages
+- **Toggle Control**: Enable/disable research enrichment in sidebar
+
+### 📝 **SIMPLE EDITOR SYSTEM**
+- **Editor Notes**: AI editor provides improvement suggestions for all content
+- **One Revision Pass**: Content regenerated once with editor feedback
+- **No Quality Gates**: Simple notes → revision → done workflow
+- **Comparison View**: See original vs revised content side-by-side
+- **Toggle Control**: Enable/disable editor review in sidebar
+
+### 🔧 **ENHANCED 8-STEP PIPELINE**
+1. 🎙️ **Transcription** - Speech-to-text conversion
+2. 💡 **Wisdom Extraction** - Key insights and takeaways  
+3. 🔍 **Research Enrichment** - Supporting links & context ⭐ **RESTORED**
+4. 📋 **Outline Creation** - Structured content organization
+5. 📝 **Article Generation** - Complete written content
+6. 📱 **Social Media** - Platform-optimized posts
+7. 📝 **Editor Review** - Notes + one revision pass ⭐ **NEW**
+8. 🌌 **Notion Publishing** - Enhanced formatting with research links
+
+### 🎨 **ENHANCED NOTION FORMATTING**
+- **Research Sections**: Beautiful research entity displays with gem links
+- **Entity Cards**: Structured display with "why this matters" explanations
+- **Link Previews**: Research links formatted as clickable previews
+- **Rich Toggles**: Collapsible sections for each content type
+
+### 🛠 **TECHNICAL IMPROVEMENTS**
+- **Restored Module**: Moved `research_enrichment.py` from archive to `core/`
+- **Enhanced Imports**: Added research and editor functions to app_simple.py
+- **Smart Toggles**: Research and editor can be enabled/disabled independently
+- **Progress Tracking**: Updated progress bars for 8-step pipeline
+- **Error Handling**: Graceful fallbacks for research and editor failures
+
+### ✅ **VERIFIED WORKING**
+- **Research Enrichment**: ✅ Entity extraction and link generation
+- **Editor System**: ✅ Notes generation and content revision
+- **Enhanced Pipeline**: ✅ All 8 steps working smoothly
+- **Notion Integration**: ✅ Research data beautifully formatted
+- **Toggle Controls**: ✅ Independent enable/disable for features
+
 ## [2.2.0] - 2025-01-12 🌌 **Notion Auto-Publishing Integration**
 
 ### 🌟 **MAJOR NEW FEATURE: Notion Integration**
