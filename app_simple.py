@@ -20,7 +20,7 @@ st.set_page_config(
 # Core imports
 from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content, editor_critique
 from core.research_enrichment import generate_research_enrichment
-from core.styling import apply_aurora_theme, create_aurora_header
+from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, AuroraComponents
 from core.supabase_integration import get_supabase_client
 
 # Apply beautiful theme
@@ -393,9 +393,27 @@ Provide an improved version that addresses the feedback while maintaining the co
         else:
             st.info("ℹ️ Configure Notion in sidebar for auto-publishing")
         
-        # Complete
+        # Complete with Aurora celebration
         progress_bar.progress(1.0)
-        status_text.text("🎉 Processing complete!")
+        
+        # Aurora completion celebration
+        st.markdown("""
+        <div style="text-align: center; padding: 30px; margin: 20px 0;">
+            <h1 style="
+                color: var(--aurora-primary); 
+                text-shadow: var(--aurora-glow-strong); 
+                font-size: 3rem;
+                margin: 0;
+                animation: aurora-pulse 2s ease-in-out infinite;
+            ">🎉 Pipeline Complete! 🌌</h1>
+            <p style="color: var(--aurora-text); font-size: 1.3rem; margin: 15px 0;">
+                Your content has been transformed with AI magic ✨
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Aurora success message
+        AuroraComponents.success_message("🚀 All processing steps completed successfully!")
         
         # Save to Supabase database
         try:
@@ -426,15 +444,44 @@ def save_content_to_db(content_data):
 
 # === CONTENT DISPLAY ===
 def show_results(results):
-    """Display generated content in beautiful tabs"""
+    """Display generated content with Aurora styling"""
     if not results:
         return
     
-    st.markdown("## 🎉 Generated Content")
+    # Aurora header for results
+    st.markdown("""
+    <div style="text-align: center; padding: 20px; margin: 20px 0;">
+        <h1 style="
+            color: var(--aurora-primary); 
+            text-shadow: var(--aurora-glow); 
+            font-size: 2.5rem;
+            margin: 0;
+        ">🎉 Content Generated!</h1>
+        <p style="color: var(--aurora-text); font-size: 1.2rem; margin: 10px 0;">
+            Your audio has been transformed with AI magic ✨
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Show Notion link prominently if available
+    # Aurora Notion link if available
     if results.get('notion_url'):
-        st.markdown(f"### 🌌 [View in Notion]({results['notion_url']})")
+        st.markdown(f"""
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{results['notion_url']}" target="_blank" style="
+                background: linear-gradient(45deg, var(--aurora-primary), var(--aurora-secondary));
+                color: black;
+                padding: 16px 32px;
+                border-radius: 16px;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 1.2rem;
+                box-shadow: var(--aurora-glow-strong);
+                display: inline-block;
+                transition: all 0.3s ease;
+                border: none;
+            ">🌌 View in Notion</a>
+        </div>
+        """, unsafe_allow_html=True)
         st.markdown("---")
     
     # Create tabs for different content types
@@ -447,19 +494,24 @@ def show_results(results):
     tabs = st.tabs(tab_names)
     
     with tabs[0]:
-        st.markdown("### 🎙️ Audio Transcript")
-        st.text_area("Transcript", results.get('transcript', ''), height=300, disabled=True)
+        create_aurora_content_card("🎙️ Audio Transcript", results.get('transcript', ''), "transcript")
     
     with tabs[1]:
-        st.markdown("### 💡 Key Insights")
-        st.markdown(results.get('wisdom', ''))
+        create_aurora_content_card("💡 Key Insights", results.get('wisdom', ''), "text")
     
     with tabs[2]:
-        st.markdown("### 🔍 Research & Supporting Links")
+        st.markdown("""
+        <div class="aurora-card">
+            <h3 style="color: var(--aurora-primary); text-shadow: var(--aurora-glow);">
+                🔍 Research & Supporting Links
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         research_data = results.get('research', {})
         if research_data and research_data.get('entities'):
             entities = research_data['entities']
-            st.info(f"Found {len(entities)} research entities in {research_data.get('processing_time', 0):.1f}s")
+            AuroraComponents.success_message(f"Found {len(entities)} research entities in {research_data.get('processing_time', 0):.1f}s")
             
             for entity in entities:
                 with st.expander(f"🔬 {entity.get('name', 'Unknown Entity')}"):
@@ -479,27 +531,30 @@ def show_results(results):
             st.info("No research entities found or research was disabled.")
     
     with tabs[3]:
-        st.markdown("### 📋 Content Outline")
-        st.markdown(results.get('outline', ''))
+        create_aurora_content_card("📋 Content Outline", results.get('outline', ''), "text")
     
     with tabs[4]:
-        st.markdown("### 📰 Full Article")
-        st.markdown(results.get('article', ''))
+        create_aurora_content_card("📰 Full Article", results.get('article', ''), "text")
     
     with tabs[5]:
-        st.markdown("### 📱 Social Media Posts")
-        st.markdown(results.get('social_content', ''))
+        create_aurora_content_card("📱 Social Media Posts", results.get('social_content', ''), "text")
     
     # Editor tab (if enabled)
     if len(tabs) > 6:
         with tabs[6]:
-            st.markdown("### 📝 Editor Review & Revisions")
+            st.markdown("""
+            <div class="aurora-card">
+                <h3 style="color: var(--aurora-primary); text-shadow: var(--aurora-glow);">
+                    📝 Editor Review & Revisions
+                </h3>
+            </div>
+            """, unsafe_allow_html=True)
             
             editor_notes = results.get('editor_notes', {})
             revised_content = results.get('revised_content', {})
             
             if editor_notes:
-                st.info(f"Editor reviewed {len(editor_notes)} content sections and provided improvement notes.")
+                AuroraComponents.success_message(f"Editor reviewed {len(editor_notes)} content sections and provided improvement notes.")
                 
                 for content_type, notes in editor_notes.items():
                     with st.expander(f"📝 Editor Notes: {content_type.replace('_', ' ').title()}"):
