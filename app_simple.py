@@ -948,10 +948,10 @@ def show_transform_page():
             st.info("Configure in Settings tab")
     
     with col3:
-        research_status = "✅ Enabled" if st.session_state.get('research_enabled', True) else "⚠️ Disabled"
-        editor_status = "✅ Enabled" if st.session_state.get('editor_enabled', False) else "⚠️ Disabled"
-        st.info(f"🔍 Research: {research_status}")
-        st.info(f"📝 Editor: {editor_status}")
+        large_file_status = "✅ Available" if st.session_state.get('large_file_mode', True) else "⚠️ Disabled"
+        auto_notion_status = "✅ Enabled" if st.session_state.get('auto_notion', True) else "⚠️ Disabled"
+        st.info(f"🚀 Large Files: {large_file_status}")
+        st.info(f"🌌 Auto-Notion: {auto_notion_status}")
     
     st.markdown("---")
     
