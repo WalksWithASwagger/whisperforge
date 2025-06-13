@@ -1,5 +1,56 @@
 # 📋 WhisperForge Changelog
 
+## 🎯 **v3.0.0 - Focused Refactor** (December 12, 2024)
+
+### **🚀 MAJOR SIMPLIFICATION**
+**The Great Bloat Removal** - Transformed WhisperForge from a feature-heavy Swiss Army knife into a laser-focused audio-to-content tool.
+
+### **✂️ Features REMOVED (Intentionally)**
+- **Research Enrichment**: Removed entity extraction and research link generation
+- **Editor System**: Removed AI editor critique and revision loops  
+- **Image Prompts**: Removed AI image generation prompt creation
+- **Multiple AI Providers**: Removed Anthropic/Claude and Groq support
+- **Complex Settings**: Removed feature toggles and provider selection
+
+### **✅ Core Features KEPT**
+- **Audio Upload**: Enhanced large file processing (25MB-2GB)
+- **Transcription**: OpenAI Whisper speech-to-text
+- **Wisdom Extraction**: Key insights and takeaways
+- **Outline Creation**: Structured content organization  
+- **Article Generation**: Complete written content
+- **Social Media**: 5 platform-optimized posts
+- **Notion Publishing**: Auto-publish with beautiful formatting
+- **Knowledge Base**: Simple context enhancement
+- **Custom Prompts**: Basic prompt customization
+
+### **🎯 New Focused Pipeline**
+1. **Upload Audio** (25MB-2GB support)
+2. **Transcription** (OpenAI Whisper)
+3. **Wisdom Extraction** (Key insights)
+4. **Outline Creation** (Structure)
+5. **Article Generation** (Full content)
+6. **Social Content** (5 posts)
+7. **Notion Publishing** (Auto-publish)
+
+### **📊 Impact**
+- **Reduced Complexity**: 6-step pipeline instead of 8+ steps
+- **Faster Processing**: No research delays or editor loops
+- **Cleaner Code**: Removed ~500 lines from content generation
+- **Single AI Provider**: OpenAI-only for consistency
+- **Clearer Value Prop**: "Audio → Article + Social Posts"
+
+### **🛠 Technical Changes**
+- Removed `core/research_enrichment.py` (316 lines)
+- Simplified `core/content_generation.py` (removed 140+ lines)
+- Cleaned `app_simple.py` (removed 270+ lines)
+- Moved bloat features to `archived_old_version/bloat_modules/`
+- Updated all function signatures to remove multi-provider complexity
+
+### **🎉 Result**
+WhisperForge is now a **focused, reliable tool** that does one thing excellently: transforms audio into professional articles and social media content.
+
+---
+
 ## [2.8.0] - 2025-06-12 🚀 **Enhanced Large File Processing**
 
 ### 🚀 **MAJOR NEW FEATURES**

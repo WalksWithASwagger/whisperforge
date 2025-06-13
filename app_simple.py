@@ -18,8 +18,7 @@ st.set_page_config(
 )
 
 # Core imports
-from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content, editor_critique
-from core.research_enrichment import generate_research_enrichment
+from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content
 from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, AuroraComponents
 from core.supabase_integration import get_supabase_client
 from core.file_upload import EnhancedLargeFileProcessor
@@ -324,14 +323,12 @@ def process_audio_pipeline(audio_file):
     # Create real-time content display containers
     st.markdown("### 🌌 Live Content Generation")
     
-    # Create expandable sections for each step
+    # Create expandable containers for each step
     transcript_container = st.expander("🎙️ Transcription", expanded=False)
     wisdom_container = st.expander("💡 Wisdom Extraction", expanded=False)
-    research_container = st.expander("🔍 Research Enrichment", expanded=False)
     outline_container = st.expander("📋 Outline Creation", expanded=False)
     article_container = st.expander("📝 Article Generation", expanded=False)
     social_container = st.expander("📱 Social Content", expanded=False)
-    editor_container = st.expander("📝 Editor Review", expanded=False)
     notion_container = st.expander("🌌 Notion Publishing", expanded=False)
     
     try:
@@ -359,7 +356,7 @@ def process_audio_pipeline(audio_file):
         
         # Use custom prompt if available
         wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-        wisdom = generate_wisdom(transcript, "OpenAI", "gpt-4", 
+        wisdom = generate_wisdom(transcript, 
                                 custom_prompt=wisdom_prompt, knowledge_base={})
         results['wisdom'] = wisdom
         
@@ -370,48 +367,13 @@ def process_audio_pipeline(audio_file):
         
         st.success("✅ Wisdom extracted")
         
-        # Step 3: Research Enrichment
-        if st.session_state.get('research_enabled', True):
-            status_text.text("🔍 Finding supporting research...")
-            progress_bar.progress(0.45)
-            
-            research = generate_research_enrichment(wisdom, transcript, "OpenAI", "gpt-4", enabled=True)
-            results['research'] = research
-            
-            # Stream research to UI immediately
-            with research_container:
-                st.markdown("**✅ Research Enrichment Complete**")
-                if research.get('entities'):
-                    for entity in research['entities'][:3]:  # Show first 3 entities
-                        st.markdown(f"**{entity.get('name', 'Entity')}**: {entity.get('why_matters', 'No description')}")
-                        if entity.get('links'):
-                            for link in entity['links'][:2]:  # Show first 2 links
-                                gem_icon = "💎" if link.get('is_gem') else "🔗"
-                                st.markdown(f"{gem_icon} [{link.get('title', 'Link')}]({link.get('url', '#')})")
-                else:
-                    st.markdown("No research entities found.")
-            
-            st.success(f"✅ Research enrichment complete ({research.get('total_entities', 0)} entities)")
-        else:
-            status_text.text("🔍 Research enrichment skipped...")
-            progress_bar.progress(0.45)
-            
-            results['research'] = {"entities": [], "total_entities": 0, "status": "disabled"}
-            
-            # Show disabled status in UI
-            with research_container:
-                st.markdown("**ℹ️ Research Enrichment Disabled**")
-                st.info("Enable in Settings to get research links and entities.")
-            
-            st.info("ℹ️ Research enrichment disabled")
-        
-        # Step 4: Outline Creation
+        # Step 3: Outline Creation
         status_text.text("📋 Creating structured outline...")
-        progress_bar.progress(0.6)
+        progress_bar.progress(0.5)
         
         # Use custom prompt if available
         outline_prompt = get_prompt_for_step('outline', custom_prompts)
-        outline = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", 
+        outline = generate_outline(transcript, wisdom, 
                                   custom_prompt=outline_prompt, knowledge_base={})
         results['outline'] = outline
         
@@ -422,13 +384,13 @@ def process_audio_pipeline(audio_file):
         
         st.success("✅ Outline created")
         
-        # Step 5: Article Generation
+        # Step 4: Article Generation
         status_text.text("📝 Writing comprehensive article...")
         progress_bar.progress(0.75)
         
         # Use custom prompt if available
         article_prompt = get_prompt_for_step('article', custom_prompts)
-        article = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", 
+        article = generate_article(transcript, wisdom, outline, 
                                   custom_prompt=article_prompt, knowledge_base={})
         results['article'] = article
         
@@ -439,13 +401,13 @@ def process_audio_pipeline(audio_file):
         
         st.success("✅ Article generated")
         
-        # Step 6: Social Content
+        # Step 5: Social Content
         status_text.text("📱 Creating social media content...")
         progress_bar.progress(0.85)
         
         # Use custom prompt if available
         social_prompt = get_prompt_for_step('social', custom_prompts)
-        social = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", 
+        social = generate_social_content(wisdom, outline, article, 
                                         custom_prompt=social_prompt, knowledge_base={})
         results['social_content'] = social
         
@@ -456,81 +418,7 @@ def process_audio_pipeline(audio_file):
         
         st.success("✅ Social content created")
         
-        # Step 7: Editor Review & Revision (if enabled)
-        if st.session_state.get('editor_enabled', False):
-            status_text.text("📝 Editor reviewing content...")
-            progress_bar.progress(0.9)
-            
-            # Generate editor notes for key content
-            editor_notes = {}
-            content_types = [
-                ('wisdom', wisdom),
-                ('outline', outline), 
-                ('article', article),
-                ('social_content', social)
-            ]
-            
-            for content_type, content in content_types:
-                if content:
-                    notes = editor_critique(content, content_type, "OpenAI", "gpt-4", knowledge_base={})
-                    editor_notes[content_type] = notes
-            
-            results['editor_notes'] = editor_notes
-            st.success(f"✅ Editor review complete ({len(editor_notes)} items reviewed)")
-            
-            # One revision pass with editor notes
-            status_text.text("🔄 Revising content with editor feedback...")
-            progress_bar.progress(0.92)
-            
-            revised_content = {}
-            for content_type, content in content_types:
-                if content and content_type in editor_notes:
-                    notes = editor_notes[content_type]
-                    
-                    revision_prompt = f"""Improve this {content_type} based on editor feedback:
-
-ORIGINAL:
-{content}
-
-EDITOR NOTES:
-{notes}
-
-Provide an improved version that addresses the feedback while maintaining the core message."""
-                    
-                    if content_type == 'wisdom':
-                        revised = generate_wisdom(transcript, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'outline':
-                        revised = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'article':
-                        revised = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'social_content':
-                        revised = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    
-                    revised_content[content_type] = revised
-            
-            results['revised_content'] = revised_content
-            
-            # Stream editor results to UI
-            with editor_container:
-                st.markdown("**✅ Editor Review & Revision Complete**")
-                st.markdown(f"**Editor Notes Generated:** {len(editor_notes)} items")
-                st.markdown(f"**Content Revised:** {len(revised_content)} items")
-                
-                # Show editor notes summary
-                for content_type, notes in editor_notes.items():
-                    with st.expander(f"📝 {content_type.title()} Notes"):
-                        st.markdown(notes[:500] + "..." if len(notes) > 500 else notes)
-            
-            st.success(f"✅ Content revision complete ({len(revised_content)} items revised)")
-        else:
-            # Show disabled status in UI
-            with editor_container:
-                st.markdown("**ℹ️ Editor Review Disabled**")
-                st.info("Enable in Settings to get AI editor feedback and content revisions.")
-            
-            st.info("ℹ️ Editor review disabled")
-        
-        # Step 8: Auto-publish to Notion
+        # Step 6: Auto-publish to Notion
         if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
             status_text.text("🌌 Publishing to Notion...")
             progress_bar.progress(0.95)
@@ -616,13 +504,11 @@ def process_audio_pipeline_with_transcript(transcript: str):
     # Create real-time content display containers
     st.markdown("### 🌌 Live Content Generation")
     
-    # Create expandable sections for each step (skip transcription)
+    # Create expandable containers for each step (skip transcription)
     wisdom_container = st.expander("💡 Wisdom Extraction", expanded=False)
-    research_container = st.expander("🔍 Research Enrichment", expanded=False)
     outline_container = st.expander("📋 Outline Creation", expanded=False)
     article_container = st.expander("📝 Article Generation", expanded=False)
     social_container = st.expander("📱 Social Content", expanded=False)
-    editor_container = st.expander("📝 Editor Review", expanded=False)
     notion_container = st.expander("🌌 Notion Publishing", expanded=False)
     
     try:
@@ -635,7 +521,7 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         # Use custom prompt if available
         wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-        wisdom = generate_wisdom(transcript, "OpenAI", "gpt-4", 
+        wisdom = generate_wisdom(transcript, 
                                 custom_prompt=wisdom_prompt, knowledge_base={})
         results['wisdom'] = wisdom
         
@@ -646,48 +532,13 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         st.success("✅ Wisdom extracted")
         
-        # Step 3: Research Enrichment
-        if st.session_state.get('research_enabled', True):
-            status_text.text("🔍 Finding supporting research...")
-            progress_bar.progress(0.45)
-            
-            research = generate_research_enrichment(wisdom, transcript, "OpenAI", "gpt-4", enabled=True)
-            results['research'] = research
-            
-            # Stream research to UI immediately
-            with research_container:
-                st.markdown("**✅ Research Enrichment Complete**")
-                if research.get('entities'):
-                    for entity in research['entities'][:3]:  # Show first 3 entities
-                        st.markdown(f"**{entity.get('name', 'Entity')}**: {entity.get('why_matters', 'No description')}")
-                        if entity.get('links'):
-                            for link in entity['links'][:2]:  # Show first 2 links
-                                gem_icon = "💎" if link.get('is_gem') else "🔗"
-                                st.markdown(f"{gem_icon} [{link.get('title', 'Link')}]({link.get('url', '#')})")
-                else:
-                    st.markdown("No research entities found.")
-            
-            st.success(f"✅ Research enrichment complete ({research.get('total_entities', 0)} entities)")
-        else:
-            status_text.text("🔍 Research enrichment skipped...")
-            progress_bar.progress(0.45)
-            
-            results['research'] = {"entities": [], "total_entities": 0, "status": "disabled"}
-            
-            # Show disabled status in UI
-            with research_container:
-                st.markdown("**ℹ️ Research Enrichment Disabled**")
-                st.info("Enable in Settings to get research links and entities.")
-            
-            st.info("ℹ️ Research enrichment disabled")
-        
-        # Step 4: Outline Creation
+        # Step 3: Outline Creation
         status_text.text("📋 Creating structured outline...")
-        progress_bar.progress(0.6)
+        progress_bar.progress(0.5)
         
         # Use custom prompt if available
         outline_prompt = get_prompt_for_step('outline', custom_prompts)
-        outline = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", 
+        outline = generate_outline(transcript, wisdom, 
                                   custom_prompt=outline_prompt, knowledge_base={})
         results['outline'] = outline
         
@@ -698,13 +549,13 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         st.success("✅ Outline created")
         
-        # Step 5: Article Generation
+        # Step 4: Article Generation
         status_text.text("📝 Writing comprehensive article...")
         progress_bar.progress(0.75)
         
         # Use custom prompt if available
         article_prompt = get_prompt_for_step('article', custom_prompts)
-        article = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", 
+        article = generate_article(transcript, wisdom, outline, 
                                   custom_prompt=article_prompt, knowledge_base={})
         results['article'] = article
         
@@ -715,13 +566,13 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         st.success("✅ Article generated")
         
-        # Step 6: Social Content
+        # Step 5: Social Content
         status_text.text("📱 Creating social media content...")
         progress_bar.progress(0.85)
         
         # Use custom prompt if available
         social_prompt = get_prompt_for_step('social', custom_prompts)
-        social = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", 
+        social = generate_social_content(wisdom, outline, article, 
                                         custom_prompt=social_prompt, knowledge_base={})
         results['social_content'] = social
         
@@ -732,81 +583,7 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         st.success("✅ Social content created")
         
-        # Step 7: Editor Review & Revision (if enabled)
-        if st.session_state.get('editor_enabled', False):
-            status_text.text("📝 Editor reviewing content...")
-            progress_bar.progress(0.9)
-            
-            # Generate editor notes for key content
-            editor_notes = {}
-            content_types = [
-                ('wisdom', wisdom),
-                ('outline', outline), 
-                ('article', article),
-                ('social_content', social)
-            ]
-            
-            for content_type, content in content_types:
-                if content:
-                    notes = editor_critique(content, content_type, "OpenAI", "gpt-4", knowledge_base={})
-                    editor_notes[content_type] = notes
-            
-            results['editor_notes'] = editor_notes
-            st.success(f"✅ Editor review complete ({len(editor_notes)} items reviewed)")
-            
-            # One revision pass with editor notes
-            status_text.text("🔄 Revising content with editor feedback...")
-            progress_bar.progress(0.92)
-            
-            revised_content = {}
-            for content_type, content in content_types:
-                if content and content_type in editor_notes:
-                    notes = editor_notes[content_type]
-                    
-                    revision_prompt = f"""Improve this {content_type} based on editor feedback:
-
-ORIGINAL:
-{content}
-
-EDITOR NOTES:
-{notes}
-
-Provide an improved version that addresses the feedback while maintaining the core message."""
-                    
-                    if content_type == 'wisdom':
-                        revised = generate_wisdom(transcript, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'outline':
-                        revised = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'article':
-                        revised = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    elif content_type == 'social_content':
-                        revised = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", custom_prompt=revision_prompt, knowledge_base={})
-                    
-                    revised_content[content_type] = revised
-            
-            results['revised_content'] = revised_content
-            
-            # Stream editor results to UI
-            with editor_container:
-                st.markdown("**✅ Editor Review & Revision Complete**")
-                st.markdown(f"**Editor Notes Generated:** {len(editor_notes)} items")
-                st.markdown(f"**Content Revised:** {len(revised_content)} items")
-                
-                # Show editor notes summary
-                for content_type, notes in editor_notes.items():
-                    with st.expander(f"📝 {content_type.title()} Notes"):
-                        st.markdown(notes[:500] + "..." if len(notes) > 500 else notes)
-            
-            st.success(f"✅ Content revision complete ({len(revised_content)} items revised)")
-        else:
-            # Show disabled status in UI
-            with editor_container:
-                st.markdown("**ℹ️ Editor Review Disabled**")
-                st.info("Enable in Settings to get AI editor feedback and content revisions.")
-            
-            st.info("ℹ️ Editor review disabled")
-        
-        # Step 8: Auto-publish to Notion
+        # Step 6: Auto-publish to Notion
         if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
             status_text.text("🌌 Publishing to Notion...")
             progress_bar.progress(0.95)
@@ -934,7 +711,7 @@ def show_results(results):
         st.markdown("---")
     
     # Create tabs for different content types
-    tab_names = ["📜 Transcript", "💎 Wisdom", "🔍 Research", "📋 Outline", "📰 Article", "📱 Social Media"]
+    tab_names = ["📜 Transcript", "💎 Wisdom", "📋 Outline", "📰 Article", "📱 Social Media"]
     
     # Add Editor tab if editor was enabled
     if results.get('editor_notes') or results.get('revised_content'):
@@ -946,51 +723,20 @@ def show_results(results):
         create_aurora_content_card("🎙️ Audio Transcript", results.get('transcript', ''), "transcript")
     
     with tabs[1]:
-        create_aurora_content_card("💡 Key Insights", results.get('wisdom', ''), "text")
+        create_aurora_content_card("💡 Wisdom", results.get('wisdom', ''), "text")
     
     with tabs[2]:
-        st.markdown("""
-        <div class="aurora-card">
-            <h3 style="color: var(--aurora-primary); text-shadow: var(--aurora-glow);">
-                🔍 Research & Supporting Links
-            </h3>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        research_data = results.get('research', {})
-        if research_data and research_data.get('entities'):
-            entities = research_data['entities']
-            AuroraComponents.success_message(f"Found {len(entities)} research entities in {research_data.get('processing_time', 0):.1f}s")
-            
-            for entity in entities:
-                with st.expander(f"🔬 {entity.get('name', 'Unknown Entity')}"):
-                    st.markdown(f"**Type:** {entity.get('type', 'Unknown')}")
-                    st.markdown(f"**Why this matters:** {entity.get('why_matters', 'No description')}")
-                    
-                    links = entity.get('links', [])
-                    if links:
-                        st.markdown("**Research Links:**")
-                        for link in links:
-                            gem_icon = "💎" if link.get('is_gem') else "🔗"
-                            st.markdown(f"{gem_icon} **{link.get('title', 'Link')}**")
-                            st.markdown(f"   {link.get('description', 'No description')}")
-                            if link.get('url'):
-                                st.markdown(f"   🌐 [Visit Link]({link['url']})")
-        else:
-            st.info("No research entities found or research was disabled.")
-    
-    with tabs[3]:
         create_aurora_content_card("📋 Content Outline", results.get('outline', ''), "text")
     
-    with tabs[4]:
+    with tabs[3]:
         create_aurora_content_card("📰 Full Article", results.get('article', ''), "text")
     
-    with tabs[5]:
+    with tabs[4]:
         create_aurora_content_card("📱 Social Media Posts", results.get('social_content', ''), "text")
     
     # Editor tab (if enabled)
-    if len(tabs) > 6:
-        with tabs[6]:
+    if len(tabs) > 5:
+        with tabs[5]:
             st.markdown("""
             <div class="aurora-card">
                 <h3 style="color: var(--aurora-primary); text-shadow: var(--aurora-glow);">
@@ -1102,14 +848,6 @@ def create_aurora_navigation():
                     color: rgba(255, 255, 255, 0.8);
                     font-size: 0.9rem;
                 ">💡 Wisdom</div>
-                <div style="
-                    background: rgba(64, 224, 208, 0.1);
-                    border: 1px solid rgba(64, 224, 208, 0.3);
-                    border-radius: 20px;
-                    padding: 8px 16px;
-                    color: rgba(255, 255, 255, 0.8);
-                    font-size: 0.9rem;
-                ">🔍 Research</div>
                 <div style="
                     background: rgba(64, 224, 208, 0.1);
                     border: 1px solid rgba(64, 224, 208, 0.3);
@@ -1446,17 +1184,14 @@ def show_settings_page():
         
         with col1:
             st.markdown("**Core Features**")
-            research_enabled = st.checkbox("Enable Research Enrichment", 
-                                         value=st.session_state.get('research_enabled', True))
-            st.session_state.research_enabled = research_enabled
-            
-            editor_enabled = st.checkbox("Enable AI Editor Review", 
-                                        value=st.session_state.get('editor_enabled', False))
-            st.session_state.editor_enabled = editor_enabled
-            
             auto_notion = st.checkbox("Auto-publish to Notion", 
                                      value=st.session_state.get('auto_notion', True))
             st.session_state.auto_notion = auto_notion
+            
+            large_file_mode = st.checkbox("Enhanced Large File Processing", 
+                                        value=st.session_state.get('large_file_mode', True),
+                                        help="Use FFmpeg for files larger than 25MB")
+            st.session_state.large_file_mode = large_file_mode
         
         with col2:
             st.markdown("**Quality Settings**")
@@ -1615,9 +1350,7 @@ def show_prompts_page():
         "wisdom": "💡 Wisdom Extraction",
         "outline": "📋 Content Outline", 
         "article": "📰 Article Generation",
-        "social": "📱 Social Media Posts",
-        "research": "🔍 Research Enrichment",
-        "editor": "📝 Editor Review"
+        "social": "�� Social Media Posts"
     }
     
     tabs = st.tabs(list(prompt_types.values()) + ["🔧 Advanced"])
