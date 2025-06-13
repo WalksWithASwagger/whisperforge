@@ -225,8 +225,8 @@ def apply_aurora_theme():
 def create_aurora_header():
     """Create a flagship Aurora header with integrated navigation and logout - REBUILT FOR 2025"""
     
-    # First, inject the CSS using st.html()
-    st.html("""
+    # First, inject the CSS using st.markdown()
+    st.markdown("""
     <style>
     .aurora-header {
         background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 40, 60, 0.98));
@@ -336,10 +336,10 @@ def create_aurora_header():
         }
     }
     </style>
-    """)
+    """, unsafe_allow_html=True)
     
-    # Then render the HTML structure using st.html()
-    st.html("""
+    # Then render the HTML structure using st.markdown()
+    st.markdown("""
     <header class="aurora-header">
         <div class="aurora-header-content">
             <div class="aurora-brand">
@@ -354,7 +354,7 @@ def create_aurora_header():
             </div>
         </div>
     </header>
-    """)
+    """, unsafe_allow_html=True)
 
 def create_aurora_nav_buttons():
     """Create integrated navigation buttons for the Aurora header"""
