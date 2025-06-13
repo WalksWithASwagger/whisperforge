@@ -4,20 +4,22 @@
 
 Transform your audio recordings into structured, actionable content with advanced AI processing and real-time streaming results.
 
-## 🚀 Current Status - Version 2.1.2
+## 🚀 Current Status - Version 2.2.0
 
 ### ✅ **Working Features**
 - **Audio Processing**: Transcription via OpenAI Whisper
 - **AI Content Generation**: Wisdom extraction, outlines, articles, social content
+- **🌌 Notion Auto-Publishing**: Automatic structured content publishing to Notion
 - **Modern Aurora UI**: 2025-style bioluminescent interface
-- **Database Integration**: Supabase backend with proper caching
+- **Database Integration**: Supabase backend with MCP integration
 - **Simple Authentication**: Streamlit session state (no over-engineering)
 
-### 🔧 **Recent Improvements (v2.1.2)**
-- **Simplified Session Management**: Removed complex token system causing display issues
-- **Research-Backed Architecture**: Following 2024-2025 Streamlit + Supabase best practices
-- **Cached Database Connections**: Using `@st.cache_resource` for optimal performance
-- **Minimal Session State**: Only storing what's actually needed
+### 🌟 **Latest Features (v2.2.0)**
+- **Notion Integration**: Auto-publish all generated content to Notion with beautiful formatting
+- **6-Step Pipeline**: Enhanced workflow including automatic Notion publishing
+- **AI-Generated Titles**: Smart content titles generated from transcript analysis
+- **Dual MCP Support**: Both Supabase and Notion MCP integrations working seamlessly
+- **Enhanced Sidebar**: Notion configuration with connection testing
 
 ## 🎯 **Architecture Overview**
 
@@ -41,15 +43,14 @@ Transform your audio recordings into structured, actionable content with advance
 - Automatic transcription using OpenAI Whisper
 - Progressive content generation with live updates
 
-### **2. AI Content Pipeline**
+### **2. Enhanced AI Content Pipeline**
 1. **Transcription** - Speech-to-text conversion
 2. **Wisdom Extraction** - Key insights and takeaways
-3. **Research Enrichment** - Supporting links and context  
-4. **Outline Creation** - Structured content organization
-5. **Article Generation** - Complete written content
-6. **Social Media** - Platform-optimized posts
-7. **Image Prompts** - AI-generated visual concepts
-8. **Database Storage** - Persistent content library
+3. **Outline Creation** - Structured content organization
+4. **Article Generation** - Complete written content
+5. **Social Media** - Platform-optimized posts
+6. **🌌 Notion Publishing** - Auto-publish to Notion with beautiful formatting
+7. **Database Storage** - Persistent content library with Supabase
 
 ### **3. Modern Aurora Interface**
 - Bioluminescent 2025 design system
@@ -94,9 +95,11 @@ Transform your audio recordings into structured, actionable content with advance
    ANTHROPIC_API_KEY=your_anthropic_key
    GROK_API_KEY=your_grok_key  # Optional
    
-   # Optional - Integrations
-   NOTION_API_KEY=your_notion_key
+   # Notion Integration - Auto-Publishing
+   NOTION_API_KEY=your_notion_integration_token
    NOTION_DATABASE_ID=your_notion_database_id
+   
+   # Optional - OAuth & Integrations
    OAUTH_REDIRECT_URL=http://localhost:8501  # For OAuth flows
    
    # Optional - Security & Monitoring
