@@ -26,6 +26,43 @@ from core.supabase_integration import get_supabase_client
 # Apply beautiful theme
 apply_aurora_theme()
 
+# === PROMPT LOADING SYSTEM ===
+def load_custom_prompts():
+    """Load custom prompts from the prompts directory"""
+    prompts = {}
+    prompt_dir = "prompts/default"
+    
+    if os.path.exists(prompt_dir):
+        for filename in os.listdir(prompt_dir):
+            if filename.endswith('.md'):
+                prompt_name = filename.replace('.md', '')
+                try:
+                    with open(os.path.join(prompt_dir, filename), 'r', encoding='utf-8') as f:
+                        prompts[prompt_name] = f.read()
+                except Exception as e:
+                    st.warning(f"Failed to load prompt {filename}: {e}")
+    
+    return prompts
+
+def get_prompt_for_step(step_name: str, custom_prompts: Dict[str, str] = None) -> Optional[str]:
+    """Get the appropriate prompt for a pipeline step"""
+    if not custom_prompts:
+        custom_prompts = load_custom_prompts()
+    
+    # Map step names to prompt files
+    prompt_mapping = {
+        'wisdom': 'wisdom_extraction',
+        'outline': 'outline_creation', 
+        'social': 'social_media',
+        'article': 'article_generation'  # We'll create this
+    }
+    
+    prompt_key = prompt_mapping.get(step_name)
+    if prompt_key and prompt_key in custom_prompts:
+        return custom_prompts[prompt_key]
+    
+    return None
+
 # === NOTION INTEGRATION ===
 def create_notion_page(title: str, content_data: Dict[str, str]) -> Optional[str]:
     """Create a Notion page with WhisperForge content"""
@@ -44,12 +81,41 @@ def create_notion_page(title: str, content_data: Dict[str, str]) -> Optional[str
         # Build content blocks
         children = []
         
-        # Add summary callout if wisdom exists
+        # Add beautiful header with summary
+        children.append({
+            "type": "heading_1",
+            "heading_1": {
+                "rich_text": [
+                    {"type": "text", "text": {"content": "🌌 "}, "annotations": {"color": "blue"}},
+                    {"type": "text", "text": {"content": title}, "annotations": {"bold": True}}
+                ]
+            }
+        })
+        
+        # Add creation info
+        children.append({
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {"type": "text", "text": {"content": "✨ Generated with "}},
+                    {"type": "text", "text": {"content": "WhisperForge Aurora"}, 
+                     "annotations": {"bold": True, "color": "blue"}},
+                    {"type": "text", "text": {"content": f" • {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"}}
+                ]
+            }
+        })
+        
+        children.append({"type": "divider", "divider": {}})
+        
+        # Add wisdom summary callout if exists
         if content_data.get('wisdom'):
             children.append({
                 "type": "callout",
                 "callout": {
-                    "rich_text": [{"type": "text", "text": {"content": content_data['wisdom'][:2000]}}],
+                    "rich_text": [
+                        {"type": "text", "text": {"content": "Key Insights & Wisdom"}},
+                        {"type": "text", "text": {"content": f"\n\n{content_data['wisdom'][:1800]}"}}
+                    ],
                     "color": "purple_background",
                     "icon": {"type": "emoji", "emoji": "💡"}
                 }
@@ -78,39 +144,40 @@ def create_notion_page(title: str, content_data: Dict[str, str]) -> Optional[str
                             why_matters = entity.get('why_matters', 'No description available')
                             links = entity.get('links', [])
                             
-                            # Entity header
+                            # Entity as beautiful callout
                             research_children.append({
-                                "type": "heading_3",
-                                "heading_3": {
-                                    "rich_text": [{"type": "text", "text": {"content": entity_name}}]
+                                "type": "callout",
+                                "callout": {
+                                    "rich_text": [
+                                        {"type": "text", "text": {"content": entity_name}, "annotations": {"bold": True}},
+                                        {"type": "text", "text": {"content": f"\n{why_matters}"}}
+                                    ],
+                                    "color": "blue_background",
+                                    "icon": {"type": "emoji", "emoji": "🔬"}
                                 }
                             })
                             
-                            # Why it matters
-                            research_children.append({
-                                "type": "paragraph",
-                                "paragraph": {
-                                    "rich_text": [{"type": "text", "text": {"content": why_matters}}]
-                                }
-                            })
-                            
-                            # Links
-                            for link in links[:3]:  # Limit links
-                                link_title = link.get('title', 'Link')
-                                link_url = link.get('url', '#')
-                                link_desc = link.get('description', '')
-                                is_gem = link.get('is_gem', False)
-                                
-                                gem_icon = "💎 " if is_gem else "🔗 "
-                                research_children.append({
-                                    "type": "paragraph",
-                                    "paragraph": {
-                                        "rich_text": [
-                                            {"type": "text", "text": {"content": f"{gem_icon}{link_title}: "}},
-                                            {"type": "text", "text": {"content": link_desc}, "annotations": {"italic": True}}
-                                        ]
-                                    }
-                                })
+                            # Links as bulleted list
+                            if links:
+                                for link in links[:3]:  # Limit links
+                                    link_title = link.get('title', 'Link')
+                                    link_url = link.get('url', '#')
+                                    link_desc = link.get('description', '')
+                                    is_gem = link.get('is_gem', False)
+                                    
+                                    gem_icon = "💎" if is_gem else "🔗"
+                                    color = "orange" if is_gem else "default"
+                                    
+                                    research_children.append({
+                                        "type": "bulleted_list_item",
+                                        "bulleted_list_item": {
+                                            "rich_text": [
+                                                {"type": "text", "text": {"content": f"{gem_icon} "}, "annotations": {"color": color}},
+                                                {"type": "text", "text": {"content": link_title}, "annotations": {"bold": True}},
+                                                {"type": "text", "text": {"content": f" - {link_desc}"}, "annotations": {"italic": True}}
+                                            ]
+                                        }
+                                    })
                     else:
                         research_children.append({
                             "type": "paragraph",
@@ -147,29 +214,20 @@ def create_notion_page(title: str, content_data: Dict[str, str]) -> Optional[str
                             }
                         })
         
-        # Add metadata
+        # Add beautiful footer
         children.extend([
             {"type": "divider", "divider": {}},
             {
-                "type": "heading_2",
-                "heading_2": {
-                    "rich_text": [{"type": "text", "text": {"content": "Metadata"}}]
-                }
-            },
-            {
-                "type": "paragraph",
-                "paragraph": {
+                "type": "callout",
+                "callout": {
                     "rich_text": [
-                        {"type": "text", "text": {"content": "Created with "}},
-                        {"type": "text", "text": {"content": "WhisperForge"}, 
-                         "annotations": {"bold": True, "color": "purple"}}
-                    ]
-                }
-            },
-            {
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"}}]
+                        {"type": "text", "text": {"content": "Content Generation Complete"}, "annotations": {"bold": True}},
+                        {"type": "text", "text": {"content": f"\n\n🤖 AI Pipeline: 8 steps completed successfully"}},
+                        {"type": "text", "text": {"content": f"\n⏱️ Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"}},
+                        {"type": "text", "text": {"content": f"\n🌌 Powered by WhisperForge Aurora"}}
+                    ],
+                    "color": "green_background",
+                    "icon": {"type": "emoji", "emoji": "✅"}
                 }
             }
         ])
@@ -250,12 +308,30 @@ def show_login():
 
 # === CORE PROCESSING PIPELINE ===
 def process_audio_pipeline(audio_file):
-    """Core audio to content pipeline"""
+    """Core audio to content pipeline with real-time streaming"""
     results = {}
+    
+    # Load custom prompts
+    custom_prompts = load_custom_prompts()
+    if custom_prompts:
+        st.info(f"📝 Using {len(custom_prompts)} custom prompts")
     
     # Progress tracking
     progress_bar = st.progress(0.0)
     status_text = st.empty()
+    
+    # Create real-time content display containers
+    st.markdown("### 🌌 Live Content Generation")
+    
+    # Create expandable sections for each step
+    transcript_container = st.expander("🎙️ Transcription", expanded=False)
+    wisdom_container = st.expander("💡 Wisdom Extraction", expanded=False)
+    research_container = st.expander("🔍 Research Enrichment", expanded=False)
+    outline_container = st.expander("📋 Outline Creation", expanded=False)
+    article_container = st.expander("📝 Article Generation", expanded=False)
+    social_container = st.expander("📱 Social Content", expanded=False)
+    editor_container = st.expander("📝 Editor Review", expanded=False)
+    notion_container = st.expander("🌌 Notion Publishing", expanded=False)
     
     try:
         # Step 1: Transcription
@@ -268,14 +344,29 @@ def process_audio_pipeline(audio_file):
             return None
         
         results['transcript'] = transcript
+        
+        # Stream transcript to UI immediately
+        with transcript_container:
+            st.markdown("**✅ Transcription Complete**")
+            st.text_area("Transcript", transcript, height=200, disabled=True)
+        
         st.success(f"✅ Transcription complete ({len(transcript)} characters)")
         
         # Step 2: Wisdom Extraction
         status_text.text("💡 Extracting key insights...")
         progress_bar.progress(0.3)
         
-        wisdom = generate_wisdom(transcript, "OpenAI", "gpt-4", knowledge_base={})
+        # Use custom prompt if available
+        wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
+        wisdom = generate_wisdom(transcript, "OpenAI", "gpt-4", 
+                                custom_prompt=wisdom_prompt, knowledge_base={})
         results['wisdom'] = wisdom
+        
+        # Stream wisdom to UI immediately
+        with wisdom_container:
+            st.markdown("**✅ Wisdom Extraction Complete**")
+            st.markdown(wisdom)
+        
         st.success("✅ Wisdom extracted")
         
         # Step 3: Research Enrichment
@@ -285,36 +376,83 @@ def process_audio_pipeline(audio_file):
             
             research = generate_research_enrichment(wisdom, transcript, "OpenAI", "gpt-4", enabled=True)
             results['research'] = research
+            
+            # Stream research to UI immediately
+            with research_container:
+                st.markdown("**✅ Research Enrichment Complete**")
+                if research.get('entities'):
+                    for entity in research['entities'][:3]:  # Show first 3 entities
+                        st.markdown(f"**{entity.get('name', 'Entity')}**: {entity.get('why_matters', 'No description')}")
+                        if entity.get('links'):
+                            for link in entity['links'][:2]:  # Show first 2 links
+                                gem_icon = "💎" if link.get('is_gem') else "🔗"
+                                st.markdown(f"{gem_icon} [{link.get('title', 'Link')}]({link.get('url', '#')})")
+                else:
+                    st.markdown("No research entities found.")
+            
             st.success(f"✅ Research enrichment complete ({research.get('total_entities', 0)} entities)")
         else:
             status_text.text("🔍 Research enrichment skipped...")
             progress_bar.progress(0.45)
             
             results['research'] = {"entities": [], "total_entities": 0, "status": "disabled"}
+            
+            # Show disabled status in UI
+            with research_container:
+                st.markdown("**ℹ️ Research Enrichment Disabled**")
+                st.info("Enable in Settings to get research links and entities.")
+            
             st.info("ℹ️ Research enrichment disabled")
         
         # Step 4: Outline Creation
         status_text.text("📋 Creating structured outline...")
         progress_bar.progress(0.6)
         
-        outline = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", knowledge_base={})
+        # Use custom prompt if available
+        outline_prompt = get_prompt_for_step('outline', custom_prompts)
+        outline = generate_outline(transcript, wisdom, "OpenAI", "gpt-4", 
+                                  custom_prompt=outline_prompt, knowledge_base={})
         results['outline'] = outline
+        
+        # Stream outline to UI immediately
+        with outline_container:
+            st.markdown("**✅ Outline Creation Complete**")
+            st.markdown(outline)
+        
         st.success("✅ Outline created")
         
         # Step 5: Article Generation
         status_text.text("📝 Writing comprehensive article...")
         progress_bar.progress(0.75)
         
-        article = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", knowledge_base={})
+        # Use custom prompt if available
+        article_prompt = get_prompt_for_step('article', custom_prompts)
+        article = generate_article(transcript, wisdom, outline, "OpenAI", "gpt-4", 
+                                  custom_prompt=article_prompt, knowledge_base={})
         results['article'] = article
+        
+        # Stream article to UI immediately
+        with article_container:
+            st.markdown("**✅ Article Generation Complete**")
+            st.markdown(article)
+        
         st.success("✅ Article generated")
         
         # Step 6: Social Content
         status_text.text("📱 Creating social media content...")
         progress_bar.progress(0.85)
         
-        social = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", knowledge_base={})
+        # Use custom prompt if available
+        social_prompt = get_prompt_for_step('social', custom_prompts)
+        social = generate_social_content(wisdom, outline, article, "OpenAI", "gpt-4", 
+                                        custom_prompt=social_prompt, knowledge_base={})
         results['social_content'] = social
+        
+        # Stream social content to UI immediately
+        with social_container:
+            st.markdown("**✅ Social Content Creation Complete**")
+            st.markdown(social)
+        
         st.success("✅ Social content created")
         
         # Step 7: Editor Review & Revision (if enabled)
@@ -370,8 +508,25 @@ Provide an improved version that addresses the feedback while maintaining the co
                     revised_content[content_type] = revised
             
             results['revised_content'] = revised_content
+            
+            # Stream editor results to UI
+            with editor_container:
+                st.markdown("**✅ Editor Review & Revision Complete**")
+                st.markdown(f"**Editor Notes Generated:** {len(editor_notes)} items")
+                st.markdown(f"**Content Revised:** {len(revised_content)} items")
+                
+                # Show editor notes summary
+                for content_type, notes in editor_notes.items():
+                    with st.expander(f"📝 {content_type.title()} Notes"):
+                        st.markdown(notes[:500] + "..." if len(notes) > 500 else notes)
+            
             st.success(f"✅ Content revision complete ({len(revised_content)} items revised)")
         else:
+            # Show disabled status in UI
+            with editor_container:
+                st.markdown("**ℹ️ Editor Review Disabled**")
+                st.info("Enable in Settings to get AI editor feedback and content revisions.")
+            
             st.info("ℹ️ Editor review disabled")
         
         # Step 8: Auto-publish to Notion
@@ -386,11 +541,28 @@ Provide an improved version that addresses the feedback while maintaining the co
             notion_url = create_notion_page(ai_title, results)
             if notion_url:
                 results['notion_url'] = notion_url
+                
+                # Stream Notion success to UI
+                with notion_container:
+                    st.markdown("**✅ Notion Publishing Complete**")
+                    st.markdown(f"**Page Title:** {ai_title}")
+                    st.markdown(f"🔗 [Open in Notion]({notion_url})")
+                
                 st.success(f"✅ Published to Notion!")
                 st.markdown(f"🔗 [Open in Notion]({notion_url})")
             else:
+                # Stream Notion failure to UI
+                with notion_container:
+                    st.markdown("**⚠️ Notion Publishing Failed**")
+                    st.warning("Check your Notion API configuration in Settings.")
+                
                 st.warning("⚠️ Notion publishing skipped")
         else:
+            # Show disabled status in UI
+            with notion_container:
+                st.markdown("**ℹ️ Notion Publishing Disabled**")
+                st.info("Configure Notion API in Settings to enable auto-publishing.")
+            
             st.info("ℹ️ Configure Notion in sidebar for auto-publishing")
         
         # Complete with Aurora celebration
@@ -573,28 +745,135 @@ def show_results(results):
 
 # === NAVIGATION & PAGES ===
 def create_aurora_navigation():
-    """Create Aurora-styled navigation"""
+    """Create Aurora-styled navigation with enhanced bioluminescent effects"""
     st.markdown("""
     <div style="
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-        padding: 1rem;
-        border-radius: 15px;
+        background: linear-gradient(135deg, 
+            rgba(10, 15, 28, 0.95) 0%, 
+            rgba(13, 20, 33, 0.95) 25%,
+            rgba(16, 33, 62, 0.95) 50%,
+            rgba(15, 52, 96, 0.95) 75%,
+            rgba(10, 15, 28, 0.95) 100%);
+        padding: 2rem;
+        border-radius: 25px;
         margin-bottom: 2rem;
-        border: 1px solid rgba(64, 224, 208, 0.3);
-        box-shadow: 0 8px 32px rgba(64, 224, 208, 0.1);
+        border: 2px solid rgba(64, 224, 208, 0.4);
+        box-shadow: 
+            0 0 40px rgba(64, 224, 208, 0.2),
+            inset 0 0 40px rgba(64, 224, 208, 0.05);
+        position: relative;
+        overflow: hidden;
     ">
-        <div style="text-align: center;">
-            <h2 style="
+        <div style="
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(64, 224, 208, 0.8), 
+                rgba(125, 249, 255, 0.8), 
+                rgba(64, 224, 208, 0.8), 
+                transparent);
+            animation: aurora-scan 6s ease-in-out infinite;
+        "></div>
+        
+        <div style="text-align: center; position: relative; z-index: 1;">
+            <h1 style="
                 color: #40E0D0;
-                text-shadow: 0 0 20px rgba(64, 224, 208, 0.5);
+                text-shadow: 
+                    0 0 20px rgba(64, 224, 208, 0.6),
+                    0 0 40px rgba(64, 224, 208, 0.4),
+                    0 0 60px rgba(64, 224, 208, 0.2);
+                margin: 0 0 1rem 0;
+                font-size: 2.5rem;
+                font-weight: 700;
+                background: linear-gradient(45deg, #40E0D0, #7DF9FF, #00FFFF);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: aurora-pulse 3s ease-in-out infinite;
+            ">🌌 WhisperForge Aurora</h1>
+            <p style="
+                color: rgba(255, 255, 255, 0.9); 
                 margin: 0;
-                font-size: 1.8rem;
-            ">🌌 WhisperForge Aurora</h2>
-            <p style="color: rgba(255, 255, 255, 0.8); margin: 0.5rem 0 0 0;">
-                Transform Audio into Structured Content with AI
-            </p>
+                font-size: 1.3rem;
+                text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            ">Transform Audio into Structured Content with AI Magic ✨</p>
+            
+            <div style="
+                margin-top: 1.5rem;
+                display: flex;
+                justify-content: center;
+                gap: 20px;
+                flex-wrap: wrap;
+            ">
+                <div style="
+                    background: rgba(64, 224, 208, 0.1);
+                    border: 1px solid rgba(64, 224, 208, 0.3);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                ">🎙️ Transcription</div>
+                <div style="
+                    background: rgba(64, 224, 208, 0.1);
+                    border: 1px solid rgba(64, 224, 208, 0.3);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                ">💡 Wisdom</div>
+                <div style="
+                    background: rgba(64, 224, 208, 0.1);
+                    border: 1px solid rgba(64, 224, 208, 0.3);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                ">🔍 Research</div>
+                <div style="
+                    background: rgba(64, 224, 208, 0.1);
+                    border: 1px solid rgba(64, 224, 208, 0.3);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                ">📝 Article</div>
+                <div style="
+                    background: rgba(64, 224, 208, 0.1);
+                    border: 1px solid rgba(64, 224, 208, 0.3);
+                    border-radius: 20px;
+                    padding: 8px 16px;
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                ">🌌 Notion</div>
+            </div>
         </div>
     </div>
+    
+    <style>
+    @keyframes aurora-scan {
+        0%, 100% { left: -100%; }
+        50% { left: 100%; }
+    }
+    
+    @keyframes aurora-pulse {
+        0%, 100% { 
+            text-shadow: 
+                0 0 20px rgba(64, 224, 208, 0.6),
+                0 0 40px rgba(64, 224, 208, 0.4),
+                0 0 60px rgba(64, 224, 208, 0.2);
+        }
+        50% { 
+            text-shadow: 
+                0 0 30px rgba(64, 224, 208, 0.8),
+                0 0 60px rgba(64, 224, 208, 0.6),
+                0 0 90px rgba(64, 224, 208, 0.4);
+        }
+    }
+    </style>
     """, unsafe_allow_html=True)
     
     # Navigation tabs
@@ -609,83 +888,57 @@ def create_aurora_navigation():
     return tabs
 
 def show_transform_page():
-    """Main transformation page"""
-    st.markdown("### 🎵 Transform Audio into Structured Content")
+    """Clean transformation page focused on file upload and processing"""
     
-    # Sidebar settings (moved from main app)
-    with st.sidebar:
-        st.markdown("### ⚙️ Quick Settings")
-        
-        # OpenAI API Key
-        api_key = st.text_input("OpenAI API Key", type="password", 
-                                help="Your OpenAI API key for transcription and content generation")
-        if api_key:
-            os.environ["OPENAI_API_KEY"] = api_key
-        
-        st.markdown("---")
-        st.markdown("### 🌌 Notion Integration")
-        
-        # Notion API Key
-        notion_key = st.text_input("Notion API Key", type="password",
-                                  value=os.getenv("NOTION_API_KEY", ""),
-                                  help="Your Notion integration token for auto-publishing")
-        if notion_key:
-            os.environ["NOTION_API_KEY"] = notion_key
-        
-        # Notion Database ID
-        notion_db = st.text_input("Notion Database ID",
-                                 value=os.getenv("NOTION_DATABASE_ID", ""),
-                                 help="Your Notion database ID for content storage")
-        if notion_db:
-            os.environ["NOTION_DATABASE_ID"] = notion_db
-        
-        # Show connection status
-        if notion_key and notion_db:
-            st.success("✅ Notion configured - Auto-publishing enabled")
+    # Aurora-styled header
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, rgba(64, 224, 208, 0.1) 0%, rgba(138, 43, 226, 0.1) 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(64, 224, 208, 0.3);
+        box-shadow: 0 8px 32px rgba(64, 224, 208, 0.1);
+    ">
+        <h2 style="
+            color: #40E0D0;
+            text-shadow: 0 0 20px rgba(64, 224, 208, 0.5);
+            margin: 0 0 1rem 0;
+            font-size: 2.5rem;
+        ">🎵 Transform Audio</h2>
+        <p style="
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            margin: 0;
+        ">Upload your audio and watch it transform into structured content in real-time</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Quick status check
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if os.getenv("OPENAI_API_KEY"):
+            st.success("✅ OpenAI Connected")
         else:
-            st.info("ℹ️ Configure Notion for auto-publishing")
-        
-        st.markdown("---")
-        st.markdown("### 🔍 Pipeline Settings")
-        
-        # Research enrichment toggle
-        research_enabled = st.checkbox(
-            "Enable Research Enrichment",
-            value=st.session_state.get('research_enabled', True),
-            help="Automatically find supporting research links for key entities"
-        )
-        st.session_state.research_enabled = research_enabled
-        
-        # Editor toggle
-        editor_enabled = st.checkbox(
-            "Enable AI Editor Review",
-            value=st.session_state.get('editor_enabled', False),
-            help="AI editor provides improvement notes and generates revised content"
-        )
-        st.session_state.editor_enabled = editor_enabled
-        
-        # Test connections
-        if st.button("🧪 Test Connections"):
-            with st.spinner("Testing connections..."):
-                # Test Supabase
-                try:
-                    db = get_supabase_client()
-                    if db and db.test_connection():
-                        st.success("✅ Supabase connected")
-                    else:
-                        st.error("❌ Supabase connection failed")
-                except Exception as e:
-                    st.error(f"❌ Supabase error: {e}")
-                
-                # Test Notion
-                if notion_key and notion_db:
-                    try:
-                        from notion_client import Client
-                        client = Client(auth=notion_key)
-                        database = client.databases.retrieve(database_id=notion_db)
-                        st.success("✅ Notion connected")
-                    except Exception as e:
-                        st.error(f"❌ Notion error: {e}")
+            st.error("❌ OpenAI Not Configured")
+            st.info("Configure in Settings tab")
+    
+    with col2:
+        if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
+            st.success("✅ Notion Connected")
+        else:
+            st.warning("⚠️ Notion Not Configured")
+            st.info("Configure in Settings tab")
+    
+    with col3:
+        research_status = "✅ Enabled" if st.session_state.get('research_enabled', True) else "⚠️ Disabled"
+        editor_status = "✅ Enabled" if st.session_state.get('editor_enabled', False) else "⚠️ Disabled"
+        st.info(f"🔍 Research: {research_status}")
+        st.info(f"📝 Editor: {editor_status}")
+    
+    st.markdown("---")
     
     # File upload
     uploaded_file = st.file_uploader(
