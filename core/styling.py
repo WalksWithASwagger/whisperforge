@@ -6,221 +6,42 @@ Beautiful, modern UI components with bioluminescent Aurora theme
 import streamlit as st
 
 def apply_aurora_theme():
-    """Apply the complete Aurora theme with smooth animations"""
-    st.markdown("""
-    <style>
-    /* Aurora Theme Variables */
-    :root {
-        --aurora-primary: #00FFFF;
-        --aurora-secondary: #40E0D0;
-        --aurora-tertiary: #7DF9FF;
-        --aurora-bg-dark: #0a0f1c;
-        --aurora-bg-darker: #0d1421;
-        --aurora-bg-card: rgba(0, 255, 255, 0.03);
-        --aurora-border: rgba(0, 255, 255, 0.15);
-        --aurora-border-hover: rgba(0, 255, 255, 0.3);
-        --aurora-text: rgba(255, 255, 255, 0.9);
-        --aurora-text-muted: rgba(255, 255, 255, 0.6);
-        --aurora-success: #00FF88;
-        --aurora-warning: #FFB800;
-        --aurora-error: #FF4444;
-        --aurora-glow: 0 0 20px rgba(0, 255, 255, 0.4);
-        --aurora-glow-strong: 0 0 30px rgba(0, 255, 255, 0.6);
-    }
+    """Apply the complete Aurora theme by loading our comprehensive CSS file"""
+    # Load the comprehensive Aurora CSS file
+    css_file_path = "static/css/main.css"
     
-    /* Beautiful Aurora Progress Bars */
-    .aurora-progress-container {
-        background: var(--aurora-bg-card);
-        border: 1px solid var(--aurora-border);
-        border-radius: 16px;
-        padding: 24px;
-        margin: 20px 0;
-        backdrop-filter: blur(24px);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .aurora-progress-container::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--aurora-primary), var(--aurora-secondary), transparent);
-        animation: aurora-scan 8s ease-in-out infinite;
-    }
-    
-    .aurora-progress-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    
-    .aurora-progress-title {
-        color: var(--aurora-primary);
-        font-size: 1.4rem;
-        font-weight: 700;
-        margin: 0;
-        text-shadow: var(--aurora-glow);
-    }
-    
-    .aurora-progress-stats {
-        color: var(--aurora-text-muted);
-        font-size: 0.9rem;
-    }
-    
-    .aurora-progress-bar {
-        background: rgba(0, 0, 0, 0.4);
-        border-radius: 12px;
-        height: 8px;
-        overflow: hidden;
-        margin: 16px 0;
-    }
-    
-    .aurora-progress-fill {
-        background: linear-gradient(90deg, var(--aurora-primary), var(--aurora-tertiary), var(--aurora-secondary));
-        height: 100%;
-        border-radius: 12px;
-        box-shadow: var(--aurora-glow);
-        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-    }
-    
-    .aurora-progress-fill::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 20px;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
-        animation: aurora-shimmer 2s ease-in-out infinite;
-    }
-    
-    /* Beautiful Step Containers */
-    .aurora-step-container {
-        background: var(--aurora-bg-card);
-        border: 1px solid var(--aurora-border);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 12px 0;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .aurora-step-container.processing {
-        border-color: var(--aurora-border-hover);
-        background: rgba(0, 255, 255, 0.08);
-        box-shadow: var(--aurora-glow);
-    }
-    
-    .aurora-step-container.completed {
-        border-color: rgba(0, 255, 136, 0.4);
-        background: rgba(0, 255, 136, 0.05);
-    }
-    
-    .aurora-step-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .aurora-step-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .aurora-step-icon {
-        font-size: 1.2rem;
-        animation: aurora-pulse 2s ease-in-out infinite;
-    }
-    
-    .aurora-step-title {
-        color: var(--aurora-primary);
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0;
-    }
-    
-    .aurora-step-description {
-        color: var(--aurora-text-muted);
-        font-size: 0.9rem;
-        margin: 4px 0 0 0;
-    }
-    
-    .aurora-step-progress {
-        color: var(--aurora-text);
-        font-weight: bold;
-    }
-    
-    /* Beautiful Cards */
-    .aurora-card {
-        background: var(--aurora-bg-card);
-        border: 1px solid var(--aurora-border);
-        border-radius: 16px;
-        padding: 24px;
-        margin: 16px 0;
-        backdrop-filter: blur(16px);
-        transition: all 0.3s ease;
-        position: relative;
-    }
-    
-    .aurora-card:hover {
-        border-color: var(--aurora-border-hover);
-        transform: translateY(-2px);
-        box-shadow: var(--aurora-glow);
-    }
-    
-    .aurora-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-    
-    .aurora-card-title {
-        color: var(--aurora-primary);
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin: 0;
-    }
-    
-    /* Aurora Animations */
-    @keyframes aurora-scan {
-        0%, 100% { left: -100%; }
-        50% { left: 100%; }
-    }
-    
-    @keyframes aurora-shimmer {
-        0%, 100% { opacity: 0; }
-        50% { opacity: 1; }
-    }
-    
-    @keyframes aurora-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    
-    @keyframes aurora-glow {
-        0%, 100% { box-shadow: var(--aurora-glow); }
-        50% { box-shadow: var(--aurora-glow-strong); }
-    }
-    
-    /* Smooth fade-in for all elements */
-    .aurora-fade-in {
-        animation: fadeIn 0.6s ease-out;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    try:
+        with open(css_file_path, 'r', encoding='utf-8') as f:
+            css_content = f.read()
+        
+        st.markdown(f"""
+        <style>
+        {css_content}
+        </style>
+        """, unsafe_allow_html=True)
+        
+    except FileNotFoundError:
+        # Fallback to basic Aurora styling if file not found
+        st.markdown("""
+        <style>
+        :root {
+            --aurora-primary: #40E0D0;
+            --aurora-secondary: #7DF9FF;
+            --aurora-tertiary: #00FFFF;
+            --aurora-bg-dark: #0a0f1c;
+            --aurora-bg-darker: #0d1421;
+            --aurora-bg-card: rgba(64, 224, 208, 0.03);
+            --aurora-border: rgba(64, 224, 208, 0.2);
+            --aurora-text: rgba(255, 255, 255, 0.95);
+            --aurora-glow: 0 0 20px rgba(64, 224, 208, 0.3);
+        }
+        
+        .stApp {
+            background: linear-gradient(135deg, var(--aurora-bg-dark) 0%, var(--aurora-bg-darker) 100%);
+            color: var(--aurora-text);
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
 def create_aurora_header():
     """Create a flagship Aurora header with integrated navigation and logout - REBUILT FOR 2025"""

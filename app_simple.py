@@ -2084,9 +2084,8 @@ def show_prompts_page():
         st.session_state.max_tokens = max_tokens
 
 def create_aurora_tabs(tab_data, default_tab=0):
-    """Create beautiful Aurora-styled tabs with content badges and quick actions"""
+    """Create beautiful Aurora-styled tabs with a simplified, reliable approach"""
     import uuid
-    import json
     
     # Generate unique ID for this tab group
     tab_group_id = f"tabs_{uuid.uuid4().hex[:8]}"
@@ -2095,202 +2094,110 @@ def create_aurora_tabs(tab_data, default_tab=0):
     if f"{tab_group_id}_active" not in st.session_state:
         st.session_state[f"{tab_group_id}_active"] = default_tab
     
-    # Calculate content stats for badges
+    # Calculate content stats for display
     tab_stats = []
     for tab in tab_data:
         content = tab.get('content', '')
         word_count = len(str(content).split()) if content else 0
         tab_stats.append(word_count)
     
-    # Create the tabs container
-    st.markdown(f"""
-    <div class="aurora-tabs-container" id="{tab_group_id}">
+    # Create the tabs container with Aurora styling
+    st.markdown("""
+    <div class="aurora-tabs-container">
         <div class="aurora-tabs-actions">
             <h3 class="aurora-tabs-title">
                 <span>📄</span>
                 Generated Content
             </h3>
-            <div class="aurora-tabs-quick-actions">
-                <button class="aurora-quick-action-btn" onclick="copyAllTabs('{tab_group_id}')">
-                    <span>📋</span>
-                    <span>Copy All</span>
-                </button>
-                <button class="aurora-quick-action-btn" onclick="exportAllTabs('{tab_group_id}')">
-                    <span>💾</span>
-                    <span>Export</span>
-                </button>
-                <button class="aurora-quick-action-btn" onclick="shareContent('{tab_group_id}')">
-                    <span>🔗</span>
-                    <span>Share</span>
-                </button>
-            </div>
         </div>
-        
-        <div class="aurora-tabs-header">
+    </div>
     """, unsafe_allow_html=True)
     
-    # Create tab buttons
+    # Create tab selector using Streamlit's selectbox with Aurora styling
+    tab_options = []
     for i, tab in enumerate(tab_data):
-        active_class = "active" if i == st.session_state[f"{tab_group_id}_active"] else ""
-        content_type = tab.get('type', 'default').lower()
         word_count = tab_stats[i]
-        
-        # Create unique button ID
-        button_id = f"tab_btn_{tab_group_id}_{i}"
-        
-        st.markdown(f"""
-            <button class="aurora-tab-button {content_type} {active_class}" 
-                    id="{button_id}"
-                    onclick="switchTab('{tab_group_id}', {i})">
-                <span class="aurora-tab-icon">{tab['icon']}</span>
-                <span>{tab['title']}</span>
-                <span class="aurora-tab-badge">{word_count}</span>
-            </button>
-        """, unsafe_allow_html=True)
+        tab_options.append(f"{tab['icon']} {tab['title']} ({word_count} words)")
     
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Prepare content data for JavaScript (safely escaped)
-    js_content_data = []
-    for tab in tab_data:
-        content = str(tab.get('content', '')).replace('\\', '\\\\').replace('`', '\\`').replace('\n', '\\n').replace('\r', '\\r')
-        js_content_data.append({
-            'title': tab['title'],
-            'content': content
-        })
-    
-    # Add JavaScript for tab functionality
-    st.markdown(f"""
-    <script>
-    // Store content data for this tab group
-    window.tabContentData_{tab_group_id} = {json.dumps(js_content_data)};
-    
-    function switchTab(tabGroupId, tabIndex) {{
-        // Simple approach: use Streamlit's built-in rerun mechanism
-        // Store the selection in a hidden input and trigger rerun
-        let hiddenInput = document.getElementById('hidden_tab_' + tabGroupId);
-        if (!hiddenInput) {{
-            hiddenInput = document.createElement('input');
-            hiddenInput.type = 'hidden';
-            hiddenInput.id = 'hidden_tab_' + tabGroupId;
-            document.body.appendChild(hiddenInput);
-        }}
-        hiddenInput.value = tabIndex;
-        
-        // Update visual state immediately
-        const buttons = document.querySelectorAll(`#${{tabGroupId}} .aurora-tab-button`);
-        buttons.forEach((btn, idx) => {{
-            if (idx === tabIndex) {{
-                btn.classList.add('active');
-            }} else {{
-                btn.classList.remove('active');
-            }}
-        }});
-        
-        // Use Streamlit's session state update
-        window.parent.postMessage({{
-            type: 'streamlit:setComponentValue',
-            key: tabGroupId + '_active',
-            value: tabIndex
-        }}, '*');
-    }}
-    
-    function copyAllTabs(tabGroupId) {{
-        const contentData = window['tabContentData_' + tabGroupId];
-        if (!contentData) return;
-        
-        const allContent = contentData.map(tab => 
-            tab.title + ':\\n' + '='.repeat(40) + '\\n' + tab.content
-        ).join('\\n\\n' + '='.repeat(60) + '\\n\\n');
-        
-        navigator.clipboard.writeText(allContent).then(() => {{
-            // Show success feedback
-            const btn = document.querySelector(`#${{tabGroupId}} .aurora-quick-action-btn`);
-            if (btn) {{
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<span>✅</span><span>Copied!</span>';
-                setTimeout(() => {{
-                    btn.innerHTML = originalText;
-                }}, 2000);
-            }}
-        }}).catch(err => {{
-            console.error('Copy failed:', err);
-            alert('Copy failed. Please try again.');
-        }});
-    }}
-    
-    function exportAllTabs(tabGroupId) {{
-        const contentData = window['tabContentData_' + tabGroupId];
-        if (!contentData) return;
-        
-        const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-        const allContent = 'WHISPERFORGE CONTENT EXPORT\\n' + 
-                          'Generated: ' + new Date().toLocaleString() + '\\n' +
-                          '='.repeat(60) + '\\n\\n' +
-                          contentData.map(tab => 
-                              tab.title + ':\\n' + '-'.repeat(40) + '\\n' + tab.content
-                          ).join('\\n\\n' + '='.repeat(60) + '\\n\\n');
-        
-        const blob = new Blob([allContent], {{ type: 'text/plain' }});
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'whisperforge_content_' + timestamp + '.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    }}
-    
-    function shareContent(tabGroupId) {{
-        if (navigator.share) {{
-            navigator.share({{
-                title: 'WhisperForge Generated Content',
-                text: 'Check out this AI-generated content from WhisperForge!',
-                url: window.location.href
-            }}).catch(err => console.log('Share failed:', err));
-        }} else {{
-            // Fallback: copy URL to clipboard
-            navigator.clipboard.writeText(window.location.href).then(() => {{
-                alert('Link copied to clipboard!');
-            }}).catch(err => {{
-                console.error('Copy URL failed:', err);
-            }});
-        }}
-    }}
-    </script>
+    # Custom styled selectbox
+    st.markdown("""
+    <style>
+    .aurora-tab-selector .stSelectbox > div > div {
+        background: var(--aurora-bg-glass) !important;
+        border: 2px solid var(--aurora-border) !important;
+        border-radius: var(--aurora-radius) !important;
+        color: var(--aurora-text) !important;
+    }
+    .aurora-tab-selector .stSelectbox > div > div:hover {
+        border-color: var(--aurora-border-hover) !important;
+        box-shadow: var(--aurora-glow-subtle) !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
     
-    # Handle tab switching via session state
-    current_tab = st.session_state[f"{tab_group_id}_active"]
+    # Tab selector
+    with st.container():
+        st.markdown('<div class="aurora-tab-selector">', unsafe_allow_html=True)
+        selected_tab_label = st.selectbox(
+            "Select Content Type:",
+            tab_options,
+            index=st.session_state[f"{tab_group_id}_active"],
+            key=f"tab_select_{tab_group_id}",
+            label_visibility="collapsed"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    # Check for tab switch via JavaScript (fallback method)
-    if f"switch_to_tab_{tab_group_id}" in st.session_state:
-        new_tab = st.session_state[f"switch_to_tab_{tab_group_id}"]
-        if 0 <= new_tab < len(tab_data):
-            st.session_state[f"{tab_group_id}_active"] = new_tab
-            current_tab = new_tab
-        del st.session_state[f"switch_to_tab_{tab_group_id}"]
+    # Find selected tab index
+    selected_index = 0
+    for i, option in enumerate(tab_options):
+        if option == selected_tab_label:
+            selected_index = i
+            break
     
-    # Display active tab content
-    if 0 <= current_tab < len(tab_data):
-        active_tab = tab_data[current_tab]
+    # Update session state
+    st.session_state[f"{tab_group_id}_active"] = selected_index
+    
+    # Display selected content with Aurora styling
+    if 0 <= selected_index < len(tab_data):
+        active_tab = tab_data[selected_index]
         
-        st.markdown('<div class="aurora-tab-content">', unsafe_allow_html=True)
+        # Add quick actions for the active tab
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+        
+        with col1:
+            if st.button("📋 Copy", key=f"copy_{tab_group_id}_{selected_index}", use_container_width=True):
+                st.code(active_tab.get('content', ''), language='text')
+                st.success("✅ Content displayed above - copy with Ctrl+A, Ctrl+C")
+        
+        with col2:
+            content = active_tab.get('content', '')
+            if content:
+                st.download_button(
+                    label="💾 Download",
+                    data=content,
+                    file_name=f"{active_tab['title'].lower().replace(' ', '_')}.txt",
+                    mime="text/plain",
+                    key=f"download_{tab_group_id}_{selected_index}",
+                    use_container_width=True
+                )
+        
+        with col3:
+            if st.button("📊 Stats", key=f"stats_{tab_group_id}_{selected_index}", use_container_width=True):
+                word_count = len(str(content).split())
+                char_count = len(str(content))
+                st.info(f"📊 **{active_tab['title']}**: {word_count} words, {char_count} characters")
         
         # Display the content using our enhanced content card
+        st.markdown('<div class="aurora-tab-content">', unsafe_allow_html=True)
         create_enhanced_aurora_content_card(
             title=active_tab['title'],
             content=active_tab.get('content', ''),
             content_type=active_tab.get('type', 'text'),
             icon=active_tab['icon']
         )
-        
         st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    return current_tab
+    return selected_index
 
 # === MAIN APP ===
 def show_main_app():

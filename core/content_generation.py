@@ -123,19 +123,27 @@ def generate_social_content(wisdom: str, outline: str, article: str, custom_prom
         return f"Error generating social content: {str(e)}"
 
 def transcribe_audio(audio_file) -> str:
-    """Transcribe audio using OpenAI Whisper - clean and simple"""
+    """Transcribe audio using OpenAI Whisper - handles both file paths and file objects"""
     try:
         openai_client = get_openai_client()
         if not openai_client:
             return "Error: OpenAI client not available."
         
-        # Reset file pointer to beginning
-        audio_file.seek(0)
-        
-        response = openai_client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file
-        )
+        # Handle both file paths (strings) and file objects
+        if isinstance(audio_file, str):
+            # It's a file path, open it
+            with open(audio_file, 'rb') as f:
+                response = openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=f
+                )
+        else:
+            # It's a file object, reset pointer and use directly
+            audio_file.seek(0)
+            response = openai_client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
         
         return response.text
         
