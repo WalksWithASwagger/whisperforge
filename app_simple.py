@@ -307,18 +307,130 @@ def show_login():
     st.markdown("**Demo Mode**: Click above to access WhisperForge")
 
 # === CORE PROCESSING PIPELINE ===
+
+def show_processing_pipeline(current_step=0, step_progress=0, total_progress=0, status_message="", processing_time=""):
+    """Display beautiful Aurora-styled processing pipeline visualization"""
+    
+    # Define the 6-step pipeline
+    pipeline_steps = [
+        {
+            "icon": "🎤",
+            "title": "Transcription",
+            "description": "Converting audio to text using Whisper AI",
+            "status": "pending"
+        },
+        {
+            "icon": "💡",
+            "title": "Wisdom Extraction",
+            "description": "Extracting key insights and wisdom",
+            "status": "pending"
+        },
+        {
+            "icon": "📋",
+            "title": "Outline Creation",
+            "description": "Structuring content with clear outline",
+            "status": "pending"
+        },
+        {
+            "icon": "📰",
+            "title": "Article Generation",
+            "description": "Creating comprehensive article content",
+            "status": "pending"
+        },
+        {
+            "icon": "📱",
+            "title": "Social Content",
+            "description": "Generating social media posts",
+            "status": "pending"
+        },
+        {
+            "icon": "🌌",
+            "title": "Notion Publishing",
+            "description": "Publishing to Notion workspace",
+            "status": "pending"
+        }
+    ]
+    
+    # Update step statuses based on current progress
+    for i, step in enumerate(pipeline_steps):
+        if i < current_step:
+            step["status"] = "completed"
+        elif i == current_step:
+            step["status"] = "active"
+        else:
+            step["status"] = "pending"
+    
+    # Create the pipeline visualization HTML
+    steps_html = ""
+    for i, step in enumerate(pipeline_steps):
+        progress_width = step_progress if i == current_step else (100 if step["status"] == "completed" else 0)
+        
+        status_text = {
+            "pending": "Waiting",
+            "active": "Processing",
+            "completed": "Complete",
+            "error": "Error"
+        }.get(step["status"], "Waiting")
+        
+        steps_html += f"""
+        <div class="aurora-pipeline-step {step['status']}">
+            <div class="aurora-step-progress" style="width: {progress_width}%;"></div>
+            <span class="aurora-step-icon">{step['icon']}</span>
+            <h4 class="aurora-step-title">{step['title']}</h4>
+            <p class="aurora-step-description">{step['description']}</p>
+            <div class="aurora-step-status">{status_text}</div>
+        </div>
+        """
+    
+    # Create the complete pipeline HTML
+    pipeline_html = f"""
+    <div class="aurora-pipeline-container">
+        <div class="aurora-pipeline-header">
+            <h3 class="aurora-pipeline-title">Content Transformation Pipeline</h3>
+            <p class="aurora-pipeline-subtitle">6-Step AI-Powered Processing</p>
+        </div>
+        
+        <div class="aurora-overall-progress">
+            <div class="aurora-progress-header">
+                <span class="aurora-progress-label">Overall Progress</span>
+                <span class="aurora-progress-percentage">{total_progress}%</span>
+            </div>
+            <div class="aurora-progress-bar-container">
+                <div class="aurora-progress-bar" style="width: {total_progress}%;"></div>
+            </div>
+        </div>
+        
+        <div class="aurora-pipeline-steps">
+            {steps_html}
+        </div>
+        
+        {f'''
+        <div class="aurora-processing-status active">
+            <span class="aurora-status-icon">⚡</span>
+            <span class="aurora-status-text">{status_message}</span>
+            <span class="aurora-status-time">{processing_time}</span>
+        </div>
+        ''' if status_message else ''}
+    </div>
+    """
+    
+    st.markdown(pipeline_html, unsafe_allow_html=True)
+
 def process_audio_pipeline(audio_file):
-    """Core audio to content pipeline with real-time streaming"""
+    """Core audio to content pipeline with beautiful Aurora visualization"""
+    import time
+    from datetime import datetime
+    
     results = {}
+    start_time = time.time()
     
     # Load custom prompts
     custom_prompts = load_custom_prompts()
     if custom_prompts:
         st.info(f"📝 Using {len(custom_prompts)} custom prompts")
     
-    # Progress tracking
-    progress_bar = st.progress(0.0)
-    status_text = st.empty()
+    # Initialize beautiful pipeline visualization
+    pipeline_placeholder = st.empty()
     
     # Create real-time content display containers
     st.markdown("### 🌌 Live Content Generation")
@@ -333,173 +445,337 @@ def process_audio_pipeline(audio_file):
     
     try:
         # Step 1: Transcription
-        status_text.text("🎙️ Transcribing audio...")
-        progress_bar.progress(0.2)
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=0, 
+                step_progress=0, 
+                total_progress=0,
+                status_message="Starting transcription process...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
-        transcript = transcribe_audio(audio_file)
-        if not transcript or "Error" in transcript:
-            st.error(f"❌ Transcription failed: {transcript}")
-            return None
+        # Import transcription function
+        from core.content_generation import transcribe_audio
         
-        results['transcript'] = transcript
+        # Create temporary file
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(audio_file.name)[1]) as tmp_file:
+            tmp_file.write(audio_file.getvalue())
+            tmp_file_path = tmp_file.name
         
-        # Stream transcript to UI immediately
-        with transcript_container:
-            st.markdown("**✅ Transcription Complete**")
-            st.text_area("Transcript", transcript, height=200, disabled=True)
-        
-        st.success(f"✅ Transcription complete ({len(transcript)} characters)")
-        
-        # Step 2: Wisdom Extraction
-        status_text.text("💡 Extracting key insights...")
-        progress_bar.progress(0.3)
-        
-        # Use custom prompt if available
-        wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-        wisdom = generate_wisdom(transcript, 
-                                custom_prompt=wisdom_prompt, knowledge_base={})
-        results['wisdom'] = wisdom
-        
-        # Stream wisdom to UI immediately
-        with wisdom_container:
-            st.markdown("**✅ Wisdom Extraction Complete**")
-            st.markdown(wisdom)
-        
-        st.success("✅ Wisdom extracted")
-        
-        # Step 3: Outline Creation
-        status_text.text("📋 Creating structured outline...")
-        progress_bar.progress(0.5)
-        
-        # Use custom prompt if available
-        outline_prompt = get_prompt_for_step('outline', custom_prompts)
-        outline = generate_outline(transcript, wisdom, 
-                                  custom_prompt=outline_prompt, knowledge_base={})
-        results['outline'] = outline
-        
-        # Stream outline to UI immediately
-        with outline_container:
-            st.markdown("**✅ Outline Creation Complete**")
-            st.markdown(outline)
-        
-        st.success("✅ Outline created")
-        
-        # Step 4: Article Generation
-        status_text.text("📝 Writing comprehensive article...")
-        progress_bar.progress(0.75)
-        
-        # Use custom prompt if available
-        article_prompt = get_prompt_for_step('article', custom_prompts)
-        article = generate_article(transcript, wisdom, outline, 
-                                  custom_prompt=article_prompt, knowledge_base={})
-        results['article'] = article
-        
-        # Stream article to UI immediately
-        with article_container:
-            st.markdown("**✅ Article Generation Complete**")
-            st.markdown(article)
-        
-        st.success("✅ Article generated")
-        
-        # Step 5: Social Content
-        status_text.text("📱 Creating social media content...")
-        progress_bar.progress(0.85)
-        
-        # Use custom prompt if available
-        social_prompt = get_prompt_for_step('social', custom_prompts)
-        social = generate_social_content(wisdom, outline, article, 
-                                        custom_prompt=social_prompt, knowledge_base={})
-        results['social_content'] = social
-        
-        # Stream social content to UI immediately
-        with social_container:
-            st.markdown("**✅ Social Content Creation Complete**")
-            st.markdown(social)
-        
-        st.success("✅ Social content created")
-        
-        # Step 6: Auto-publish to Notion
-        if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
-            status_text.text("🌌 Publishing to Notion...")
-            progress_bar.progress(0.95)
-            
-            # Generate AI title
-            ai_title = generate_ai_title(transcript)
-            
-            # Publish to Notion
-            notion_url = create_notion_page(ai_title, results)
-            if notion_url:
-                results['notion_url'] = notion_url
-                
-                # Stream Notion success to UI
-                with notion_container:
-                    st.markdown("**✅ Notion Publishing Complete**")
-                    st.markdown(f"**Page Title:** {ai_title}")
-                    st.markdown(f"🔗 [Open in Notion]({notion_url})")
-                
-                st.success(f"✅ Published to Notion!")
-                st.markdown(f"🔗 [Open in Notion]({notion_url})")
-            else:
-                # Stream Notion failure to UI
-                with notion_container:
-                    st.markdown("**⚠️ Notion Publishing Failed**")
-                    st.warning("Check your Notion API configuration in Settings.")
-                
-                st.warning("⚠️ Notion publishing skipped")
-        else:
-            # Show disabled status in UI
-            with notion_container:
-                st.markdown("**ℹ️ Notion Publishing Disabled**")
-                st.info("Configure Notion API in Settings to enable auto-publishing.")
-            
-            st.info("ℹ️ Configure Notion in sidebar for auto-publishing")
-        
-        # Complete with Aurora celebration
-        progress_bar.progress(1.0)
-        
-        # Aurora completion celebration
-        st.markdown("""
-        <div style="text-align: center; padding: 30px; margin: 20px 0;">
-            <h1 style="
-                color: var(--aurora-primary); 
-                text-shadow: var(--aurora-glow-strong); 
-                font-size: 3rem;
-                margin: 0;
-                animation: aurora-pulse 2s ease-in-out infinite;
-            ">🎉 Pipeline Complete! 🌌</h1>
-            <p style="color: var(--aurora-text); font-size: 1.3rem; margin: 15px 0;">
-                Your content has been transformed with AI magic ✨
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Aurora success message
-        AuroraComponents.success_message("🚀 All processing steps completed successfully!")
-        
-        # Save to Supabase database
         try:
-            save_content_to_db(results)
-        except Exception as e:
-            st.warning(f"⚠️ Content saved locally but database save failed: {e}")
-        
-        return results
-        
+            # Transcription with progress updates
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=0, 
+                    step_progress=50, 
+                    total_progress=8,
+                    status_message="Transcribing audio with Whisper AI...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            transcript = transcribe_audio(tmp_file_path)
+            if not transcript or "Error" in transcript:
+                st.error(f"Transcription failed: {transcript}")
+                return None
+            
+            results['transcript'] = transcript
+            
+            # Stream transcript to UI immediately
+            with transcript_container:
+                st.markdown("**✅ Transcription Complete**")
+                st.text_area("Transcript", transcript, height=200, disabled=True)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=0, 
+                    step_progress=100, 
+                    total_progress=17,
+                    status_message="Transcription complete!",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Step 2: Wisdom Extraction
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=1, 
+                    step_progress=0, 
+                    total_progress=17,
+                    status_message="Extracting wisdom and insights...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            from core.content_generation import generate_wisdom
+            wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=1, 
+                    step_progress=50, 
+                    total_progress=25,
+                    status_message="Analyzing content for key insights...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            wisdom = generate_wisdom(transcript, custom_prompt=wisdom_prompt, knowledge_base={})
+            results['wisdom'] = wisdom
+            
+            # Stream wisdom to UI immediately
+            with wisdom_container:
+                st.markdown("**✅ Wisdom Extraction Complete**")
+                st.markdown(wisdom)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=1, 
+                    step_progress=100, 
+                    total_progress=33,
+                    status_message="Wisdom extraction complete!",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Step 3: Outline Creation
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=2, 
+                    step_progress=0, 
+                    total_progress=33,
+                    status_message="Creating structured outline...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            from core.content_generation import generate_outline
+            outline_prompt = get_prompt_for_step('outline', custom_prompts)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=2, 
+                    step_progress=50, 
+                    total_progress=42,
+                    status_message="Structuring content hierarchy...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            outline = generate_outline(transcript, wisdom, custom_prompt=outline_prompt, knowledge_base={})
+            results['outline'] = outline
+            
+            # Stream outline to UI immediately
+            with outline_container:
+                st.markdown("**✅ Outline Creation Complete**")
+                st.markdown(outline)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=2, 
+                    step_progress=100, 
+                    total_progress=50,
+                    status_message="Outline creation complete!",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Step 4: Article Generation
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=3, 
+                    step_progress=0, 
+                    total_progress=50,
+                    status_message="Generating comprehensive article...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            from core.content_generation import generate_article
+            article_prompt = get_prompt_for_step('article', custom_prompts)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=3, 
+                    step_progress=50, 
+                    total_progress=58,
+                    status_message="Writing detailed article content...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            article = generate_article(transcript, wisdom, outline, custom_prompt=article_prompt, knowledge_base={})
+            results['article'] = article
+            
+            # Stream article to UI immediately
+            with article_container:
+                st.markdown("**✅ Article Generation Complete**")
+                st.markdown(article)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=3, 
+                    step_progress=100, 
+                    total_progress=67,
+                    status_message="Article generation complete!",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Step 5: Social Content
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=4, 
+                    step_progress=0, 
+                    total_progress=67,
+                    status_message="Creating social media content...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            from core.content_generation import generate_social_content
+            social_prompt = get_prompt_for_step('social', custom_prompts)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=4, 
+                    step_progress=50, 
+                    total_progress=75,
+                    status_message="Generating social media posts...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            social = generate_social_content(wisdom, outline, article, custom_prompt=social_prompt, knowledge_base={})
+            results['social_content'] = social
+            
+            # Stream social content to UI immediately
+            with social_container:
+                st.markdown("**✅ Social Content Creation Complete**")
+                st.markdown(social)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=4, 
+                    step_progress=100, 
+                    total_progress=83,
+                    status_message="Social content creation complete!",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Step 6: Auto-publish to Notion
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=5, 
+                    step_progress=0, 
+                    total_progress=83,
+                    status_message="Publishing to Notion workspace...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
+                # Generate AI title
+                ai_title = generate_ai_title(transcript)
+                
+                with pipeline_placeholder.container():
+                    show_processing_pipeline(
+                        current_step=5, 
+                        step_progress=30, 
+                        total_progress=88,
+                        status_message="Creating Notion page structure...",
+                        processing_time=f"{time.time() - start_time:.1f}s"
+                    )
+                
+                with pipeline_placeholder.container():
+                    show_processing_pipeline(
+                        current_step=5, 
+                        step_progress=60, 
+                        total_progress=92,
+                        status_message="Uploading content to Notion...",
+                        processing_time=f"{time.time() - start_time:.1f}s"
+                    )
+                
+                # Publish to Notion
+                notion_url = create_notion_page(ai_title, results)
+                if notion_url:
+                    results['notion_url'] = notion_url
+                    
+                    # Stream Notion success to UI
+                    with notion_container:
+                        st.markdown("**✅ Notion Publishing Complete**")
+                        st.markdown(f"**Page Title:** {ai_title}")
+                        st.markdown(f"🔗 [Open in Notion]({notion_url})")
+                else:
+                    # Stream Notion failure to UI
+                    with notion_container:
+                        st.markdown("**⚠️ Notion Publishing Failed**")
+                        st.warning("Check your Notion API configuration in Settings.")
+            else:
+                # Show disabled status in UI
+                with notion_container:
+                    st.markdown("**ℹ️ Notion Publishing Disabled**")
+                    st.info("Configure Notion API in Settings to enable auto-publishing.")
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=5, 
+                    step_progress=90, 
+                    total_progress=96,
+                    status_message="Saving to database...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Save to Supabase database
+            try:
+                save_content_to_db(results)
+            except Exception as e:
+                st.warning(f"⚠️ Content saved locally but database save failed: {e}")
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=5, 
+                    step_progress=100, 
+                    total_progress=100,
+                    status_message="Pipeline complete! All content generated successfully.",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            # Aurora completion celebration
+            st.markdown("""
+            <div class="aurora-celebration">
+                <h1 class="aurora-celebration-title">Pipeline Complete!</h1>
+                <p class="aurora-celebration-subtitle">Your content has been transformed with AI magic</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Clear the pipeline display after a moment
+            time.sleep(2)
+            pipeline_placeholder.empty()
+            
+            return results
+            
+        finally:
+            # Cleanup temporary file
+            if os.path.exists(tmp_file_path):
+                os.unlink(tmp_file_path)
+                
     except Exception as e:
-        st.error(f"❌ Processing failed: {str(e)}")
+        # Show error state
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=0, 
+                step_progress=0, 
+                total_progress=0,
+                status_message=f"Error: {str(e)}",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        st.error(f"Pipeline failed: {str(e)}")
         return None
 
 def process_audio_pipeline_with_transcript(transcript: str):
-    """Process audio pipeline with pre-transcribed content (for large file processing)"""
+    """Process audio pipeline with pre-transcribed content using beautiful Aurora visualization"""
+    import time
+    from datetime import datetime
+    
     results = {'transcript': transcript}
+    start_time = time.time()
     
     # Load custom prompts
     custom_prompts = load_custom_prompts()
     if custom_prompts:
         st.info(f"📝 Using {len(custom_prompts)} custom prompts")
     
-    # Progress tracking
-    progress_bar = st.progress(0.2)  # Start at 20% since transcription is done
-    status_text = st.empty()
+    # Initialize beautiful pipeline visualization (starting from step 1)
+    pipeline_placeholder = st.empty()
     
     # Create real-time content display containers
     st.markdown("### 🌌 Live Content Generation")
@@ -512,17 +788,39 @@ def process_audio_pipeline_with_transcript(transcript: str):
     notion_container = st.expander("🌌 Notion Publishing", expanded=False)
     
     try:
-        # Show transcript info
-        st.success(f"✅ Using pre-transcribed content ({len(transcript)} characters)")
+        # Show initial state with transcription already complete
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=1, 
+                step_progress=0, 
+                total_progress=17,
+                status_message=f"Using pre-transcribed content ({len(transcript)} characters)",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Step 2: Wisdom Extraction
-        status_text.text("💡 Extracting key insights...")
-        progress_bar.progress(0.3)
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=1, 
+                step_progress=0, 
+                total_progress=17,
+                status_message="Extracting wisdom and insights...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
-        # Use custom prompt if available
+        from core.content_generation import generate_wisdom
         wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-        wisdom = generate_wisdom(transcript, 
-                                custom_prompt=wisdom_prompt, knowledge_base={})
+        
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=1, 
+                step_progress=50, 
+                total_progress=25,
+                status_message="Analyzing content for key insights...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
+        wisdom = generate_wisdom(transcript, custom_prompt=wisdom_prompt, knowledge_base={})
         results['wisdom'] = wisdom
         
         # Stream wisdom to UI immediately
@@ -530,16 +828,38 @@ def process_audio_pipeline_with_transcript(transcript: str):
             st.markdown("**✅ Wisdom Extraction Complete**")
             st.markdown(wisdom)
         
-        st.success("✅ Wisdom extracted")
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=1, 
+                step_progress=100, 
+                total_progress=33,
+                status_message="Wisdom extraction complete!",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Step 3: Outline Creation
-        status_text.text("📋 Creating structured outline...")
-        progress_bar.progress(0.5)
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=2, 
+                step_progress=0, 
+                total_progress=33,
+                status_message="Creating structured outline...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
-        # Use custom prompt if available
+        from core.content_generation import generate_outline
         outline_prompt = get_prompt_for_step('outline', custom_prompts)
-        outline = generate_outline(transcript, wisdom, 
-                                  custom_prompt=outline_prompt, knowledge_base={})
+        
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=2, 
+                step_progress=50, 
+                total_progress=42,
+                status_message="Structuring content hierarchy...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
+        outline = generate_outline(transcript, wisdom, custom_prompt=outline_prompt, knowledge_base={})
         results['outline'] = outline
         
         # Stream outline to UI immediately
@@ -547,16 +867,38 @@ def process_audio_pipeline_with_transcript(transcript: str):
             st.markdown("**✅ Outline Creation Complete**")
             st.markdown(outline)
         
-        st.success("✅ Outline created")
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=2, 
+                step_progress=100, 
+                total_progress=50,
+                status_message="Outline creation complete!",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Step 4: Article Generation
-        status_text.text("📝 Writing comprehensive article...")
-        progress_bar.progress(0.75)
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=3, 
+                step_progress=0, 
+                total_progress=50,
+                status_message="Generating comprehensive article...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
-        # Use custom prompt if available
+        from core.content_generation import generate_article
         article_prompt = get_prompt_for_step('article', custom_prompts)
-        article = generate_article(transcript, wisdom, outline, 
-                                  custom_prompt=article_prompt, knowledge_base={})
+        
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=3, 
+                step_progress=50, 
+                total_progress=58,
+                status_message="Writing detailed article content...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
+        article = generate_article(transcript, wisdom, outline, custom_prompt=article_prompt, knowledge_base={})
         results['article'] = article
         
         # Stream article to UI immediately
@@ -564,16 +906,38 @@ def process_audio_pipeline_with_transcript(transcript: str):
             st.markdown("**✅ Article Generation Complete**")
             st.markdown(article)
         
-        st.success("✅ Article generated")
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=3, 
+                step_progress=100, 
+                total_progress=67,
+                status_message="Article generation complete!",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Step 5: Social Content
-        status_text.text("📱 Creating social media content...")
-        progress_bar.progress(0.85)
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=4, 
+                step_progress=0, 
+                total_progress=67,
+                status_message="Creating social media content...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
-        # Use custom prompt if available
+        from core.content_generation import generate_social_content
         social_prompt = get_prompt_for_step('social', custom_prompts)
-        social = generate_social_content(wisdom, outline, article, 
-                                        custom_prompt=social_prompt, knowledge_base={})
+        
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=4, 
+                step_progress=50, 
+                total_progress=75,
+                status_message="Generating social media posts...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
+        social = generate_social_content(wisdom, outline, article, custom_prompt=social_prompt, knowledge_base={})
         results['social_content'] = social
         
         # Stream social content to UI immediately
@@ -581,15 +945,46 @@ def process_audio_pipeline_with_transcript(transcript: str):
             st.markdown("**✅ Social Content Creation Complete**")
             st.markdown(social)
         
-        st.success("✅ Social content created")
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=4, 
+                step_progress=100, 
+                total_progress=83,
+                status_message="Social content creation complete!",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Step 6: Auto-publish to Notion
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=5, 
+                step_progress=0, 
+                total_progress=83,
+                status_message="Publishing to Notion workspace...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
         if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
-            status_text.text("🌌 Publishing to Notion...")
-            progress_bar.progress(0.95)
-            
             # Generate AI title
             ai_title = generate_ai_title(transcript)
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=5, 
+                    step_progress=30, 
+                    total_progress=88,
+                    status_message="Creating Notion page structure...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
+            
+            with pipeline_placeholder.container():
+                show_processing_pipeline(
+                    current_step=5, 
+                    step_progress=60, 
+                    total_progress=92,
+                    status_message="Uploading content to Notion...",
+                    processing_time=f"{time.time() - start_time:.1f}s"
+                )
             
             # Publish to Notion
             notion_url = create_notion_page(ai_title, results)
@@ -601,45 +996,25 @@ def process_audio_pipeline_with_transcript(transcript: str):
                     st.markdown("**✅ Notion Publishing Complete**")
                     st.markdown(f"**Page Title:** {ai_title}")
                     st.markdown(f"🔗 [Open in Notion]({notion_url})")
-                
-                st.success(f"✅ Published to Notion!")
-                st.markdown(f"🔗 [Open in Notion]({notion_url})")
             else:
                 # Stream Notion failure to UI
                 with notion_container:
                     st.markdown("**⚠️ Notion Publishing Failed**")
                     st.warning("Check your Notion API configuration in Settings.")
-                
-                st.warning("⚠️ Notion publishing skipped")
         else:
             # Show disabled status in UI
             with notion_container:
                 st.markdown("**ℹ️ Notion Publishing Disabled**")
                 st.info("Configure Notion API in Settings to enable auto-publishing.")
-            
-            st.info("ℹ️ Configure Notion in sidebar for auto-publishing")
         
-        # Complete with Aurora celebration
-        progress_bar.progress(1.0)
-        
-        # Aurora completion celebration
-        st.markdown("""
-        <div style="text-align: center; padding: 30px; margin: 20px 0;">
-            <h1 style="
-                color: var(--aurora-primary); 
-                text-shadow: var(--aurora-glow-strong); 
-                font-size: 3rem;
-                margin: 0;
-                animation: aurora-pulse 2s ease-in-out infinite;
-            ">🎉 Pipeline Complete! 🌌</h1>
-            <p style="color: var(--aurora-text); font-size: 1.3rem; margin: 15px 0;">
-                Your large file content has been transformed with AI magic ✨
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Aurora success message
-        AuroraComponents.success_message("🚀 All processing steps completed successfully!")
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=5, 
+                step_progress=90, 
+                total_progress=96,
+                status_message="Saving to database...",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
         
         # Save to Supabase database
         try:
@@ -647,10 +1022,40 @@ def process_audio_pipeline_with_transcript(transcript: str):
         except Exception as e:
             st.warning(f"⚠️ Content saved locally but database save failed: {e}")
         
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=5, 
+                step_progress=100, 
+                total_progress=100,
+                status_message="Pipeline complete! All content generated successfully.",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        
+        # Aurora completion celebration
+        st.markdown("""
+        <div class="aurora-celebration">
+            <h1 class="aurora-celebration-title">Pipeline Complete!</h1>
+            <p class="aurora-celebration-subtitle">Your content has been transformed with AI magic</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Clear the pipeline display after a moment
+        time.sleep(2)
+        pipeline_placeholder.empty()
+        
         return results
         
     except Exception as e:
-        st.error(f"❌ Processing failed: {str(e)}")
+        # Show error state
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=1, 
+                step_progress=0, 
+                total_progress=17,
+                status_message=f"Error: {str(e)}",
+                processing_time=f"{time.time() - start_time:.1f}s"
+            )
+        st.error(f"Pipeline failed: {str(e)}")
         return None
 
 def save_content_to_db(content_data):
@@ -669,242 +1074,363 @@ def save_content_to_db(content_data):
         st.warning(f"Database save failed: {e}")
 
 # === CONTENT DISPLAY ===
+def create_enhanced_aurora_content_card(title, content, content_type="text", icon="📄"):
+    """Create a beautiful enhanced Aurora content card with copy functionality and animations"""
+    import uuid
+    
+    # Generate unique IDs for this card
+    card_id = f"card_{uuid.uuid4().hex[:8]}"
+    copy_btn_id = f"copy_{uuid.uuid4().hex[:8]}"
+    expand_btn_id = f"expand_{uuid.uuid4().hex[:8]}"
+    full_content_id = f"full_{uuid.uuid4().hex[:8]}"
+    
+    # Calculate content stats
+    word_count = len(content.split()) if content else 0
+    char_count = len(content) if content else 0
+    
+    # Determine if content needs truncation
+    preview_length = 300
+    needs_expansion = len(content) > preview_length
+    preview_content = content[:preview_length] + "..." if needs_expansion else content
+    
+    # Content type specific styling
+    type_class = content_type.lower()
+    
+    # Create the enhanced card HTML
+    card_html = f"""
+    <div class="aurora-content-card {type_class}" id="{card_id}">
+        <div class="aurora-content-card-header">
+            <h3 class="aurora-content-card-title">
+                <span class="aurora-content-card-icon">{icon}</span>
+                {title}
+            </h3>
+            <div class="aurora-content-card-actions">
+                <button class="aurora-content-action-btn copy-btn" id="{copy_btn_id}" onclick="copyToClipboard('{card_id}', '{copy_btn_id}')">
+                    <span>📋</span>
+                    <span class="copy-text">Copy</span>
+                </button>
+                <button class="aurora-content-action-btn" onclick="downloadContent('{title}', `{content.replace('`', '\\`')}`)">
+                    <span>💾</span>
+                    <span>Save</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="aurora-content-card-body">
+            <div class="aurora-content-preview" id="preview_{card_id}">
+                {preview_content}
+            </div>
+            
+            {f'''
+            <div class="aurora-content-full" id="{full_content_id}">
+                {content[preview_length:]}
+            </div>
+            ''' if needs_expansion else ''}
+            
+            <div class="aurora-content-stats">
+                <div class="aurora-content-word-count">
+                    <span>📊</span>
+                    <span>{word_count} words • {char_count} characters</span>
+                </div>
+                
+                {f'''
+                <button class="aurora-content-expand-btn" id="{expand_btn_id}" onclick="toggleExpand('{full_content_id}', '{expand_btn_id}')">
+                    <span>Show more</span>
+                    <span class="aurora-content-expand-icon">▼</span>
+                </button>
+                ''' if needs_expansion else ''}
+            </div>
+        </div>
+        
+        <!-- Hidden content for copying -->
+        <textarea id="content_{card_id}" style="position: absolute; left: -9999px; opacity: 0;">{content}</textarea>
+    </div>
+    
+    <script>
+    function copyToClipboard(cardId, btnId) {{
+        const content = document.getElementById('content_' + cardId).value;
+        const button = document.getElementById(btnId);
+        const copyText = button.querySelector('.copy-text');
+        
+        navigator.clipboard.writeText(content).then(function() {{
+            // Success feedback
+            button.classList.add('copied');
+            copyText.textContent = 'Copied!';
+            
+            // Reset after 2 seconds
+            setTimeout(() => {{
+                button.classList.remove('copied');
+                copyText.textContent = 'Copy';
+            }}, 2000);
+        }}).catch(function(err) {{
+            console.error('Failed to copy: ', err);
+            // Fallback for older browsers
+            const textarea = document.getElementById('content_' + cardId);
+            textarea.select();
+            document.execCommand('copy');
+            
+            button.classList.add('copied');
+            copyText.textContent = 'Copied!';
+            setTimeout(() => {{
+                button.classList.remove('copied');
+                copyText.textContent = 'Copy';
+            }}, 2000);
+        }});
+    }}
+    
+    function toggleExpand(fullContentId, btnId) {{
+        const fullContent = document.getElementById(fullContentId);
+        const button = document.getElementById(btnId);
+        const buttonText = button.querySelector('span:first-child');
+        const icon = button.querySelector('.aurora-content-expand-icon');
+        
+        if (fullContent.classList.contains('expanded')) {{
+            fullContent.classList.remove('expanded');
+            button.classList.remove('expanded');
+            buttonText.textContent = 'Show more';
+        }} else {{
+            fullContent.classList.add('expanded');
+            button.classList.add('expanded');
+            buttonText.textContent = 'Show less';
+        }}
+    }}
+    
+    function downloadContent(title, content) {{
+        const blob = new Blob([content], {{ type: 'text/plain' }});
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = title.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }}
+    </script>
+    """
+    
+    st.markdown(card_html, unsafe_allow_html=True)
+
 def show_results(results):
-    """Display generated content with Aurora styling"""
+    """Display generated content with beautiful Aurora styling and enhanced UX"""
     if not results:
         return
     
-    # Aurora header for results
+    # Aurora header for results with enhanced styling
     st.markdown("""
-    <div style="text-align: center; padding: 20px; margin: 20px 0;">
-        <h1 style="
-            color: var(--aurora-primary); 
-            text-shadow: var(--aurora-glow); 
-            font-size: 2.5rem;
-            margin: 0;
-        ">🎉 Content Generated!</h1>
-        <p style="color: var(--aurora-text); font-size: 1.2rem; margin: 10px 0;">
-            Your audio has been transformed with AI magic ✨
-        </p>
+    <div class="aurora-results-header">
+        <h1 class="aurora-results-title">✨ Content Generated Successfully!</h1>
+        <p class="aurora-results-subtitle">Your audio has been transformed with AI magic</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Aurora Notion link if available
+    # Aurora Notion link if available with enhanced styling
     if results.get('notion_url'):
         st.markdown(f"""
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="{results['notion_url']}" target="_blank" style="
-                background: linear-gradient(45deg, var(--aurora-primary), var(--aurora-secondary));
-                color: black;
-                padding: 16px 32px;
-                border-radius: 16px;
-                text-decoration: none;
-                font-weight: bold;
-                font-size: 1.2rem;
-                box-shadow: var(--aurora-glow-strong);
-                display: inline-block;
-                transition: all 0.3s ease;
-                border: none;
-            ">🌌 View in Notion</a>
+        <div class="aurora-notion-link">
+            <a href="{results['notion_url']}" target="_blank" class="aurora-notion-button">
+                🌌 View in Notion Workspace
+            </a>
         </div>
         """, unsafe_allow_html=True)
         st.markdown("---")
     
-    # Create tabs for different content types
-    tab_names = ["📜 Transcript", "💎 Wisdom", "📋 Outline", "📰 Article", "📱 Social Media"]
+    # Enhanced content overview stats
+    total_words = sum(len(str(results.get(key, '')).split()) for key in ['transcript', 'wisdom', 'outline', 'article', 'social_content'])
+    content_types = len([k for k in ['transcript', 'wisdom', 'outline', 'article', 'social_content'] if results.get(k)])
     
-    # Add Editor tab if editor was enabled
-    if results.get('editor_notes') or results.get('revised_content'):
-        tab_names.append("📝 Editor Review")
-    
-    tabs = st.tabs(tab_names)
-    
-    with tabs[0]:
-        create_aurora_content_card("🎙️ Audio Transcript", results.get('transcript', ''), "transcript")
-    
-    with tabs[1]:
-        create_aurora_content_card("💡 Wisdom", results.get('wisdom', ''), "text")
-    
-    with tabs[2]:
-        create_aurora_content_card("📋 Content Outline", results.get('outline', ''), "text")
-    
-    with tabs[3]:
-        create_aurora_content_card("📰 Full Article", results.get('article', ''), "text")
-    
-    with tabs[4]:
-        create_aurora_content_card("📱 Social Media Posts", results.get('social_content', ''), "text")
-    
-    # Editor tab (if enabled)
-    if len(tabs) > 5:
-        with tabs[5]:
-            st.markdown("""
-            <div class="aurora-card">
-                <h3 style="color: var(--aurora-primary); text-shadow: var(--aurora-glow);">
-                    📝 Editor Review & Revisions
-                </h3>
+    st.markdown(f"""
+    <div class="aurora-content-overview">
+        <div class="aurora-overview-stats">
+            <div class="aurora-stat-item">
+                <span class="aurora-stat-icon">📊</span>
+                <span class="aurora-stat-value">{total_words:,}</span>
+                <span class="aurora-stat-label">Total Words</span>
             </div>
-            """, unsafe_allow_html=True)
-            
-            editor_notes = results.get('editor_notes', {})
-            revised_content = results.get('revised_content', {})
-            
-            if editor_notes:
-                AuroraComponents.success_message(f"Editor reviewed {len(editor_notes)} content sections and provided improvement notes.")
-                
-                for content_type, notes in editor_notes.items():
-                    with st.expander(f"📝 Editor Notes: {content_type.replace('_', ' ').title()}"):
-                        st.markdown("**Editor Feedback:**")
-                        st.markdown(notes)
-                        
-                        # Show revised content if available
-                        if content_type in revised_content:
-                            st.markdown("---")
-                            st.markdown("**Revised Content:**")
-                            st.markdown(revised_content[content_type])
-                        else:
-                            st.info("No revision generated for this content.")
-            else:
-                st.info("No editor notes available.")
-
-# === NAVIGATION & PAGES ===
-def create_aurora_navigation():
-    """Stable high-end Aurora bioluminescent navigation"""
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, 
-            #0a0f1c 0%, 
-            #0d1421 15%,
-            #102142 35%,
-            #1a2d4a 55%,
-            #0f3460 75%,
-            #0a0f1c 100%);
-        padding: 3rem 2rem;
-        border-radius: 30px;
-        margin-bottom: 2rem;
-        border: 3px solid rgba(64, 224, 208, 0.6);
-        box-shadow: 
-            0 0 60px rgba(64, 224, 208, 0.3),
-            0 0 120px rgba(64, 224, 208, 0.1),
-            inset 0 0 60px rgba(64, 224, 208, 0.08);
-        position: relative;
-        text-align: center;
-    ">
-        <!-- Top bioluminescent accent -->
-        <div style="
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            height: 4px;
-            background: linear-gradient(90deg, 
-                transparent, 
-                rgba(64, 224, 208, 0.9), 
-                rgba(125, 249, 255, 1), 
-                rgba(64, 224, 208, 0.9), 
-                transparent);
-            border-radius: 2px;
-        "></div>
-        
-        <!-- Main content -->
-        <div style="position: relative; z-index: 1;">
-            <h1 style="
-                color: #40E0D0;
-                text-shadow: 
-                    0 0 30px rgba(64, 224, 208, 0.8),
-                    0 0 60px rgba(64, 224, 208, 0.5),
-                    0 0 90px rgba(64, 224, 208, 0.3);
-                margin: 0 0 1.5rem 0;
-                font-size: 3rem;
-                font-weight: 800;
-                letter-spacing: 2px;
-            ">🌌 WhisperForge Aurora</h1>
-            
-            <p style="
-                color: rgba(255, 255, 255, 0.95); 
-                margin: 0 0 2rem 0;
-                font-size: 1.4rem;
-                text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
-                font-weight: 300;
-            ">Transform Audio into Structured Content with AI Magic ✨</p>
-            
-            <!-- Bioluminescent pipeline badges -->
-            <div style="
-                display: flex;
-                justify-content: center;
-                gap: 15px;
-                flex-wrap: wrap;
-                margin-top: 2rem;
-            ">
-                <div style="
-                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
-                    border: 2px solid rgba(64, 224, 208, 0.4);
-                    border-radius: 25px;
-                    padding: 12px 20px;
-                    color: rgba(255, 255, 255, 0.9);
-                    font-size: 1rem;
-                    font-weight: 500;
-                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
-                ">🎙️ Transcription</div>
-                <div style="
-                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
-                    border: 2px solid rgba(64, 224, 208, 0.4);
-                    border-radius: 25px;
-                    padding: 12px 20px;
-                    color: rgba(255, 255, 255, 0.9);
-                    font-size: 1rem;
-                    font-weight: 500;
-                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
-                ">💡 Wisdom</div>
-                <div style="
-                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
-                    border: 2px solid rgba(64, 224, 208, 0.4);
-                    border-radius: 25px;
-                    padding: 12px 20px;
-                    color: rgba(255, 255, 255, 0.9);
-                    font-size: 1rem;
-                    font-weight: 500;
-                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
-                ">📝 Article</div>
-                <div style="
-                    background: linear-gradient(135deg, rgba(64, 224, 208, 0.15), rgba(64, 224, 208, 0.05));
-                    border: 2px solid rgba(64, 224, 208, 0.4);
-                    border-radius: 25px;
-                    padding: 12px 20px;
-                    color: rgba(255, 255, 255, 0.9);
-                    font-size: 1rem;
-                    font-weight: 500;
-                    box-shadow: 0 0 20px rgba(64, 224, 208, 0.2);
-                ">🌌 Notion</div>
+            <div class="aurora-stat-item">
+                <span class="aurora-stat-icon">📄</span>
+                <span class="aurora-stat-value">{content_types}</span>
+                <span class="aurora-stat-label">Content Types</span>
+            </div>
+            <div class="aurora-stat-item">
+                <span class="aurora-stat-icon">⚡</span>
+                <span class="aurora-stat-value">AI</span>
+                <span class="aurora-stat-label">Generated</span>
             </div>
         </div>
-        
-        <!-- Bottom bioluminescent accent -->
-        <div style="
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60%;
-            height: 2px;
-            background: linear-gradient(90deg, 
-                transparent, 
-                rgba(64, 224, 208, 0.6), 
-                rgba(125, 249, 255, 0.8), 
-                rgba(64, 224, 208, 0.6), 
-                transparent);
-            border-radius: 1px;
-        "></div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Navigation tabs
+    # Prepare tab data for custom Aurora tabs
+    tab_data = []
+    
+    # Add main content tabs
+    if results.get('transcript'):
+        tab_data.append({
+            'title': 'Transcript',
+            'icon': '🎙️',
+            'type': 'transcript',
+            'content': results['transcript']
+        })
+    
+    if results.get('wisdom'):
+        tab_data.append({
+            'title': 'Wisdom',
+            'icon': '💎',
+            'type': 'wisdom',
+            'content': results['wisdom']
+        })
+    
+    if results.get('outline'):
+        tab_data.append({
+            'title': 'Outline',
+            'icon': '📋',
+            'type': 'outline',
+            'content': results['outline']
+        })
+    
+    if results.get('article'):
+        tab_data.append({
+            'title': 'Article',
+            'icon': '📰',
+            'type': 'article',
+            'content': results['article']
+        })
+    
+    if results.get('social_content'):
+        tab_data.append({
+            'title': 'Social',
+            'icon': '📱',
+            'type': 'social',
+            'content': results['social_content']
+        })
+    
+    # Add Editor tab if editor content exists
+    if results.get('editor_notes') or results.get('revised_content'):
+        editor_content = ""
+        
+        if results.get('editor_notes'):
+            editor_content += "=== EDITOR NOTES ===\n\n"
+            for section, notes in results['editor_notes'].items():
+                if notes:
+                    editor_content += f"## {section.title()} Notes:\n{notes}\n\n"
+        
+        if results.get('revised_content'):
+            editor_content += "\n=== REVISED CONTENT ===\n\n"
+            for section, content in results['revised_content'].items():
+                if content:
+                    editor_content += f"## Revised {section.title()}:\n{content}\n\n"
+        
+        tab_data.append({
+            'title': 'Editor Review',
+            'icon': '📝',
+            'type': 'editor',
+            'content': editor_content
+        })
+    
+    # Display the custom Aurora tabs
+    if tab_data:
+        create_aurora_tabs(tab_data, default_tab=0)
+    else:
+        st.warning("No content available to display.")
+    
+    # Add export all functionality
+    st.markdown("---")
+    st.markdown("""
+    <div class="aurora-export-section">
+        <h3 class="aurora-export-title">📦 Additional Export Options</h3>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("📄 Export as Text", use_container_width=True):
+            export_content = create_text_export(results)
+            st.download_button(
+                label="💾 Download Text File",
+                data=export_content,
+                file_name=f"whisperforge_content_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+    
+    with col2:
+        if st.button("📊 Export as JSON", use_container_width=True):
+            import json
+            json_content = json.dumps(results, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="💾 Download JSON File",
+                data=json_content,
+                file_name=f"whisperforge_data_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+    
+    with col3:
+        if st.button("📋 Copy All Content", use_container_width=True):
+            all_content = create_text_export(results)
+            st.code(all_content, language="text")
+            st.success("✅ Content displayed above - use your browser's copy function!")
+
+def create_text_export(results):
+    """Create a formatted text export of all content"""
+    export_lines = []
+    export_lines.append("=" * 60)
+    export_lines.append("WHISPERFORGE CONTENT EXPORT")
+    export_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    export_lines.append("=" * 60)
+    export_lines.append("")
+    
+    sections = [
+        ("AUDIO TRANSCRIPT", results.get('transcript', '')),
+        ("EXTRACTED WISDOM", results.get('wisdom', '')),
+        ("CONTENT OUTLINE", results.get('outline', '')),
+        ("FULL ARTICLE", results.get('article', '')),
+        ("SOCIAL MEDIA CONTENT", results.get('social_content', ''))
+    ]
+    
+    for title, content in sections:
+        if content:
+            export_lines.append(f"## {title}")
+            export_lines.append("-" * 40)
+            export_lines.append(content)
+            export_lines.append("")
+            export_lines.append("")
+    
+    if results.get('notion_url'):
+        export_lines.append("## NOTION LINK")
+        export_lines.append("-" * 40)
+        export_lines.append(results['notion_url'])
+        export_lines.append("")
+    
+    return "\n".join(export_lines)
+
+# === NAVIGATION & PAGES ===
+def create_aurora_navigation():
+    """Beautiful Aurora bioluminescent navigation - Clean and professional"""
+    st.markdown("""
+    <div class="aurora-header">
+        <div class="aurora-glow"></div>
+        <h1 class="aurora-title">WhisperForge Aurora</h1>
+        <p class="aurora-subtitle">Transform Audio into Structured Content with AI</p>
+        <div class="aurora-pipeline">
+            <span class="pipeline-badge">Transcription</span>
+            <span class="pipeline-badge">Wisdom</span>
+            <span class="pipeline-badge">Article</span>
+            <span class="pipeline-badge">Social</span>
+            <span class="pipeline-badge">Notion</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Clean navigation tabs without emojis
     tabs = st.tabs([
-        "🎵 Transform", 
-        "📚 Content Library", 
-        "⚙️ Settings", 
-        "🧠 Knowledge Base",
-        "📝 Prompts"
+        "Transform", 
+        "Content Library", 
+        "Settings", 
+        "Knowledge Base",
+        "Prompts"
     ])
     
     return tabs
@@ -912,95 +1438,187 @@ def create_aurora_navigation():
 def show_transform_page():
     """Clean transformation page focused on file upload and processing"""
     
-    # Aurora-styled header
+    # Simple Aurora-styled header using main CSS
     st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, 
-            rgba(64, 224, 208, 0.12) 0%, 
-            rgba(138, 43, 226, 0.12) 50%,
-            rgba(64, 224, 208, 0.08) 100%);
-        padding: 2.5rem;
-        border-radius: 25px;
-        text-align: center;
-        margin-bottom: 2rem;
-        border: 2px solid rgba(64, 224, 208, 0.4);
-        box-shadow: 
-            0 0 40px rgba(64, 224, 208, 0.15),
-            inset 0 0 40px rgba(64, 224, 208, 0.05);
-    ">
-        <h2 style="
-            color: #40E0D0;
-            text-shadow: 
-                0 0 25px rgba(64, 224, 208, 0.7),
-                0 0 50px rgba(64, 224, 208, 0.4);
-            margin: 0 0 1rem 0;
-            font-size: 2.8rem;
-            font-weight: 700;
-        ">🎵 Transform Audio</h2>
-        <p style="
-            color: rgba(255, 255, 255, 0.95);
-            font-size: 1.3rem;
-            margin: 0;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-        ">Upload your audio and watch it transform into structured content</p>
+    <div class="transform-header">
+        <h2 class="transform-title">Transform Audio</h2>
+        <p class="transform-subtitle">Upload your audio and watch it transform into structured content</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Quick status check
-    col1, col2, col3 = st.columns(3)
+    # Beautiful Aurora upload method selector
+    st.markdown("""
+    <div class="aurora-upload-method-selector">
+        <div class="aurora-upload-method-card" id="standard-upload">
+            <span class="aurora-upload-method-icon">⚡</span>
+            <h3 class="aurora-upload-method-title">Standard Upload</h3>
+            <p class="aurora-upload-method-description">Perfect for most audio files up to 25MB with instant processing</p>
+            <div class="aurora-upload-method-features">
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">⚡</span>
+                    <span>Instant processing</span>
+                </div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">🎵</span>
+                    <span>Audio preview</span>
+                </div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">📊</span>
+                    <span>Up to 25MB</span>
+                </div>
+            </div>
+        </div>
+        <div class="aurora-upload-method-card" id="large-upload">
+            <span class="aurora-upload-method-icon">🚀</span>
+            <h3 class="aurora-upload-method-title">Large File Upload</h3>
+            <p class="aurora-upload-method-description">Advanced processing for large files up to 2GB with intelligent chunking</p>
+            <div class="aurora-upload-method-features">
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">🔧</span>
+                    <span>FFmpeg chunking</span>
+                </div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">⚡</span>
+                    <span>Parallel processing</span>
+                </div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">📈</span>
+                    <span>Up to 2GB</span>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    with col1:
-        if os.getenv("OPENAI_API_KEY"):
-            st.success("✅ OpenAI Connected")
-        else:
-            st.error("❌ OpenAI Not Configured")
-            st.info("Configure in Settings tab")
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click handlers to upload method cards
+        const standardCard = document.getElementById('standard-upload');
+        const largeCard = document.getElementById('large-upload');
+        
+        if (standardCard && largeCard) {
+            // Initialize with first option selected
+            standardCard.classList.add('selected');
+            
+            standardCard.addEventListener('click', function() {
+                // Remove selected class from both cards
+                standardCard.classList.remove('selected');
+                largeCard.classList.remove('selected');
+                
+                // Add selected class to clicked card
+                standardCard.classList.add('selected');
+                
+                // Find and trigger the radio button
+                setTimeout(() => {
+                    const radioButtons = document.querySelectorAll('input[type="radio"]');
+                    radioButtons.forEach(radio => {
+                        if (radio.nextElementSibling && radio.nextElementSibling.textContent.includes('Standard Upload')) {
+                            radio.checked = true;
+                            radio.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }, 100);
+            });
+            
+            largeCard.addEventListener('click', function() {
+                // Remove selected class from both cards
+                standardCard.classList.remove('selected');
+                largeCard.classList.remove('selected');
+                
+                // Add selected class to clicked card
+                largeCard.classList.add('selected');
+                
+                // Find and trigger the radio button
+                setTimeout(() => {
+                    const radioButtons = document.querySelectorAll('input[type="radio"]');
+                    radioButtons.forEach(radio => {
+                        if (radio.nextElementSibling && radio.nextElementSibling.textContent.includes('Large File Upload')) {
+                            radio.checked = true;
+                            radio.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    });
+                }, 100);
+            });
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
     
-    with col2:
-        if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
-            st.success("✅ Notion Connected")
-        else:
-            st.warning("⚠️ Notion Not Configured")
-            st.info("Configure in Settings tab")
+    # Enhanced file upload selection with session state
+    if 'upload_method' not in st.session_state:
+        st.session_state.upload_method = "Standard Upload"
     
-    with col3:
-        large_file_status = "✅ Available" if st.session_state.get('large_file_mode', True) else "⚠️ Disabled"
-        auto_notion_status = "✅ Enabled" if st.session_state.get('auto_notion', True) else "⚠️ Disabled"
-        st.info(f"🚀 Large Files: {large_file_status}")
-        st.info(f"🌌 Auto-Notion: {auto_notion_status}")
-    
-    st.markdown("---")
-    
-    # Enhanced file upload selection
     upload_method = st.radio(
         "Choose upload method:",
-        ["🎵 Standard Upload (up to 25MB)", "🚀 Enhanced Large File Upload (up to 2GB)"],
-        help="Standard upload for smaller files, Enhanced upload for large files with FFmpeg processing"
+        ["Standard Upload", "Large File Upload"],
+        index=0 if st.session_state.upload_method == "Standard Upload" else 1,
+        help="Standard upload for smaller files, Enhanced upload for large files with FFmpeg processing",
+        label_visibility="collapsed"
     )
     
-    if upload_method == "🎵 Standard Upload (up to 25MB)":
+    st.session_state.upload_method = upload_method
+    
+    if upload_method == "Standard Upload":
+        # Beautiful standard file upload zone
+        st.markdown("""
+        <div class="aurora-file-upload-zone">
+            <div class="aurora-upload-icon-container">
+                <div class="aurora-upload-icon">🎵</div>
+                <div class="aurora-upload-pulse"></div>
+            </div>
+            <h3 class="aurora-upload-title">Drop your audio file here</h3>
+            <p class="aurora-upload-subtitle">Or click to browse and select a file</p>
+            <div class="aurora-upload-formats">
+                <span class="aurora-format-badge">MP3</span>
+                <span class="aurora-format-badge">WAV</span>
+                <span class="aurora-format-badge">M4A</span>
+                <span class="aurora-format-badge">FLAC</span>
+                <span class="aurora-format-badge">OGG</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
         # Standard file upload
         uploaded_file = st.file_uploader(
-            "🎵 Upload your audio file",
+            "Upload your audio file",
             type=['mp3', 'wav', 'm4a', 'flac', 'ogg'],
-            help="Upload audio file for processing (max 25MB)"
+            help="Upload audio file for processing (max 25MB)",
+            label_visibility="collapsed"
         )
         
         if uploaded_file:
-            # Show file info
+            # Beautiful file preview card
             file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-            st.info(f"📊 **{uploaded_file.name}** ({file_size:.1f} MB)")
+            file_extension = uploaded_file.name.split('.')[-1].upper()
             
-            # Audio player (only for smaller files)
+            st.markdown(f"""
+            <div class="aurora-file-preview">
+                <div class="aurora-file-preview-header">
+                    <div class="aurora-file-info">
+                        <div class="aurora-file-icon">🎵</div>
+                        <div class="aurora-file-details">
+                            <h4>{uploaded_file.name}</h4>
+                            <p>{file_size:.1f} MB • {file_extension} Format</p>
+                        </div>
+                    </div>
+                    <div class="aurora-file-actions">
+                        <div class="aurora-file-action-btn">Ready to process</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Enhanced audio player
             if file_size < 50:  # Only show player for files under 50MB
+                st.markdown('<div class="aurora-audio-player">', unsafe_allow_html=True)
                 st.audio(uploaded_file.getvalue())
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.info("🎵 Audio preview disabled for large files to conserve memory")
+                st.info("Audio preview disabled for large files to conserve memory")
             
-            # Process button
-            if st.button("⚡ Transform Audio to Content", type="primary", use_container_width=True):
+            # Beautiful process button
+            if st.button("Transform Audio to Content", type="primary", use_container_width=True):
                 if not os.getenv("OPENAI_API_KEY"):
-                    st.error("❌ Please enter your OpenAI API key in the sidebar")
+                    st.error("Please enter your OpenAI API key in the sidebar")
                     return
                 
                 with st.container():
@@ -1011,7 +1629,7 @@ def show_transform_page():
     
     else:
         # Enhanced large file upload
-        st.markdown("### 🚀 Enhanced Large File Processing")
+        st.markdown("### Enhanced Large File Processing")
         
         # Initialize enhanced processor
         processor = EnhancedLargeFileProcessor()
@@ -1024,31 +1642,42 @@ def show_transform_page():
             validation = processor.validate_file(uploaded_file)
             
             if not validation["valid"]:
-                st.error(f"❌ {validation['error']}")
+                st.error(f"{validation['error']}")
                 return
             
             file_size_mb = validation["size_mb"]
             requires_chunking = validation["requires_chunking"]
             
-            # Show file info with enhanced details
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("📁 File Size", f"{file_size_mb:.1f} MB")
-            with col2:
-                st.metric("🔧 Processing Method", "FFmpeg Chunking" if requires_chunking else "Standard")
-            with col3:
-                st.metric("🎯 Format", validation["format"].upper())
+            # Beautiful processing metrics
+            st.markdown(f"""
+            <div class="aurora-processing-metrics">
+                <div class="aurora-metric-card">
+                    <div class="aurora-metric-value">{file_size_mb:.1f}</div>
+                    <div class="aurora-metric-label">File Size (MB)</div>
+                </div>
+                <div class="aurora-metric-card">
+                    <div class="aurora-metric-value">{"FFmpeg" if requires_chunking else "Standard"}</div>
+                    <div class="aurora-metric-label">Processing Method</div>
+                </div>
+                <div class="aurora-metric-card">
+                    <div class="aurora-metric-value">{validation["format"].upper()}</div>
+                    <div class="aurora-metric-label">Format</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Audio preview disabled for large files to conserve memory
             if file_size_mb < 50:
+                st.markdown('<div class="aurora-audio-player">', unsafe_allow_html=True)
                 st.audio(uploaded_file.getvalue())
+                st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.info("🎵 Audio preview disabled for large files to conserve memory")
+                st.info("Audio preview disabled for large files to conserve memory")
             
             # Enhanced process button
-            if st.button("🚀 Transform Large File to Content", type="primary", use_container_width=True):
+            if st.button("Transform Large File to Content", type="primary", use_container_width=True):
                 if not os.getenv("OPENAI_API_KEY"):
-                    st.error("❌ Please enter your OpenAI API key in the sidebar")
+                    st.error("Please enter your OpenAI API key in the sidebar")
                     return
                 
                 with st.container():
@@ -1059,16 +1688,25 @@ def show_transform_page():
                         transcript = processing_result["transcript"]
                         
                         # Show processing summary
-                        st.success(f"✅ Large file processing complete!")
+                        st.success(f"Large file processing complete!")
                         
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("📝 Transcript Length", f"{len(transcript):,} chars")
-                        with col2:
-                            st.metric("🔧 Method", processing_result["method"])
-                        with col3:
-                            if "chunks_processed" in processing_result:
-                                st.metric("📊 Chunks Processed", processing_result["chunks_processed"])
+                        # Beautiful success metrics
+                        st.markdown(f"""
+                        <div class="aurora-processing-metrics">
+                            <div class="aurora-metric-card">
+                                <div class="aurora-metric-value">{len(transcript):,}</div>
+                                <div class="aurora-metric-label">Characters</div>
+                            </div>
+                            <div class="aurora-metric-card">
+                                <div class="aurora-metric-value">{processing_result["method"]}</div>
+                                <div class="aurora-metric-label">Method Used</div>
+                            </div>
+                            <div class="aurora-metric-card">
+                                <div class="aurora-metric-value">{processing_result.get("chunks_processed", 1)}</div>
+                                <div class="aurora-metric-label">Chunks Processed</div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                         
                         # Continue with pipeline using pre-transcribed content
                         st.markdown("---")
@@ -1078,17 +1716,17 @@ def show_transform_page():
                             # Store results in session state
                             st.session_state.current_results = results
                     else:
-                        st.error(f"❌ Large file processing failed: {processing_result['error']}")
+                        st.error(f"Large file processing failed: {processing_result['error']}")
                         
                         # Fallback to standard processing for smaller files
                         if file_size_mb < 100:
-                            st.info("🔄 Attempting fallback to standard processing...")
+                            st.info("Attempting fallback to standard processing...")
                             try:
                                 results = process_audio_pipeline(uploaded_file)
                                 if results:
                                     st.session_state.current_results = results
                             except Exception as e:
-                                st.error(f"❌ Fallback processing also failed: {str(e)}")
+                                st.error(f"Fallback processing also failed: {str(e)}")
     
     # Show results if available
     if 'current_results' in st.session_state:
@@ -1289,7 +1927,7 @@ def show_knowledge_base():
                             content = f.read()
                         
                         st.markdown(f"**File:** `{selected_file}`")
-                        create_aurora_content_card("Knowledge Content", content, "text")
+                        create_enhanced_aurora_content_card("Knowledge Content", content, "text", "📖")
                 else:
                     st.info("📭 No knowledge files found")
             else:
@@ -1380,8 +2018,14 @@ def show_prompts_page():
         with tabs[i]:
             st.markdown(f"#### {prompt_name}")
             
-            # Load current prompt
-            prompt_file = f"prompts/default/{prompt_key}_prompt.md"
+            # Load current prompt - Map UI keys to actual pipeline files
+            file_mapping = {
+                "wisdom": "wisdom_extraction.md",
+                "outline": "outline_creation.md", 
+                "article": "article_generation.md",
+                "social": "social_media.md"
+            }
+            prompt_file = f"prompts/default/{file_mapping[prompt_key]}"
             current_prompt = ""
             
             try:
@@ -1438,6 +2082,215 @@ def show_prompts_page():
         
         st.session_state.temperature = temperature
         st.session_state.max_tokens = max_tokens
+
+def create_aurora_tabs(tab_data, default_tab=0):
+    """Create beautiful Aurora-styled tabs with content badges and quick actions"""
+    import uuid
+    import json
+    
+    # Generate unique ID for this tab group
+    tab_group_id = f"tabs_{uuid.uuid4().hex[:8]}"
+    
+    # Initialize session state for this tab group
+    if f"{tab_group_id}_active" not in st.session_state:
+        st.session_state[f"{tab_group_id}_active"] = default_tab
+    
+    # Calculate content stats for badges
+    tab_stats = []
+    for tab in tab_data:
+        content = tab.get('content', '')
+        word_count = len(str(content).split()) if content else 0
+        tab_stats.append(word_count)
+    
+    # Create the tabs container
+    st.markdown(f"""
+    <div class="aurora-tabs-container" id="{tab_group_id}">
+        <div class="aurora-tabs-actions">
+            <h3 class="aurora-tabs-title">
+                <span>📄</span>
+                Generated Content
+            </h3>
+            <div class="aurora-tabs-quick-actions">
+                <button class="aurora-quick-action-btn" onclick="copyAllTabs('{tab_group_id}')">
+                    <span>📋</span>
+                    <span>Copy All</span>
+                </button>
+                <button class="aurora-quick-action-btn" onclick="exportAllTabs('{tab_group_id}')">
+                    <span>💾</span>
+                    <span>Export</span>
+                </button>
+                <button class="aurora-quick-action-btn" onclick="shareContent('{tab_group_id}')">
+                    <span>🔗</span>
+                    <span>Share</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="aurora-tabs-header">
+    """, unsafe_allow_html=True)
+    
+    # Create tab buttons
+    for i, tab in enumerate(tab_data):
+        active_class = "active" if i == st.session_state[f"{tab_group_id}_active"] else ""
+        content_type = tab.get('type', 'default').lower()
+        word_count = tab_stats[i]
+        
+        # Create unique button ID
+        button_id = f"tab_btn_{tab_group_id}_{i}"
+        
+        st.markdown(f"""
+            <button class="aurora-tab-button {content_type} {active_class}" 
+                    id="{button_id}"
+                    onclick="switchTab('{tab_group_id}', {i})">
+                <span class="aurora-tab-icon">{tab['icon']}</span>
+                <span>{tab['title']}</span>
+                <span class="aurora-tab-badge">{word_count}</span>
+            </button>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Prepare content data for JavaScript (safely escaped)
+    js_content_data = []
+    for tab in tab_data:
+        content = str(tab.get('content', '')).replace('\\', '\\\\').replace('`', '\\`').replace('\n', '\\n').replace('\r', '\\r')
+        js_content_data.append({
+            'title': tab['title'],
+            'content': content
+        })
+    
+    # Add JavaScript for tab functionality
+    st.markdown(f"""
+    <script>
+    // Store content data for this tab group
+    window.tabContentData_{tab_group_id} = {json.dumps(js_content_data)};
+    
+    function switchTab(tabGroupId, tabIndex) {{
+        // Simple approach: use Streamlit's built-in rerun mechanism
+        // Store the selection in a hidden input and trigger rerun
+        let hiddenInput = document.getElementById('hidden_tab_' + tabGroupId);
+        if (!hiddenInput) {{
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = 'hidden_tab_' + tabGroupId;
+            document.body.appendChild(hiddenInput);
+        }}
+        hiddenInput.value = tabIndex;
+        
+        // Update visual state immediately
+        const buttons = document.querySelectorAll(`#${{tabGroupId}} .aurora-tab-button`);
+        buttons.forEach((btn, idx) => {{
+            if (idx === tabIndex) {{
+                btn.classList.add('active');
+            }} else {{
+                btn.classList.remove('active');
+            }}
+        }});
+        
+        // Use Streamlit's session state update
+        window.parent.postMessage({{
+            type: 'streamlit:setComponentValue',
+            key: tabGroupId + '_active',
+            value: tabIndex
+        }}, '*');
+    }}
+    
+    function copyAllTabs(tabGroupId) {{
+        const contentData = window['tabContentData_' + tabGroupId];
+        if (!contentData) return;
+        
+        const allContent = contentData.map(tab => 
+            tab.title + ':\\n' + '='.repeat(40) + '\\n' + tab.content
+        ).join('\\n\\n' + '='.repeat(60) + '\\n\\n');
+        
+        navigator.clipboard.writeText(allContent).then(() => {{
+            // Show success feedback
+            const btn = document.querySelector(`#${{tabGroupId}} .aurora-quick-action-btn`);
+            if (btn) {{
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span>✅</span><span>Copied!</span>';
+                setTimeout(() => {{
+                    btn.innerHTML = originalText;
+                }}, 2000);
+            }}
+        }}).catch(err => {{
+            console.error('Copy failed:', err);
+            alert('Copy failed. Please try again.');
+        }});
+    }}
+    
+    function exportAllTabs(tabGroupId) {{
+        const contentData = window['tabContentData_' + tabGroupId];
+        if (!contentData) return;
+        
+        const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+        const allContent = 'WHISPERFORGE CONTENT EXPORT\\n' + 
+                          'Generated: ' + new Date().toLocaleString() + '\\n' +
+                          '='.repeat(60) + '\\n\\n' +
+                          contentData.map(tab => 
+                              tab.title + ':\\n' + '-'.repeat(40) + '\\n' + tab.content
+                          ).join('\\n\\n' + '='.repeat(60) + '\\n\\n');
+        
+        const blob = new Blob([allContent], {{ type: 'text/plain' }});
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'whisperforge_content_' + timestamp + '.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }}
+    
+    function shareContent(tabGroupId) {{
+        if (navigator.share) {{
+            navigator.share({{
+                title: 'WhisperForge Generated Content',
+                text: 'Check out this AI-generated content from WhisperForge!',
+                url: window.location.href
+            }}).catch(err => console.log('Share failed:', err));
+        }} else {{
+            // Fallback: copy URL to clipboard
+            navigator.clipboard.writeText(window.location.href).then(() => {{
+                alert('Link copied to clipboard!');
+            }}).catch(err => {{
+                console.error('Copy URL failed:', err);
+            }});
+        }}
+    }}
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # Handle tab switching via session state
+    current_tab = st.session_state[f"{tab_group_id}_active"]
+    
+    # Check for tab switch via JavaScript (fallback method)
+    if f"switch_to_tab_{tab_group_id}" in st.session_state:
+        new_tab = st.session_state[f"switch_to_tab_{tab_group_id}"]
+        if 0 <= new_tab < len(tab_data):
+            st.session_state[f"{tab_group_id}_active"] = new_tab
+            current_tab = new_tab
+        del st.session_state[f"switch_to_tab_{tab_group_id}"]
+    
+    # Display active tab content
+    if 0 <= current_tab < len(tab_data):
+        active_tab = tab_data[current_tab]
+        
+        st.markdown('<div class="aurora-tab-content">', unsafe_allow_html=True)
+        
+        # Display the content using our enhanced content card
+        create_enhanced_aurora_content_card(
+            title=active_tab['title'],
+            content=active_tab.get('content', ''),
+            content_type=active_tab.get('type', 'text'),
+            icon=active_tab['icon']
+        )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    return current_tab
 
 # === MAIN APP ===
 def show_main_app():

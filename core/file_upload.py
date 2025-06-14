@@ -811,14 +811,11 @@ class EnhancedLargeFileProcessor:
         }
         
         .enhanced-upload-zone {
-            border: 3px dashed rgba(0, 255, 255, 0.4);
-            border-radius: 20px;
-            padding: 40px 30px;
+            border: 3px dashed var(--aurora-border);
+            border-radius: var(--aurora-radius-large);
+            padding: var(--aurora-spacing-large);
             text-align: center;
-            background: linear-gradient(135deg, 
-                rgba(0, 255, 255, 0.05) 0%, 
-                rgba(64, 224, 208, 0.08) 50%,
-                rgba(138, 43, 226, 0.05) 100%);
+            background: var(--aurora-bg-glass);
             transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
@@ -826,13 +823,10 @@ class EnhancedLargeFileProcessor:
         }
         
         .enhanced-upload-zone:hover {
-            border-color: rgba(0, 255, 255, 0.8);
-            background: linear-gradient(135deg, 
-                rgba(0, 255, 255, 0.1) 0%, 
-                rgba(64, 224, 208, 0.15) 50%,
-                rgba(138, 43, 226, 0.1) 100%);
+            border-color: var(--aurora-border-hover);
+            background: var(--aurora-bg-glass);
             transform: translateY(-5px);
-            box-shadow: 0 20px 50px rgba(0, 255, 255, 0.3);
+            box-shadow: var(--aurora-glow);
         }
         
         .upload-icon-large {
@@ -842,6 +836,7 @@ class EnhancedLargeFileProcessor:
         
         .upload-icon-inner {
             font-size: 80px;
+            color: var(--aurora-primary);
             opacity: 0.9;
             transition: all 0.5s ease;
             display: inline-block;
@@ -856,9 +851,9 @@ class EnhancedLargeFileProcessor:
             transform: translate(-50%, -50%);
             width: 120px;
             height: 120px;
-            border: 2px solid rgba(0, 255, 255, 0.3);
+            border: 2px solid var(--aurora-border);
             border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
+            animation: aurora-upload-pulse 3s ease-in-out infinite;
         }
         
         .enhanced-upload-zone:hover .upload-icon-inner {
@@ -867,14 +862,14 @@ class EnhancedLargeFileProcessor:
         }
         
         .upload-content h2 {
-            color: #00FFFF;
+            color: var(--aurora-primary);
             font-size: 1.8rem;
             margin: 0 0 8px 0;
             font-weight: 700;
         }
         
         .upload-subtitle {
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--aurora-text-muted);
             margin: 0 0 25px 0;
             font-size: 1.1rem;
             font-weight: 500;
@@ -891,9 +886,9 @@ class EnhancedLargeFileProcessor:
         }
         
         .feature-card {
-            background: rgba(0, 255, 255, 0.1);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            border-radius: 12px;
+            background: var(--aurora-bg-glass);
+            border: 1px solid var(--aurora-border);
+            border-radius: var(--aurora-radius);
             padding: 12px 8px;
             display: flex;
             flex-direction: column;
@@ -903,17 +898,20 @@ class EnhancedLargeFileProcessor:
         }
         
         .feature-card:hover {
-            background: rgba(0, 255, 255, 0.2);
+            background: var(--aurora-bg-glass);
+            border-color: var(--aurora-border-hover);
             transform: translateY(-2px);
+            box-shadow: var(--aurora-glow-subtle);
         }
         
         .feature-icon {
             font-size: 1.5rem;
+            color: var(--aurora-primary);
         }
         
         .feature-text {
             font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.9);
+            color: var(--aurora-text);
             font-weight: 500;
         }
         
@@ -926,30 +924,26 @@ class EnhancedLargeFileProcessor:
         }
         
         .format-group {
-            background: rgba(138, 43, 226, 0.1);
-            border: 1px solid rgba(138, 43, 226, 0.3);
-            border-radius: 8px;
+            background: var(--aurora-bg-card);
+            border: 1px solid var(--aurora-border);
+            border-radius: var(--aurora-radius-small);
             padding: 8px 12px;
             font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--aurora-text-muted);
         }
         
         .format-group strong {
-            color: #8A2BE2;
+            color: var(--aurora-primary);
         }
         
-        @keyframes pulse {
-            0% {
+        @keyframes aurora-upload-pulse {
+            0%, 100% {
                 transform: translate(-50%, -50%) scale(1);
-                opacity: 0.7;
+                opacity: 0.6;
             }
             50% {
-                transform: translate(-50%, -50%) scale(1.1);
+                transform: translate(-50%, -50%) scale(1.2);
                 opacity: 0.3;
-            }
-            100% {
-                transform: translate(-50%, -50%) scale(1);
-                opacity: 0.7;
             }
         }
         </style>
