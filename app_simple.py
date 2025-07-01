@@ -44,6 +44,13 @@ def load_custom_prompts():
     
     return prompts
 
+def load_template(template_name: str) -> Optional[str]:
+    """Load an article template by name"""
+    template_path = os.path.join('templates', f'{template_name}.md')
+    if os.path.exists(template_path):
+        return open(template_path, 'r', encoding='utf-8').read()
+    return None
+
 def get_prompt_for_step(step_name: str, custom_prompts: Dict[str, str] = None) -> Optional[str]:
     """Get the appropriate prompt for a pipeline step"""
     if not custom_prompts:
@@ -586,6 +593,11 @@ def process_audio_pipeline(audio_file):
             
             from core.content_generation import generate_article
             article_prompt = get_prompt_for_step('article', custom_prompts)
+            selected_template = st.session_state.get('article_template')
+            if selected_template:
+                template_text = load_template(selected_template)
+                if template_text:
+                    article_prompt = template_text + "\n" + article_prompt
             
             with pipeline_placeholder.container():
                 show_processing_pipeline(
@@ -761,6 +773,16 @@ def process_audio_pipeline(audio_file):
         st.error(f"Pipeline failed: {str(e)}")
         return None
 
+def process_audio_pipeline_live(audio_file):
+    """Run pipeline with StreamingPipelineController"""
+    from core.streaming_pipeline import get_pipeline_controller
+
+    controller = get_pipeline_controller()
+    controller.start_pipeline(audio_file)
+    while controller.process_next_step():
+        pass
+    return controller.get_results()
+
 def process_audio_pipeline_with_transcript(transcript: str):
     """Process audio pipeline with pre-transcribed content using beautiful Aurora visualization"""
     import time
@@ -888,6 +910,11 @@ def process_audio_pipeline_with_transcript(transcript: str):
         
         from core.content_generation import generate_article
         article_prompt = get_prompt_for_step('article', custom_prompts)
+        selected_template = st.session_state.get('article_template')
+        if selected_template:
+            template_text = load_template(selected_template)
+            if template_text:
+                article_prompt = template_text + "\n" + article_prompt
         
         with pipeline_placeholder.container():
             show_processing_pipeline(
@@ -1356,7 +1383,16 @@ def show_results(results):
                 mime="text/plain",
                 use_container_width=True
             )
-    
+        if st.button("📝 Export as Markdown", use_container_width=True):
+            md_content = export_to_markdown(results)
+            st.download_button(
+                label="💾 Download Markdown",
+                data=md_content,
+                file_name=f"whisperforge_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+                mime="text/markdown",
+                use_container_width=True
+            )
+
     with col2:
         if st.button("📊 Export as JSON", use_container_width=True):
             import json
@@ -1368,12 +1404,30 @@ def show_results(results):
                 mime="application/json",
                 use_container_width=True
             )
-    
+        if st.button("📑 Export as Word", use_container_width=True):
+            doc_bytes = export_to_word(results)
+            st.download_button(
+                label="💾 Download Word File",
+                data=doc_bytes,
+                file_name=f"whisperforge_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
+
     with col3:
         if st.button("📋 Copy All Content", use_container_width=True):
             all_content = create_text_export(results)
             st.code(all_content, language="text")
             st.success("✅ Content displayed above - use your browser's copy function!")
+        if st.button("📕 Export as PDF", use_container_width=True):
+            pdf_bytes = export_to_pdf(results)
+            st.download_button(
+                label="💾 Download PDF",
+                data=pdf_bytes,
+                file_name=f"whisperforge_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
 
 def create_text_export(results):
     """Create a formatted text export of all content"""
@@ -1405,8 +1459,67 @@ def create_text_export(results):
         export_lines.append("-" * 40)
         export_lines.append(results['notion_url'])
         export_lines.append("")
-    
+
     return "\n".join(export_lines)
+
+def export_to_markdown(results):
+    """Export results to Markdown format"""
+    lines = ["# WhisperForge Content Export"]
+    sections = [
+        ("## Transcript", results.get('transcript', '')),
+        ("## Wisdom", results.get('wisdom', '')),
+        ("## Outline", results.get('outline', '')),
+        ("## Article", results.get('article', '')),
+        ("## Social Content", results.get('social_content', '')),
+    ]
+    for title, content in sections:
+        if content:
+            lines.append(title)
+            lines.append("")
+            lines.append(content)
+            lines.append("")
+    if results.get('notion_url'):
+        lines.append("## Notion Link")
+        lines.append(results['notion_url'])
+    return "\n".join(lines)
+
+def export_to_word(results):
+    """Export results to a Word document"""
+    from docx import Document
+    from io import BytesIO
+
+    doc = Document()
+    doc.add_heading("WhisperForge Content Export", level=1)
+    for title, content in [
+        ("Transcript", results.get('transcript', '')),
+        ("Wisdom", results.get('wisdom', '')),
+        ("Outline", results.get('outline', '')),
+        ("Article", results.get('article', '')),
+        ("Social Content", results.get('social_content', '')),
+    ]:
+        if content:
+            doc.add_heading(title, level=2)
+            doc.add_paragraph(content)
+    if results.get('notion_url'):
+        doc.add_heading("Notion Link", level=2)
+        doc.add_paragraph(results['notion_url'])
+
+    bio = BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio.read()
+
+def export_to_pdf(results):
+    """Export results to a PDF file"""
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=12)
+    text = create_text_export(results)
+    for line in text.split("\n"):
+        pdf.cell(0, 10, txt=line, ln=1)
+    return pdf.output(dest='S').encode('latin-1')
 
 # === NAVIGATION & PAGES ===
 def create_aurora_navigation():
@@ -1580,17 +1693,19 @@ def show_transform_page():
         """, unsafe_allow_html=True)
         
         # Standard file upload
-        uploaded_file = st.file_uploader(
+        uploaded_files = st.file_uploader(
             "Upload your audio file",
             type=['mp3', 'wav', 'm4a', 'flac', 'ogg'],
             help="Upload audio file for processing (max 25MB)",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            accept_multiple_files=True
         )
-        
-        if uploaded_file:
-            # Beautiful file preview card
-            file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
-            file_extension = uploaded_file.name.split('.')[-1].upper()
+
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                # Beautiful file preview card
+                file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
+                file_extension = uploaded_file.name.split('.')[-1].upper()
             
             st.markdown(f"""
             <div class="aurora-file-preview">
@@ -1609,25 +1724,27 @@ def show_transform_page():
             </div>
             """, unsafe_allow_html=True)
             
-            # Enhanced audio player
-            if file_size < 50:  # Only show player for files under 50MB
-                st.markdown('<div class="aurora-audio-player">', unsafe_allow_html=True)
-                st.audio(uploaded_file.getvalue())
-                st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.info("Audio preview disabled for large files to conserve memory")
-            
-            # Beautiful process button
-            if st.button("Transform Audio to Content", type="primary", use_container_width=True):
-                if not os.getenv("OPENAI_API_KEY"):
-                    st.error("Please enter your OpenAI API key in the sidebar")
-                    return
-                
-                with st.container():
-                    results = process_audio_pipeline(uploaded_file)
-                    if results:
-                        # Store results in session state
-                        st.session_state.current_results = results
+                # Enhanced audio player
+                if file_size < 50:  # Only show player for files under 50MB
+                    st.markdown('<div class="aurora-audio-player">', unsafe_allow_html=True)
+                    st.audio(uploaded_file.getvalue())
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.info("Audio preview disabled for large files to conserve memory")
+
+                # Beautiful process button
+                if st.button(f"Transform {uploaded_file.name}", key=f"process_{uploaded_file.name}", type="primary", use_container_width=True):
+                    if not os.getenv("OPENAI_API_KEY"):
+                        st.error("Please enter your OpenAI API key in the sidebar")
+                        return
+
+                    with st.container():
+                        if st.session_state.get('live_stream', False):
+                            results = process_audio_pipeline_live(uploaded_file)
+                        else:
+                            results = process_audio_pipeline(uploaded_file)
+                        if results:
+                            st.session_state.current_results = results
     
     else:
         # Enhanced large file upload
@@ -1724,7 +1841,10 @@ def show_transform_page():
                         if file_size_mb < 100:
                             st.info("Attempting fallback to standard processing...")
                             try:
-                                results = process_audio_pipeline(uploaded_file)
+                                if st.session_state.get('live_stream', False):
+                                    results = process_audio_pipeline_live(uploaded_file)
+                                else:
+                                    results = process_audio_pipeline(uploaded_file)
                                 if results:
                                     st.session_state.current_results = results
                             except Exception as e:
@@ -1755,12 +1875,13 @@ def show_content_library():
                 with col2:
                     content_type = st.selectbox("Filter by type", ["All", "Article", "Social", "Outline"])
                 
-                # Display content cards
-                for item in response.data:
+                # Display content cards in a two-column grid
+                cols = st.columns(2)
+                for idx, item in enumerate(response.data):
                     if search_term and search_term.lower() not in item.get('title', '').lower():
                         continue
-                    
-                    with st.expander(f"📄 {item.get('title', 'Untitled')} - {item.get('created_at', '')[:10]}"):
+
+                    with cols[idx % 2].expander(f"📄 {item.get('title', 'Untitled')} - {item.get('created_at', '')[:10]}"):
                         col1, col2 = st.columns([3, 1])
                         
                         with col1:
@@ -1845,9 +1966,16 @@ def show_settings_page():
         
         with col1:
             st.markdown("**Core Features**")
-            auto_notion = st.checkbox("Auto-publish to Notion", 
+            auto_notion = st.checkbox("Auto-publish to Notion",
                                      value=st.session_state.get('auto_notion', True))
             st.session_state.auto_notion = auto_notion
+
+            live_stream = st.checkbox(
+                "Live Streaming",
+                value=st.session_state.get('live_stream', False),
+                help="Show step-by-step streaming results"
+            )
+            st.session_state.live_stream = live_stream
             
             large_file_mode = st.checkbox("Enhanced Large File Processing", 
                                         value=st.session_state.get('large_file_mode', True),
@@ -1859,11 +1987,18 @@ def show_settings_page():
             content_length = st.selectbox("Article Length", 
                                         ["Short (500-800 words)", "Medium (800-1200 words)", "Long (1200+ words)"])
             
-            tone_style = st.selectbox("Content Tone", 
+            tone_style = st.selectbox("Content Tone",
                                     ["Professional", "Conversational", "Academic", "Creative"])
-            
+
             st.session_state.content_length = content_length
             st.session_state.tone_style = tone_style
+
+            templates = [f.replace('.md','') for f in os.listdir('templates')] if os.path.exists('templates') else []
+            if templates:
+                template_choice = st.selectbox("Article Template", templates)
+                st.session_state.article_template = template_choice
+            else:
+                st.session_state.article_template = None
     
     # System status
     st.markdown("#### 🔍 System Status")
