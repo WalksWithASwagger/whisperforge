@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # WhisperForge Startup Script
-echo "🚀 Starting WhisperForge v2.8.0 with real Supabase credentials..."
+echo "🚀 Starting WhisperForge v3.0.0 with real Supabase credentials..."
 
 # Auto-load environment variables from .env if present
 if [ -f .env ]; then
@@ -33,7 +33,7 @@ echo "🧪 Testing Supabase connection..."
 python -c "from core.supabase_integration import get_supabase_client; client = get_supabase_client(); print('✅ Supabase connection successful!' if client.test_connection() else '❌ Connection failed')"
 
 # Start Streamlit app with correct file (app_simple.py is the main app)
-echo "🌐 Starting WhisperForge v2.8.0 on http://localhost:8501"
+echo "🌐 Starting WhisperForge v3.0.0 on http://localhost:8501"
 echo "📝 Press Ctrl+C to stop the app"
 echo ""
 
