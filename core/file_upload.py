@@ -1,5 +1,5 @@
 """
-Enhanced File Upload Module for WhisperForge v2.8.0
+Enhanced File Upload Module for WhisperForge v3.0.0
 Supports large file processing up to 2GB with intelligent chunking and parallel transcription
 """
 

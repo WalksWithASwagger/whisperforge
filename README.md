@@ -1,4 +1,4 @@
-# WhisperForge v2.8.0 🌌
+# WhisperForge v3.0.0 🌌
 
 **Transform audio into structured, intelligent content with AI-powered processing**
 
@@ -8,13 +8,12 @@ WhisperForge is a powerful Streamlit application that converts audio files into 
 
 - 🎙️ **Audio Transcription** - High-quality speech-to-text using OpenAI Whisper
 - 💡 **Wisdom Extraction** - AI-powered insights and key takeaways
-- 🔍 **Research Enrichment** - Entity extraction with curated research links
 - 📋 **Content Outline** - Structured organization and flow
 - 📰 **Article Generation** - Complete written content from audio
 - 📱 **Social Media Posts** - Platform-optimized content
-- 🖼️ **Image Prompts** - AI-generated visual concepts
-- 📝 **Editor Review** - Quality enhancement with AI critique
 - 📚 **Notion Integration** - Automatic publishing to Notion workspace
+- 📂 **Knowledge Base** - Add custom context from your files
+- 📝 **Custom Prompts** - Personalize AI output
 - 🚀 **Large File Processing** - Handle files up to 2GB with intelligent chunking
 - 🌊 **Real-time Streaming** - Watch content generate step-by-step
 - 🎨 **Aurora Theme** - Beautiful bioluminescent UI design
@@ -23,12 +22,11 @@ WhisperForge is a powerful Streamlit application that converts audio files into 
 
 ```
 whisperforge--prime/
-├── app_simple.py          # Main Streamlit application (v2.8.0)
+├── app_simple.py          # Main Streamlit application (v3.0.0)
 ├── app.py                 # Redirect to main app
 ├── core/                  # Core functionality modules
 │   ├── content_generation.py
 │   ├── file_upload.py     # Enhanced large file processing
-│   ├── research_enrichment.py
 │   ├── supabase_integration.py
 │   └── ...
 ├── prompts/               # Custom AI prompts
@@ -87,7 +85,6 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 OPENAI_API_KEY=your_openai_api_key
 
 # Optional
-ANTHROPIC_API_KEY=your_anthropic_api_key
 NOTION_API_KEY=your_notion_api_key
 NOTION_DATABASE_ID=your_notion_database_id
 ```
@@ -141,12 +138,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**WhisperForge v2.8.0** - Transform your audio into intelligent content 🌌
+**WhisperForge v3.0.0** - Transform your audio into intelligent content 🌌
 
 ## 🎯 **Architecture Overview**
 
 ```
-├── app_simple.py          # Main Streamlit application (v2.8.0)
+├── app_simple.py          # Main Streamlit application (v3.0.0)
 ├── app.py                 # Redirect to main app
 ├── core/
 │   ├── streaming_pipeline.py    # Step-by-step content processing
@@ -185,7 +182,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Frontend**: Streamlit with custom Aurora CSS
 - **Backend**: Supabase (PostgreSQL)
-- **AI Models**: OpenAI GPT-4, Anthropic Claude
+- **AI Models**: OpenAI GPT-4
 - **Audio Processing**: OpenAI Whisper
 - **Authentication**: Supabase Auth + OAuth
 - **Deployment**: Streamlit Cloud ready
@@ -213,10 +210,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # Optional for admin features
    
-   # Required - AI Providers (at least one)
+   # Required - AI Provider
    OPENAI_API_KEY=your_openai_key
-   ANTHROPIC_API_KEY=your_anthropic_key
-   GROK_API_KEY=your_grok_key  # Optional
    
    # Notion Integration - Auto-Publishing
    NOTION_API_KEY=your_notion_integration_token

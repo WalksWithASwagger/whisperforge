@@ -1,5 +1,5 @@
 """
-Basic functionality tests for WhisperForge v2.8.0
+Basic functionality tests for WhisperForge v3.0.0
 """
 
 import pytest
@@ -28,7 +28,7 @@ def test_version_file():
     assert version_file.exists(), "VERSION file should exist"
     
     version = version_file.read_text().strip()
-    assert version == "2.8.0", f"Expected version 2.8.0, got {version}"
+    assert version == "3.0.0", f"Expected version 3.0.0, got {version}"
 
 def test_app_files_exist():
     """Test that required app files exist"""

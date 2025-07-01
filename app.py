@@ -20,7 +20,7 @@ st.error("""
 You're accessing the old app.py file. The main application has moved to `app_simple.py`.
 
 **Current Status:**
-- ✅ Main App: `app_simple.py` (v2.8.0 with large file processing)
+- ✅ Main App: `app_simple.py` (v3.0.0 with large file processing)
 - 🔄 This File: Redirect notice
 
 **To run the main app:**
