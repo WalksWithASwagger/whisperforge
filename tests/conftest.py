@@ -35,7 +35,7 @@ def test_env():
         'SUPABASE_ANON_KEY': os.getenv('SUPABASE_ANON_KEY', 'test-anon-key'),
         'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', 'test-openai-key'),
         'ANTHROPIC_API_KEY': os.getenv('ANTHROPIC_API_KEY', 'test-anthropic-key'),
-        'GROQ_API_KEY': os.getenv('GROQ_API_KEY', 'test-groq-key'),
+        'GROK_API_KEY': os.getenv('GROK_API_KEY', os.getenv('GROQ_API_KEY', 'test-grok-key')),
         'TESTING': 'true'
     }
     

@@ -55,7 +55,7 @@ SUPABASE_KEY=[VALID TOKEN]
 # ❌ Needs Real Values
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
-GROQ_API_KEY=your_groq_api_key_here
+GROK_API_KEY=your_grok_api_key_here
 ```
 
 ---
@@ -128,7 +128,7 @@ GROQ_API_KEY=your_groq_api_key_here
 # Required for basic functionality
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GROQ_API_KEY=gsk_...
+GROK_API_KEY=gsk_...
 ```
 
 ### **Priority 2: File Organization**

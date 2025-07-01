@@ -39,7 +39,7 @@ Edit the `.env` file and replace the placeholder values:
 # Current .env has placeholders - you need to add real keys:
 OPENAI_API_KEY=sk-your-actual-openai-key-here
 ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-key-here
-GROQ_API_KEY=gsk_your-actual-groq-key-here  # Optional but recommended
+GROK_API_KEY=gsk_your-actual-grok-key-here  # Optional but recommended
 ```
 
 ## Step 3: Test Basic Functionality

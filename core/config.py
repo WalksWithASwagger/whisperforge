@@ -67,7 +67,7 @@ class Config:
         # Load API keys from environment
         config.openai.api_key = os.getenv("OPENAI_API_KEY")
         config.anthropic.api_key = os.getenv("ANTHROPIC_API_KEY") 
-        config.grok.api_key = os.getenv("GROK_API_KEY")
+        config.grok.api_key = os.getenv("GROK_API_KEY") or os.getenv("GROQ_API_KEY")
         config.notion.api_key = os.getenv("NOTION_API_KEY")
         config.notion.database_id = os.getenv("NOTION_DATABASE_ID")
         
