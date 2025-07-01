@@ -1097,6 +1097,8 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
     type_class = content_type.lower()
     
     # Create the enhanced card HTML
+    safe_content = content.replace('`', '\\`')
+
     card_html = f"""
     <div class="aurora-content-card {type_class}" id="{card_id}">
         <div class="aurora-content-card-header">
@@ -1109,7 +1111,7 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
                     <span>📋</span>
                     <span class="copy-text">Copy</span>
                 </button>
-                <button class="aurora-content-action-btn" onclick="downloadContent('{title}', `{content.replace('`', '\\`')}`)">
+                <button class="aurora-content-action-btn" onclick="downloadContent('{title}', `{safe_content}`)">
                     <span>💾</span>
                     <span>Save</span>
                 </button>
