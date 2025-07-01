@@ -138,8 +138,8 @@ def get_anthropic_client():
         return None
 
 def get_grok_api_key():
-    """Get Grok API key"""
-    return os.getenv("GROK_API_KEY")
+    """Get Grok API key with backward compatibility for GROQ_API_KEY"""
+    return os.getenv("GROK_API_KEY") or os.getenv("GROQ_API_KEY")
 
 def update_usage_tracking(duration_seconds: float):
     """Placeholder for usage tracking - implement as needed"""
