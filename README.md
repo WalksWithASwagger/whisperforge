@@ -99,6 +99,15 @@ NOTION_DATABASE_ID=your_notion_database_id
 
 ## 🧪 Testing
 
+Before running tests, make sure all dependencies are installed:
+
+```bash
+pip install -r requirements.txt
+```
+
+You can also use the helper script `scripts/setup_test_env.sh` to create a
+virtual environment with the required packages.
+
 Run the test suite:
 
 ```bash
