@@ -10,14 +10,21 @@ in production environment.
 import sys
 import time
 import json
+import os
 import traceback
 from pathlib import Path
+import pytest
+
+# Skip these script-style tests when executed under pytest
+SKIP_IN_PYTEST = 'pytest' in sys.modules
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_structured_logging():
     """Test structured logging functionality"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Structured Logging...")  # pragma: allow-print
     
     try:
@@ -52,6 +59,8 @@ def test_structured_logging():
 
 def test_health_checks():
     """Test health check functionality"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Health Checks...")
     
     try:
@@ -89,6 +98,8 @@ def test_health_checks():
 
 def test_metrics_export():
     """Test metrics export functionality"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Metrics Export...")
     
     try:
@@ -127,6 +138,8 @@ def test_metrics_export():
 
 def test_error_tracking():
     """Test error tracking functionality"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Error Tracking...")
     
     try:
@@ -159,6 +172,8 @@ def test_error_tracking():
 
 def test_performance_tracking():
     """Test performance tracking functionality"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Performance Tracking...")
     
     try:
@@ -193,6 +208,8 @@ def test_performance_tracking():
 
 def test_streamlit_integration():
     """Test Streamlit monitoring integration"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Streamlit Integration...")
     
     try:
@@ -223,6 +240,8 @@ def test_streamlit_integration():
 
 def test_log_file_creation():
     """Test that log files are created properly"""
+    if SKIP_IN_PYTEST:
+        pytest.skip("monitoring script test")
     print("🔍 Testing Log File Creation...")
     
     try:

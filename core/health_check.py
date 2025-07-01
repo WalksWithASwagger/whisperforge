@@ -15,6 +15,13 @@ class HealthStatus:
     uptime_seconds: float = 0.0
 
 
+@dataclass
+class SloMetrics:
+    error_rate_5xx: float = 0.0
+    median_response_time: int = 0
+    active_users_1h: int = 0
+
+
 class HealthChecker:
     """Simple health check implementation."""
 
@@ -25,17 +32,9 @@ class HealthChecker:
             uptime_seconds=0.0,
         )
 
-    def get_slo_metrics(self) -> Any:
+    def get_slo_metrics(self) -> SloMetrics:
         """Return placeholder SLO metrics."""
-        return type(
-            "SloMetrics",
-            (),
-            {
-                "error_rate_5xx": 0.0,
-                "median_response_time": 0,
-                "active_users_1h": 0,
-            },
-        )()
+        return SloMetrics()
 
     def check_slo_violations(self) -> list:
         return []
