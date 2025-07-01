@@ -20,9 +20,18 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
     echo "   export SUPABASE_ANON_KEY='<your-supabase-anon-key>'"
     exit 1
 fi
-export ENVIRONMENT="development"
-export DEBUG="true"
-export LOG_LEVEL="INFO"
+ENVIRONMENT="${1:-${ENVIRONMENT:-development}}"
+export ENVIRONMENT
+
+if [ "$ENVIRONMENT" = "production" ]; then
+  export DEBUG="${DEBUG:-false}"
+  export LOG_LEVEL="${LOG_LEVEL:-INFO}"
+else
+  export DEBUG="${DEBUG:-true}"
+  export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"
+fi
+
+echo "Running in $ENVIRONMENT mode"
 
 echo "✅ Environment variables set"
 echo "🔗 Supabase URL: $SUPABASE_URL"

@@ -232,12 +232,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    # Optional - Development
    DEBUG=true
    LOG_LEVEL=INFO
-   ENVIRONMENT=development
+   ENVIRONMENT=development  # or 'production'
    ```
 
 4. **Run Application**
    ```bash
-   streamlit run app_simple.py
+   ./start_app.sh                 # development (default)
+   ./start_app.sh production      # production mode
    ```
 
 ## 🎨 **Aurora Design System**
