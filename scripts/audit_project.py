@@ -48,6 +48,10 @@ except Exception:
 TRACE_ID = os.getenv("TRACE_ID")
 
 ROOT = Path(__file__).resolve().parents[1]
+# Ensure the project root is on sys.path so imports like `core` work when
+# running this script directly.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 REPORT_HEADER = "# WhisperForge Audit Report\n"
 
 SECRET_PATTERN = re.compile(r"(key|token|secret|password)\s*=\s*['\"]\w{16,}['\"]", re.IGNORECASE)
