@@ -1,4 +1,4 @@
-# WhisperForge v2.8.0 Dependencies
+# WhisperForge v3.0.0 Dependencies
 
 # Core Web Framework
 streamlit>=1.28.0
