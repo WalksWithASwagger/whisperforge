@@ -99,11 +99,10 @@ def main():
     print("=" * 60)
 
     if db_ok and core_ok:
-        print("🎉 ✅ READY FOR DEPLOYMENT!")
-        print("\n🚀 Start your app with:")
+        print("READY FOR DEPLOYMENT!")
+        print("\nStart your app with:")
         print("source venv/bin/activate")
-        print("export SUPABASE_URL='https://utyjhedtqaagihuogyuy.supabase.co'")
-        print("export SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0eWpoZWR0cWFhZ2lodW9neXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMjEyMDUsImV4cCI6MjA2NDg5NzIwNX0.vp'")
+        print("# Ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your .env file")
         print("streamlit run app_simple.py --server.headless true --server.port 8502")
     else:
         print("❌ NOT READY - Fix issues above first")

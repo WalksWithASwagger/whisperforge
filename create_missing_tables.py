@@ -84,11 +84,15 @@ def test_table_creation(client):
 
 
 def main():
-    # Set environment variables
-    os.environ['SUPABASE_URL'] = 'https://utyjhedtqaagihuogyuy.supabase.co'
-    os.environ['SUPABASE_ANON_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV0eWpoZWR0cWFhZ2lodW9neXV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMjEyMDUsImV4cCI6MjA2NDg5NzIwNX0.vpRRn7anpmCokYcje5yJr3r2iC_8s11_LXQcCTgxtR8'
+    from dotenv import load_dotenv
+    load_dotenv()
 
-    print("🔧 Creating Missing Database Tables")
+    if not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_ANON_KEY'):
+        print("Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.")
+        print("Set them in your .env file or export them before running this script.")
+        return
+
+    print("Creating Missing Database Tables")
     print("=" * 50)
 
     client = get_supabase_client()
