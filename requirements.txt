@@ -40,3 +40,7 @@ pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0
 python-docx>=1.1.0
 fpdf>=1.7.2
+
+# Linting & Pre-commit Hooks (development)
+pre-commit>=4.0.0
+autopep8>=2.3.0
