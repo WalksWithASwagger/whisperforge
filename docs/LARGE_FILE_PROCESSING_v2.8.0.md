@@ -39,7 +39,7 @@ WhisperForge v2.8.0 introduces revolutionary large file processing capabilities,
 ```python
 class EnhancedLargeFileProcessor:
     """🚀 Enhanced Large File Processor with FFmpeg for 2GB+ files"""
-    
+
     def __init__(self):
         self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
         self.chunk_duration_minutes = 10  # 10-minute chunks
@@ -96,7 +96,7 @@ def _transcribe_chunks_parallel_ffmpeg(self, chunks: List[Dict]) -> Dict[str, An
 ```python
 upload_method = st.radio(
     "Choose upload method:",
-    ["🎵 Standard Upload (up to 25MB)", 
+    ["🎵 Standard Upload (up to 25MB)",
      "🚀 Enhanced Large File Upload (up to 2GB)"]
 )
 ```
@@ -256,7 +256,7 @@ The combination of FFmpeg integration, parallel processing, and intelligent chun
 
 ---
 
-**Ready for Production** ✅  
-**Fully Tested** ✅  
-**Backward Compatible** ✅  
-**Auto-Deployable** ✅ 
+**Ready for Production** ✅
+**Fully Tested** ✅
+**Backward Compatible** ✅
+**Auto-Deployable** ✅

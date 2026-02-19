@@ -6,6 +6,7 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+
 class SessionManager:
     """Simple file-based session persistence"""
 
@@ -108,6 +109,7 @@ class SessionManager:
             "created_at": self.data.get("created_at"),
             "last_activity": self.data.get("last_activity"),
         }
+
 
 def get_session_manager() -> SessionManager:
     if "_session_manager" not in st.session_state:

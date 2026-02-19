@@ -218,21 +218,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    SUPABASE_URL=your_supabase_url
    SUPABASE_ANON_KEY=your_supabase_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # Optional for admin features
-   
+
    # Required - AI Provider
    OPENAI_API_KEY=your_openai_key
-   
+
    # Notion Integration - Auto-Publishing
    NOTION_API_KEY=your_notion_integration_token
    NOTION_DATABASE_ID=your_notion_database_id
-   
+
    # Optional - OAuth & Integrations
    OAUTH_REDIRECT_URL=http://localhost:8501  # For OAuth flows
-   
+
    # Optional - Security & Monitoring
    JWT_SECRET=your_jwt_secret_key
    SENTRY_DSN=your_sentry_dsn  # For error tracking
-   
+
    # Optional - Development
    DEBUG=true
    LOG_LEVEL=INFO
@@ -259,7 +259,7 @@ The WhisperForge UI uses a custom Aurora design system featuring:
 
 ### **Core Tables**
 - `users` - User accounts and settings
-- `content` - Generated content and metadata  
+- `content` - Generated content and metadata
 - `prompts` - Custom AI prompts
 - `knowledge_base` - User-uploaded files
 - `api_keys` - Encrypted API credentials
@@ -311,7 +311,7 @@ MIT License - See LICENSE file for details.
 
 ---
 
-**WhisperForge** - Transforming audio into actionable insights with the beauty of Aurora. 🌌 
+**WhisperForge** - Transforming audio into actionable insights with the beauty of Aurora. 🌌
 
 ## 🏗 **Architecture (Simplified)**
 
@@ -321,7 +321,7 @@ MIT License - See LICENSE file for details.
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-@st.cache_resource  
+@st.cache_resource
 def init_supabase():
     return get_supabase_client()
 ```
@@ -333,5 +333,5 @@ def init_supabase():
 
 ### **Authentication Flow**
 1. User enters credentials → Verify against Supabase
-2. Set simple session state flags → No tokens or complex persistence  
-3. Load user preferences from database → Use `@st.cache_data` for performance 
+2. Set simple session state flags → No tokens or complex persistence
+3. Load user preferences from database → Use `@st.cache_data` for performance

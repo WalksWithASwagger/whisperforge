@@ -71,7 +71,7 @@ def get_prompt_for_step(step_name: str, custom_prompts: Dict[str, str] = None):
     """Get the appropriate prompt for a pipeline step"""
     prompt_mapping = {
         'wisdom': 'wisdom_extraction',
-        'outline': 'outline_creation', 
+        'outline': 'outline_creation',
         'social': 'social_media',
         'article': 'article_generation'
     }
@@ -182,4 +182,4 @@ WhisperForge v2.7.0 represents a complete transformation of the user experience,
 
 The application now delivers on its promise of transforming audio into structured content with AI magic, providing users with a seamless, beautiful, and powerful content creation experience.
 
-**Status**: ✅ All objectives achieved, deployed to production, ready for user feedback and future enhancements. 
+**Status**: ✅ All objectives achieved, deployed to production, ready for user feedback and future enhancements.

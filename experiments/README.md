@@ -11,4 +11,3 @@ This directory contains experimental features and enhancements for WhisperForge 
 ## Current Experiments
 
 (None yet)
-

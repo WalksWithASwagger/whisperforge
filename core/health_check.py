@@ -6,6 +6,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Any, Dict
 
+
 @dataclass
 class HealthStatus:
     status: str

@@ -293,12 +293,12 @@
         padding: 0.5rem;
         gap: 1rem;
     }
-    
+
     .auth-container {
         margin: 1rem;
         padding: 1.5rem;
     }
-    
+
     .content-section,
     .upload-section {
         padding: 1rem;
@@ -409,11 +409,11 @@ header { visibility: hidden; }
         background: white !important;
         color: black !important;
     }
-    
+
     .whisperforge-container,
     .auth-container,
     .main-container {
         box-shadow: none !important;
         border: 1px solid #ccc !important;
     }
-} 
+}

@@ -1,7 +1,7 @@
 # WhisperForge - Main Application Redirect
-# 
+#
 # This file redirects to the current main application: app_simple.py
-# 
+#
 # The old OAuth version has been archived
 
 import streamlit as st
@@ -42,4 +42,4 @@ for file in sorted(files):
     elif "deprecated" in file or "backup" in file:
         st.warning(f"⚠️ **{file}** (Deprecated)")
     else:
-        st.info(f"ℹ️ **{file}**") 
+        st.info(f"ℹ️ **{file}**")

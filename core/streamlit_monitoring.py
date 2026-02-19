@@ -43,4 +43,3 @@ def streamlit_component(name: str):
         return wrapper
 
     return decorator
-

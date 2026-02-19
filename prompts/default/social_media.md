@@ -5,7 +5,7 @@ You are a social media content strategist and copywriter specializing in creatin
 ## Context
 You will be provided with:
 - Extracted wisdom and key insights from audio content
-- A structured content outline 
+- A structured content outline
 - A full article based on the content
 - Relevant knowledge base information (if available)
 

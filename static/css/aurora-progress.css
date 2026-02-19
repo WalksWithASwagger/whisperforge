@@ -8,13 +8,13 @@
     --aurora-electric-blue: #7DF9FF;
     --aurora-spring-green: #00FF7F;
     --aurora-teal: #008B8B;
-    
+
     /* Aurora HSL Values for Dynamic Manipulation */
     --aurora-cyan-hsl: 180, 100%, 50%;
     --aurora-turquoise-hsl: 174, 72%, 56%;
     --aurora-electric-blue-hsl: 195, 100%, 78%;
     --aurora-spring-green-hsl: 150, 100%, 50%;
-    
+
     /* Sophisticated Glow Variables */
     --glow-radius-subtle: 8px;
     --glow-radius-medium: 16px;
@@ -22,7 +22,7 @@
     --glow-opacity-subtle: 0.3;
     --glow-opacity-medium: 0.6;
     --glow-opacity-strong: 0.9;
-    
+
     /* Animation Timing */
     --timing-organic: cubic-bezier(0.4, 0.0, 0.2, 1);
     --timing-elastic: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -44,13 +44,13 @@
     margin: 20px 0;
     position: relative;
     overflow: hidden;
-    
+
     /* Subtle Aurora Glow */
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-subtle)),
         inset 0 1px 0 rgba(255, 255, 255, 0.1),
         0 8px 32px rgba(0, 0, 0, 0.12);
-    
+
     transition: all 0.6s var(--timing-organic);
 }
 
@@ -74,7 +74,7 @@
 
 .aurora-progress-container:hover {
     border-color: rgba(0, 255, 255, 0.3);
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-medium)),
         inset 0 1px 0 rgba(255, 255, 255, 0.2),
         0 12px 48px rgba(0, 0, 0, 0.16);
@@ -156,12 +156,12 @@
     border-radius: 6px;
     position: relative;
     transition: width 0.8s var(--timing-organic);
-    
+
     /* Living Glow Effect */
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) currentColor,
         0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), 0.4);
-    
+
     animation: aurora-flow 2s ease-in-out infinite;
 }
 
@@ -214,7 +214,7 @@
 .aurora-progress-step.running {
     background: rgba(var(--aurora-cyan-hsl), 0.04);
     border: 1px solid rgba(var(--aurora-cyan-hsl), 0.2);
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
@@ -226,7 +226,7 @@
 .aurora-progress-step.completed {
     background: rgba(var(--aurora-spring-green-hsl), 0.04);
     border: 1px solid rgba(var(--aurora-spring-green-hsl), 0.2);
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) rgba(var(--aurora-spring-green-hsl), 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
@@ -234,7 +234,7 @@
 .aurora-progress-step.error {
     background: rgba(255, 107, 107, 0.04);
     border: 1px solid rgba(255, 107, 107, 0.2);
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) rgba(255, 107, 107, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
@@ -277,7 +277,7 @@
 .aurora-progress-step.running .aurora-step-indicator {
     background: var(--aurora-cyan);
     color: #000;
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) var(--aurora-cyan),
         0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), 0.4);
 }
@@ -289,7 +289,7 @@
 .aurora-progress-step.completed .aurora-step-indicator {
     background: var(--aurora-spring-green);
     color: #000;
-    box-shadow: 
+    box-shadow:
         0 0 var(--glow-radius-subtle) var(--aurora-spring-green),
         0 0 var(--glow-radius-medium) rgba(var(--aurora-spring-green-hsl), 0.4);
 }
@@ -361,12 +361,12 @@
 }
 
 @keyframes aurora-pulse {
-    0%, 100% { 
-        opacity: 0.6; 
+    0%, 100% {
+        opacity: 0.6;
         text-shadow: 0 0 var(--glow-radius-subtle) currentColor;
     }
-    50% { 
-        opacity: 1; 
+    50% {
+        opacity: 1;
         text-shadow: 0 0 var(--glow-radius-medium) currentColor;
     }
 }
@@ -385,33 +385,33 @@
 }
 
 @keyframes aurora-pulse-subtle {
-    0%, 100% { 
-        transform: scale(1); 
+    0%, 100% {
+        transform: scale(1);
         box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-subtle));
     }
-    50% { 
-        transform: scale(1.02); 
+    50% {
+        transform: scale(1.02);
         box-shadow: 0 0 var(--glow-radius-medium) rgba(var(--aurora-cyan-hsl), var(--glow-opacity-medium));
     }
 }
 
 @keyframes aurora-pulse-thinking {
-    0%, 100% { 
+    0%, 100% {
         border-color: rgba(var(--aurora-turquoise-hsl), 0.3);
         box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-turquoise-hsl), 0.3);
     }
-    50% { 
+    50% {
         border-color: rgba(var(--aurora-turquoise-hsl), 0.6);
         box-shadow: 0 0 var(--glow-radius-medium) rgba(var(--aurora-turquoise-hsl), 0.6);
     }
 }
 
 @keyframes aurora-pulse-responding {
-    0%, 100% { 
+    0%, 100% {
         border-color: rgba(var(--aurora-spring-green-hsl), 0.4);
         box-shadow: 0 0 var(--glow-radius-subtle) rgba(var(--aurora-spring-green-hsl), 0.4);
     }
-    50% { 
+    50% {
         border-color: rgba(var(--aurora-spring-green-hsl), 0.8);
         box-shadow: 0 0 var(--glow-radius-strong) rgba(var(--aurora-spring-green-hsl), 0.8);
     }
@@ -432,15 +432,15 @@
         padding: 20px;
         margin: 16px 0;
     }
-    
+
     .aurora-progress-header {
         margin-bottom: 16px;
     }
-    
+
     .aurora-progress-steps {
         gap: 10px;
     }
-    
+
     .aurora-progress-step {
         padding: 10px 12px;
         gap: 12px;
@@ -450,12 +450,12 @@
 /* High-DPI/Retina Optimizations */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
     .aurora-progress-fill {
-        box-shadow: 
+        box-shadow:
             0 0 calc(var(--glow-radius-subtle) * 0.8) currentColor,
             0 0 calc(var(--glow-radius-medium) * 0.8) rgba(var(--aurora-cyan-hsl), 0.4);
     }
-    
+
     .aurora-step-indicator {
         border-width: 0.5px;
     }
-} 
+}

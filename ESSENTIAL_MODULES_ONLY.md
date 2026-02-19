@@ -2,7 +2,7 @@
 
 ## Your Core Requirements:
 1. **OAuth via Supabase** ✅
-2. **Transcription & Pipeline Streaming** ✅  
+2. **Transcription & Pipeline Streaming** ✅
 3. **Save content to Supabase** ✅
 4. **Display on user history page** ✅
 5. **Customize prompts & knowledge base** ✅
@@ -14,7 +14,7 @@
 ### **Tier 1: Absolutely Critical**
 ```
 ✅ supabase_integration.py    (16KB) - Database & OAuth
-✅ content_generation.py      (18KB) - Transcription & AI generation  
+✅ content_generation.py      (18KB) - Transcription & AI generation
 ✅ streaming_pipeline.py      (20KB) - Your streaming pipeline
 ✅ auth_wrapper.py           (13KB) - Supabase OAuth integration
 ✅ styling.py                (18KB) - Aurora UI (you love this!)
@@ -37,7 +37,7 @@
 ### **Over-Engineering & Monitoring**
 ```
 ❌ monitoring.py             (11KB) - Complex monitoring system
-❌ streamlit_monitoring.py   (8KB)  - More monitoring  
+❌ streamlit_monitoring.py   (8KB)  - More monitoring
 ❌ metrics_exporter.py       (11KB) - Prometheus metrics
 ❌ health_check.py           (18KB) - Health checking system
 ❌ session_manager.py        (18KB) - Complex session management
@@ -143,10 +143,10 @@ core/
 2. **Add your OpenAI API key to .env**
 3. **Test core functionality:**
    - OAuth login via Supabase ✅
-   - Audio upload & transcription ✅  
+   - Audio upload & transcription ✅
    - Content generation & streaming ✅
    - Save to database ✅
    - Display in history ✅
    - Custom prompts & knowledge base ✅
 
-**Your app should work perfectly with just these 9-11 essential modules!** 
+**Your app should work perfectly with just these 9-11 essential modules!**

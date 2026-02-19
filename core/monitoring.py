@@ -184,4 +184,3 @@ class MonitoringManager:
 
 def get_monitoring_manager() -> MonitoringManager:
     return MonitoringManager()
-

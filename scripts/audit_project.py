@@ -95,7 +95,7 @@ def unit_tests() -> str:
     rc, out, err = _run([sys.executable, "-m", "pytest", "-q"])
     status = "✅" if rc == 0 else "❌"
     details = err or out
-    return f"""**Status:** {status}  
+    return f"""**Status:** {status}
 
 ```
 {details}
@@ -107,7 +107,7 @@ def health_endpoint() -> str:
 
     status_data = health_checker.get_health_status()
     status = "✅" if status_data.status == "healthy" else "❌"
-    return f"""**Status:** {status}  
+    return f"""**Status:** {status}
 
 Payload:
 ```json
@@ -122,14 +122,14 @@ def static_analysis() -> str:
     rc_m, out_m, err_m = _run(["mypy", "--strict", "core"])
 
     body = "### Ruff\n"
-    body += f"""Exit code: {rc_r}  
+    body += f"""Exit code: {rc_r}
 
 ```
 {out_r or err_r}
 ```\n"""
 
     body += "### mypy\n"
-    body += f"""Exit code: {rc_m}  
+    body += f"""Exit code: {rc_m}
 
 ```
 {out_m or err_m}
@@ -184,7 +184,12 @@ def todo_tally() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a WhisperForge audit and emit a Markdown report.")
-    parser.add_argument("--output", type=Path, default=Path(f"AUDIT_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"))
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(
+            f"AUDIT_REPORT_{
+                datetime.now().strftime('%Y%m%d_%H%M%S')}.md"))
     args = parser.parse_args()
 
     report_parts = [REPORT_HEADER]
@@ -205,4 +210,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()

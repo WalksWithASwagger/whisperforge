@@ -9,4 +9,4 @@ enableXsrfProtection = false
 gatherUsageStats = false
 
 [theme]
-base = "light" 
+base = "light"

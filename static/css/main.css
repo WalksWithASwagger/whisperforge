@@ -7,34 +7,34 @@
     --aurora-secondary: #7DF9FF;      /* Electric Blue */
     --aurora-tertiary: #00FFFF;       /* Aqua */
     --aurora-accent: #20B2AA;         /* Light Sea Green */
-    
+
     /* Background Colors */
     --aurora-bg-dark: #0a0f1c;        /* Deep Navy */
     --aurora-bg-darker: #0d1421;      /* Darker Navy */
     --aurora-bg-card: rgba(64, 224, 208, 0.03);
     --aurora-bg-glass: rgba(64, 224, 208, 0.08);
-    
+
     /* Text Colors */
     --aurora-text: rgba(255, 255, 255, 0.95);
     --aurora-text-muted: rgba(255, 255, 255, 0.7);
     --aurora-text-dim: rgba(255, 255, 255, 0.5);
-    
+
     /* Border & Effects */
     --aurora-border: rgba(64, 224, 208, 0.2);
     --aurora-border-hover: rgba(64, 224, 208, 0.4);
     --aurora-border-active: rgba(64, 224, 208, 0.6);
-    
+
     /* Status Colors */
     --aurora-success: #00FF88;
     --aurora-warning: #FFB800;
     --aurora-error: #FF4444;
     --aurora-info: #40E0D0;
-    
+
     /* Glow Effects */
     --aurora-glow: 0 0 20px rgba(64, 224, 208, 0.3);
     --aurora-glow-strong: 0 0 30px rgba(64, 224, 208, 0.5);
     --aurora-glow-subtle: 0 0 10px rgba(64, 224, 208, 0.2);
-    
+
     /* Spacing & Layout */
     --aurora-radius: 12px;
     --aurora-radius-large: 16px;
@@ -42,7 +42,7 @@
     --aurora-spacing: 16px;
     --aurora-spacing-large: 24px;
     --aurora-spacing-small: 8px;
-    
+
     /* Typography */
     --aurora-font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     --aurora-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
@@ -340,39 +340,39 @@ audio {
 
 /* Animations */
 @keyframes aurora-scan {
-    0%, 100% { 
-        left: -100%; 
-        opacity: 0; 
+    0%, 100% {
+        left: -100%;
+        opacity: 0;
     }
-    25% { 
-        opacity: 1; 
+    25% {
+        opacity: 1;
     }
-    75% { 
-        opacity: 1; 
+    75% {
+        opacity: 1;
     }
-    100% { 
-        left: 100%; 
-        opacity: 0; 
+    100% {
+        left: 100%;
+        opacity: 0;
     }
 }
 
 @keyframes aurora-pulse {
-    0%, 100% { 
-        opacity: 1; 
-        transform: scale(1); 
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
     }
-    50% { 
-        opacity: 0.7; 
-        transform: scale(1.05); 
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
     }
 }
 
 @keyframes aurora-glow {
-    0%, 100% { 
-        box-shadow: var(--aurora-glow-subtle); 
+    0%, 100% {
+        box-shadow: var(--aurora-glow-subtle);
     }
-    50% { 
-        box-shadow: var(--aurora-glow); 
+    50% {
+        box-shadow: var(--aurora-glow);
     }
 }
 
@@ -382,13 +382,13 @@ audio {
 }
 
 @keyframes fadeIn {
-    from { 
-        opacity: 0; 
-        transform: translateY(20px); 
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
-    to { 
-        opacity: 1; 
-        transform: translateY(0); 
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -397,24 +397,24 @@ audio {
     .main .block-container {
         padding: var(--aurora-spacing-small);
     }
-    
+
     .aurora-title {
         font-size: 2rem;
     }
-    
+
     .aurora-pipeline {
         gap: var(--aurora-spacing-small);
     }
-    
+
     .pipeline-badge {
         font-size: 0.8rem;
         padding: 6px 12px;
     }
-    
+
     .aurora-celebration-title {
         font-size: 2.5rem;
     }
-    
+
     .aurora-processing-title {
         font-size: 2rem;
     }
@@ -759,15 +759,15 @@ audio {
     .aurora-upload-method-selector {
         grid-template-columns: 1fr;
     }
-    
+
     .aurora-upload-method-icon {
         font-size: 2.5rem;
     }
-    
+
     .aurora-upload-icon {
         font-size: 3rem;
     }
-    
+
     .aurora-processing-metrics {
         grid-template-columns: 1fr 1fr;
     }
@@ -1060,28 +1060,28 @@ audio {
         overflow-x: auto;
         padding: 2px;
     }
-    
+
     .aurora-tab-button {
         padding: 10px 16px;
         font-size: 0.8rem;
         min-width: 120px;
     }
-    
+
     .aurora-tab-icon {
         font-size: 1rem;
     }
-    
+
     .aurora-tabs-actions {
         flex-direction: column;
         gap: var(--aurora-spacing-small);
         align-items: stretch;
     }
-    
+
     .aurora-tabs-quick-actions {
         justify-content: center;
         flex-wrap: wrap;
     }
-    
+
     .aurora-quick-action-btn {
         flex: 1;
         justify-content: center;
@@ -1199,7 +1199,7 @@ audio {
         flex-direction: column;
         gap: var(--aurora-spacing-small);
     }
-    
+
     .aurora-stat-item {
         width: 100%;
         flex-direction: row;
@@ -1207,21 +1207,21 @@ audio {
         text-align: left;
         min-width: auto;
     }
-    
+
     .aurora-stat-icon {
         margin-bottom: 0;
         margin-right: var(--aurora-spacing);
         font-size: 1.5rem;
     }
-    
+
     .aurora-stat-value {
         font-size: 1.3rem;
     }
-    
+
     .aurora-results-title {
         font-size: 1.8rem;
     }
-    
+
     .aurora-results-subtitle {
         font-size: 1rem;
     }
@@ -1470,19 +1470,19 @@ audio {
         gap: var(--aurora-spacing-small);
         align-items: flex-start;
     }
-    
+
     .aurora-content-card-actions {
         width: 100%;
         justify-content: flex-end;
     }
-    
+
     .aurora-content-card-body {
         padding: var(--aurora-spacing);
     }
-    
+
     .aurora-content-stats {
         flex-direction: column;
         gap: var(--aurora-spacing-small);
         align-items: flex-start;
     }
-} 
+}

@@ -7,7 +7,7 @@
 
 ### **✂️ Features REMOVED (Intentionally)**
 - **Research Enrichment**: Removed entity extraction and research link generation
-- **Editor System**: Removed AI editor critique and revision loops  
+- **Editor System**: Removed AI editor critique and revision loops
 - **Image Prompts**: Removed AI image generation prompt creation
 - **Multiple AI Providers**: Removed Anthropic/Claude and Groq support
 - **Complex Settings**: Removed feature toggles and provider selection
@@ -16,7 +16,7 @@
 - **Audio Upload**: Enhanced large file processing (25MB-2GB)
 - **Transcription**: OpenAI Whisper speech-to-text
 - **Wisdom Extraction**: Key insights and takeaways
-- **Outline Creation**: Structured content organization  
+- **Outline Creation**: Structured content organization
 - **Article Generation**: Complete written content
 - **Social Media**: 5 platform-optimized posts
 - **Notion Publishing**: Auto-publish with beautiful formatting
@@ -222,7 +222,7 @@ WhisperForge is now a **focused, reliable tool** that does one thing excellently
 
 ### 🔧 **ENHANCED 8-STEP PIPELINE**
 1. 🎙️ **Transcription** - Speech-to-text conversion
-2. 💡 **Wisdom Extraction** - Key insights and takeaways  
+2. 💡 **Wisdom Extraction** - Key insights and takeaways
 3. 🔍 **Research Enrichment** - Supporting links & context ⭐ **RESTORED**
 4. 📋 **Outline Creation** - Structured content organization
 5. 📝 **Article Generation** - Complete written content
@@ -261,7 +261,7 @@ WhisperForge is now a **focused, reliable tool** that does one thing excellently
 
 ### 🔧 **Enhanced Pipeline (6 Steps)**
 1. 🎙️ **Transcription** - Speech-to-text conversion
-2. 💡 **Wisdom Extraction** - Key insights and takeaways  
+2. 💡 **Wisdom Extraction** - Key insights and takeaways
 3. 📋 **Outline Creation** - Structured content organization
 4. 📝 **Article Generation** - Complete written content
 5. 📱 **Social Media** - Platform-optimized posts
@@ -293,13 +293,13 @@ WhisperForge is now a **focused, reliable tool** that does one thing excellently
 - **Database Investigation**: Found all 27 content items stored under correct user
 - **Field Mapping**: Updated display to match actual database schema
   - `transcript` (not `transcription`)
-  - `wisdom` (not `wisdom_extraction`)  
+  - `wisdom` (not `wisdom_extraction`)
   - `outline` (not `outline_creation`)
   - `article` (not `article_creation`)
   - `social_content` (not `social_media`)
 
 ### 🚀 **TRANSCRIPTION PIPELINE RESTORED**
-- **Circular Imports**: Eliminated blocking dependencies 
+- **Circular Imports**: Eliminated blocking dependencies
 - **Pipeline Flow**: Fixed streaming results display
 - **Database Storage**: Corrected field names for new content
 - **Session State**: Simplified initialization prevents conflicts
@@ -392,7 +392,7 @@ WhisperForge is now a **focused, reliable tool** that does one thing excellently
 
 ---
 
-## [2.0.0] - 2025-06-08 🌌 **Aurora UI Transformation** 
+## [2.0.0] - 2025-06-08 🌌 **Aurora UI Transformation**
 
 ### 🎨 **Major UI Redesign**
 - **Aurora Bioluminescent Theme**: Complete visual transformation with cyan/teal color scheme
@@ -505,4 +505,4 @@ WhisperForge is now a **focused, reliable tool** that does one thing excellently
 
 ---
 
-**For detailed technical information, see [README.md](README.md)** 
+**For detailed technical information, see [README.md](README.md)**

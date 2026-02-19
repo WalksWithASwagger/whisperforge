@@ -75,4 +75,3 @@ def export_json_metrics() -> Dict[str, Any]:
             "histograms": metrics_exporter["histograms"],
         }
     ))
-
