@@ -19,12 +19,31 @@ def show_settings_page():
     """Settings and configuration page."""
     st.markdown("### Settings & Configuration")
 
-    st.markdown("#### API Keys")
+    st.markdown("#### AI Provider")
+    with st.expander("AI Provider Selection", expanded=True):
+        provider_options = {"OpenAI": "openai", "Anthropic": "anthropic", "Grok (xAI)": "grok"}
+        current_provider = st.session_state.get("ai_provider", "openai")
+        # Find display name for current provider
+        current_label = next((label for label, val in provider_options.items() if val == current_provider), "OpenAI")
+        selected_label = st.selectbox(
+            "Active AI Provider",
+            list(provider_options.keys()),
+            index=list(provider_options.keys()).index(current_label),
+            help="Select the AI provider for content generation (wisdom, outline, article, social posts).",
+        )
+        st.session_state.ai_provider = provider_options[selected_label]
+
+        st.info(
+            "Whisper transcription always requires an OpenAI API key, regardless of which "
+            "AI provider is selected for content generation."
+        )
+
+    st.markdown("#### API Keys & Models")
     with st.expander("API Configuration", expanded=True):
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown("**OpenAI Configuration**")
+            st.markdown("**OpenAI**")
             openai_key = st.text_input(
                 "OpenAI API Key", type="password", value=os.getenv("OPENAI_API_KEY", ""), help="Your OpenAI API key"
             )
@@ -32,26 +51,68 @@ def show_settings_page():
                 os.environ["OPENAI_API_KEY"] = openai_key
                 st.success("OpenAI key configured")
 
-            model_choice = st.selectbox("OpenAI Model", ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"])
-            st.session_state.openai_model = model_choice
+            openai_model = st.selectbox(
+                "OpenAI Model",
+                ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+                help="Model used when OpenAI is the active provider.",
+            )
+            st.session_state.openai_model = openai_model
 
         with col2:
-            st.markdown("**Notion Configuration**")
-            notion_key = st.text_input(
-                "Notion API Key",
+            st.markdown("**Anthropic**")
+            anthropic_key = st.text_input(
+                "Anthropic API Key",
                 type="password",
-                value=os.getenv("NOTION_API_KEY", ""),
-                help="Your Notion integration token",
+                value=os.getenv("ANTHROPIC_API_KEY", ""),
+                help="Your Anthropic API key",
             )
-            if notion_key:
-                os.environ["NOTION_API_KEY"] = notion_key
+            if anthropic_key:
+                os.environ["ANTHROPIC_API_KEY"] = anthropic_key
+                st.success("Anthropic key configured")
 
-            notion_db = st.text_input("Notion Database ID", value=os.getenv("NOTION_DATABASE_ID", ""))
-            if notion_db:
-                os.environ["NOTION_DATABASE_ID"] = notion_db
+            anthropic_model = st.selectbox(
+                "Anthropic Model",
+                ["claude-sonnet-4-20250514", "claude-haiku-4-20250514", "claude-3-5-sonnet-20241022"],
+                help="Model used when Anthropic is the active provider.",
+            )
+            st.session_state.anthropic_model = anthropic_model
 
-            if notion_key and notion_db:
-                st.success("Notion configured")
+        with col3:
+            st.markdown("**Grok (xAI)**")
+            grok_key = st.text_input(
+                "Grok API Key",
+                type="password",
+                value=os.getenv("GROK_API_KEY", ""),
+                help="Your xAI / Grok API key",
+            )
+            if grok_key:
+                os.environ["GROK_API_KEY"] = grok_key
+                st.success("Grok key configured")
+
+            grok_model = st.selectbox(
+                "Grok Model",
+                ["grok-3", "grok-3-mini", "grok-2"],
+                help="Model used when Grok is the active provider.",
+            )
+            st.session_state.grok_model = grok_model
+
+    st.markdown("#### Notion Integration")
+    with st.expander("Notion Configuration", expanded=False):
+        notion_key = st.text_input(
+            "Notion API Key",
+            type="password",
+            value=os.getenv("NOTION_API_KEY", ""),
+            help="Your Notion integration token",
+        )
+        if notion_key:
+            os.environ["NOTION_API_KEY"] = notion_key
+
+        notion_db = st.text_input("Notion Database ID", value=os.getenv("NOTION_DATABASE_ID", ""))
+        if notion_db:
+            os.environ["NOTION_DATABASE_ID"] = notion_db
+
+        if notion_key and notion_db:
+            st.success("Notion configured")
 
     st.markdown("#### Pipeline Configuration")
     with st.expander("Processing Pipeline", expanded=True):
@@ -88,10 +149,17 @@ def show_settings_page():
     with st.expander("Connection Status", expanded=False):
         if st.button("Test All Connections"):
             with st.spinner("Testing all connections..."):
-                if os.getenv("OPENAI_API_KEY"):
-                    st.success("OpenAI API key configured")
-                else:
-                    st.error("OpenAI API key missing")
+                # AI provider keys
+                ai_providers = {
+                    "OpenAI": "OPENAI_API_KEY",
+                    "Anthropic": "ANTHROPIC_API_KEY",
+                    "Grok": "GROK_API_KEY",
+                }
+                for name, env_var in ai_providers.items():
+                    if os.getenv(env_var):
+                        st.success(f"{name} API key configured")
+                    else:
+                        st.warning(f"{name} API key not set")
 
                 try:
                     db = get_supabase_client()

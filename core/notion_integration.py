@@ -9,13 +9,9 @@ import logging
 import os
 from datetime import datetime
 
-import openai
-
-from .utils import get_openai_client
+from .content_generation import ContentGenerationError, _chat_completion
 
 logger = logging.getLogger(__name__)
-
-AI_MODEL = os.getenv("GPT_MODEL", "gpt-4o")
 
 # Notion API limits content blocks to 2000 chars each
 _NOTION_CHUNK_SIZE = 1800
@@ -25,25 +21,16 @@ _MAX_NOTION_BLOCKS = 50
 def generate_ai_title(transcript: str) -> str:
     """Generate a concise AI-powered title from a transcript excerpt."""
     try:
-        client = get_openai_client()
-        if not client:
-            return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-
-        prompt = (
-            "Generate a concise, descriptive title (max 60 characters) for this audio transcript:\n\n"
-            f"{transcript[:500]}...\n\n"
-            "Title should be clear, specific, professional, and capture the main topic.\n"
-            "No quotes or special characters.\n\nTitle:"
+        system_prompt = (
+            "Generate a concise, descriptive title (max 60 characters) for an audio transcript. "
+            "The title should be clear, specific, professional, and capture the main topic. "
+            "No quotes or special characters. Respond with only the title."
         )
+        user_content = f"Here is the transcript excerpt:\n\n{transcript[:500]}..."
 
-        response = client.chat.completions.create(
-            model=AI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=30,
-        )
-        title = response.choices[0].message.content
+        title = _chat_completion(system_prompt, user_content, max_tokens=30)
         return title.strip().replace('"', "").replace("'", "")[:60]
-    except openai.APIError:
+    except ContentGenerationError:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     except Exception:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
@@ -84,7 +71,7 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
 
         return None
 
-    except (openai.APIError, OSError) as e:
+    except (ContentGenerationError, OSError) as e:
         logger.error(f"Notion publishing failed: {e!s}")
         return None
     except Exception as e:
