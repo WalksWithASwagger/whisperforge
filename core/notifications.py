@@ -5,6 +5,7 @@ Animated toast notifications and status updates
 
 import streamlit as st
 import time
+from html import escape as html_escape
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -17,7 +18,7 @@ class NotificationManager:
 
     def show_toast(self,
                    message: str,
-                   type: Literal["success", "error", "warning", "info"] = "info",
+                   notification_type: Literal["success", "error", "warning", "info"] = "info",
                    duration: float = 3.0,
                    icon: Optional[str] = None):
         """Show a beautiful toast notification"""
@@ -30,7 +31,10 @@ class NotificationManager:
                 "warning": "⚠️",
                 "info": "ℹ️"
             }
-            icon = icons.get(type, "ℹ️")
+            icon = icons.get(notification_type, "ℹ️")
+
+        # Sanitize user-controlled content
+        safe_message = html_escape(message)
 
         # Color scheme for different types
         colors = {
@@ -56,13 +60,13 @@ class NotificationManager:
             }
         }
 
-        color = colors[type]
+        color = colors[notification_type]
 
         toast_html = f"""
-        <div class="toast-notification {type}" id="toast-{int(time.time())}">
+        <div class="toast-notification {notification_type}" id="toast-{int(time.time())}">
             <div class="toast-content">
                 <span class="toast-icon">{icon}</span>
-                <span class="toast-message">{message}</span>
+                <span class="toast-message">{safe_message}</span>
             </div>
             <div class="toast-progress">
                 <div class="toast-progress-bar"></div>

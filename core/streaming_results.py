@@ -134,8 +134,10 @@ def show_real_time_content_stream(results: Dict[str, Any], controller):
 def show_completed_content_section(step_key: str, icon: str, title: str, content: Any):
     """Display completed content with beautiful Aurora styling"""
 
-    # Convert content to string safely
+    # Convert content to string safely and sanitize for HTML injection
     content_str = str(content) if content else "No content generated"
+    safe_title = html.escape(title)
+    safe_icon = html.escape(icon)
 
     # Beautiful content reveal with animation
     st.markdown(f"""
@@ -160,8 +162,8 @@ def show_completed_content_section(step_key: str, icon: str, title: str, content
         "></div>
         <div style="position: relative; z-index: 2;">
             <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 1.4rem; margin-right: 10px;">{icon}</span>
-                <h4 style="color: #00FFFF; margin: 0; font-weight: 500;">{title}</h4>
+                <span style="font-size: 1.4rem; margin-right: 10px;">{safe_icon}</span>
+                <h4 style="color: #00FFFF; margin: 0; font-weight: 500;">{safe_title}</h4>
                 <span style="margin-left: auto; color: #00FF7F; font-size: 0.9rem;">✅ Complete</span>
             </div>
         </div>
@@ -212,6 +214,9 @@ def show_completed_content_section(step_key: str, icon: str, title: str, content
 
 def show_processing_content_section(icon: str, title: str, message: str):
     """Show animated processing state for current step"""
+    safe_icon = html.escape(icon)
+    safe_title = html.escape(title)
+    safe_message = html.escape(message)
 
     st.markdown(f"""
     <div style="
@@ -234,10 +239,10 @@ def show_processing_content_section(icon: str, title: str, message: str):
         "></div>
         <div style="position: relative; z-index: 2;">
             <div style="display: flex; align-items: center;">
-                <span style="font-size: 1.4rem; margin-right: 10px; animation: spin 2s linear infinite;">{icon}</span>
+                <span style="font-size: 1.4rem; margin-right: 10px; animation: spin 2s linear infinite;">{safe_icon}</span>
                 <div>
-                    <h4 style="color: #FFA500; margin: 0; font-weight: 500;">{title}</h4>
-                    <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{message}</p>
+                    <h4 style="color: #FFA500; margin: 0; font-weight: 500;">{safe_title}</h4>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{safe_message}</p>
                 </div>
                 <div style="margin-left: auto;">
                     <div style="
@@ -269,6 +274,9 @@ def show_processing_content_section(icon: str, title: str, message: str):
 
 def show_error_content_section(icon: str, title: str, error_msg: str):
     """Show error state for failed step"""
+    safe_icon = html.escape(icon)
+    safe_title = html.escape(title)
+    safe_error = html.escape(error_msg)
 
     st.markdown(f"""
     <div style="
@@ -279,10 +287,10 @@ def show_error_content_section(icon: str, title: str, error_msg: str):
         margin: 16px 0;
     ">
         <div style="display: flex; align-items: center;">
-            <span style="font-size: 1.4rem; margin-right: 10px;">{icon}</span>
+            <span style="font-size: 1.4rem; margin-right: 10px;">{safe_icon}</span>
             <div>
-                <h4 style="color: #FF6B6B; margin: 0; font-weight: 500;">{title}</h4>
-                <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{error_msg}</p>
+                <h4 style="color: #FF6B6B; margin: 0; font-weight: 500;">{safe_title}</h4>
+                <p style="color: rgba(255, 255, 255, 0.7); margin: 4px 0 0 0; font-size: 0.9rem;">{safe_error}</p>
             </div>
             <span style="margin-left: auto; color: #FF6B6B; font-size: 0.9rem;">❌ Failed</span>
         </div>
