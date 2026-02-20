@@ -22,9 +22,17 @@ WhisperForge is a Streamlit application that converts audio files into comprehen
 ### Prerequisites
 
 - Python 3.11+
-- FFmpeg (required for files >100MB)
+- FFmpeg (required for audio processing and files >100MB)
 - Supabase account (for data storage)
 - OpenAI API key (for AI processing)
+
+#### Installing FFmpeg
+
+| Platform | Command |
+|----------|---------|
+| Ubuntu/Debian | `sudo apt install ffmpeg` |
+| macOS | `brew install ffmpeg` |
+| Windows 11 | `winget install ffmpeg` |
 
 ### Installation
 
