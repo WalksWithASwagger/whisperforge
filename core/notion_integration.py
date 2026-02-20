@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime
 
-import streamlit as st
+import openai
 
 from .utils import get_openai_client
 
@@ -43,6 +43,8 @@ def generate_ai_title(transcript: str) -> str:
         )
         title = response.choices[0].message.content
         return title.strip().replace('"', "").replace("'", "")[:60]
+    except openai.APIError:
+        return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     except Exception:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
@@ -55,7 +57,7 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
     try:
         from notion_client import Client
     except ImportError:
-        st.warning("Install notion-client to enable Notion publishing: pip install notion-client")
+        logger.warning("Install notion-client to enable Notion publishing: pip install notion-client")
         return None
 
     try:
@@ -63,7 +65,7 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
         database_id = os.getenv("NOTION_DATABASE_ID")
 
         if not api_key or not database_id:
-            st.warning("Notion not configured. Set NOTION_API_KEY and NOTION_DATABASE_ID to auto-publish.")
+            logger.warning("Notion not configured. Set NOTION_API_KEY and NOTION_DATABASE_ID to auto-publish.")
             return None
 
         client = Client(auth=api_key)
@@ -82,8 +84,11 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
 
         return None
 
+    except (openai.APIError, OSError) as e:
+        logger.error(f"Notion publishing failed: {e!s}")
+        return None
     except Exception as e:
-        st.error(f"Notion publishing failed: {e!s}")
+        logger.error(f"Unexpected error in Notion publishing: {e!s}")
         return None
 
 

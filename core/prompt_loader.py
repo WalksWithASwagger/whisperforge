@@ -8,8 +8,6 @@ Load and manage AI prompts from the filesystem.
 import logging
 import os
 
-import streamlit as st
-
 logger = logging.getLogger(__name__)
 
 
@@ -25,8 +23,8 @@ def load_custom_prompts() -> dict[str, str]:
                 try:
                     with open(os.path.join(prompt_dir, filename), encoding="utf-8") as f:
                         prompts[prompt_name] = f.read()
-                except Exception as e:
-                    st.warning(f"Failed to load prompt {filename}: {e}")
+                except OSError as e:
+                    logger.warning(f"Failed to load prompt {filename}: {e}")
 
     return prompts
 
