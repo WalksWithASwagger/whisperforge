@@ -132,6 +132,45 @@ def show_transform_page():
     if "upload_method" not in st.session_state:
         st.session_state.upload_method = "Standard Upload"
 
+    # Upload method cards
+    sel_std = "selected" if st.session_state.upload_method == "Standard Upload" else ""
+    sel_lg = "selected" if st.session_state.upload_method == "Large File Upload" else ""
+    st.markdown(
+        f"""
+    <div class="aurora-upload-method-selector">
+        <div class="aurora-upload-method-card {sel_std}">
+            <span class="aurora-upload-method-icon">\u26a1</span>
+            <h3 class="aurora-upload-method-title">Standard Upload</h3>
+            <p class="aurora-upload-method-description">
+                Perfect for most audio files up to 25MB with instant processing</p>
+            <div class="aurora-upload-method-features">
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\u26a1</span> Instant processing</div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\U0001f3b5</span> Audio preview</div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\U0001f4be</span> Up to 25MB</div>
+            </div>
+        </div>
+        <div class="aurora-upload-method-card {sel_lg}">
+            <span class="aurora-upload-method-icon">\U0001f680</span>
+            <h3 class="aurora-upload-method-title">Large File Upload</h3>
+            <p class="aurora-upload-method-description">
+                Advanced processing for large files up to 2GB with intelligent chunking</p>
+            <div class="aurora-upload-method-features">
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\U0001f527</span> FFmpeg chunking</div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\u26a1</span> Parallel processing</div>
+                <div class="aurora-upload-feature">
+                    <span class="aurora-upload-feature-icon">\U0001f4be</span> Up to 2GB</div>
+            </div>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     upload_method = st.radio(
         "Choose upload method:",
         ["Standard Upload", "Large File Upload"],
@@ -152,6 +191,27 @@ def show_transform_page():
 
 def _show_standard_upload():
     """Handle standard file upload (up to 25MB)."""
+    st.markdown(
+        """
+    <div class="aurora-file-upload-zone">
+        <div class="aurora-upload-icon-container">
+            <span class="aurora-upload-icon">\U0001f3b5</span>
+            <div class="aurora-upload-pulse"></div>
+        </div>
+        <h3 class="aurora-upload-title">Drop your audio file here</h3>
+        <p class="aurora-upload-subtitle">Or click to browse and select a file</p>
+        <div class="aurora-upload-formats">
+            <span class="aurora-format-badge">MP3</span>
+            <span class="aurora-format-badge">WAV</span>
+            <span class="aurora-format-badge">M4A</span>
+            <span class="aurora-format-badge">FLAC</span>
+            <span class="aurora-format-badge">OGG</span>
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     uploaded_files = st.file_uploader(
         "Upload your audio file",
         type=["mp3", "wav", "m4a", "flac", "ogg"],
