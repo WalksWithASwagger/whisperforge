@@ -24,7 +24,7 @@
     "8501": {
       "label": "WhisperForge App",
       "onAutoForward": "notify",
-      "server": "streamlit run app_simple.py --server.enableCORS false --server.enableXsrfProtection false"
+      "server": "streamlit run app_simple.py --server.enableCORS false --server.enableXsrfProtection true"
     }
   },
   "postCreateCommand": "pip install -r requirements.txt",

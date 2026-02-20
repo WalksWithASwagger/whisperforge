@@ -1,9 +1,9 @@
 [server]
 port = 8501
-address = "0.0.0.0"
+address = "127.0.0.1"
 headless = true
 enableCORS = false
-enableXsrfProtection = false
+enableXsrfProtection = true
 
 [browser]
 gatherUsageStats = false
