@@ -1,0 +1,17 @@
+# Development dependencies - install with: pip install -r requirements-dev.txt
+-r requirements.txt
+
+# Testing
+pytest>=7.4.0,<9.0
+pytest-mock>=3.11.0,<4.0
+pytest-asyncio>=0.21.0,<1.0
+pytest-cov>=4.1.0,<6.0
+
+# Test utilities
+python-docx>=1.1.0,<2.0
+fpdf>=1.7.2,<2.0
+
+# Linting & Pre-commit Hooks
+ruff>=0.9.7,<1.0
+pre-commit>=4.0.0,<5.0
+autopep8>=2.3.0,<3.0

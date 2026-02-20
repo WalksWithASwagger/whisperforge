@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable
 
 from .monitoring import structured_logger
 
@@ -43,4 +43,3 @@ def streamlit_component(name: str):
         return wrapper
 
     return decorator
-

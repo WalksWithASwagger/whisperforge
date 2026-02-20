@@ -1,18 +1,15 @@
 # WhisperForge - Main Application Redirect
-# 
+#
 # This file redirects to the current main application: app_simple.py
-# 
+#
 # The old OAuth version has been archived
 
-import streamlit as st
 import os
 
+import streamlit as st
+
 # Page config
-st.set_page_config(
-    page_title="WhisperForge - Redirect",
-    page_icon="🌌",
-    layout="wide"
-)
+st.set_page_config(page_title="WhisperForge - Redirect", page_icon="🌌", layout="wide")
 
 st.error("""
 🔄 **Application Redirect**
@@ -31,7 +28,9 @@ streamlit run app_simple.py
 **Note:** The Procfile has been updated to use app_simple.py for production deployment.
 """)
 
-st.info("This redirect will be removed in a future version. Please update your bookmarks and scripts to use `app_simple.py`.")
+st.info(
+    "This redirect will be removed in a future version. Please update your bookmarks and scripts to use `app_simple.py`."
+)
 
 # Show current working directory and available files
 st.markdown("### Available Files:")
@@ -42,4 +41,4 @@ for file in sorted(files):
     elif "deprecated" in file or "backup" in file:
         st.warning(f"⚠️ **{file}** (Deprecated)")
     else:
-        st.info(f"ℹ️ **{file}**") 
+        st.info(f"ℹ️ **{file}**")

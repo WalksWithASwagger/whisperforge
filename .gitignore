@@ -1,7 +1,7 @@
 # Environment variables
 .env
-.env.local
-.env.production
+.env.*
+!env.example
 
 # Python
 __pycache__/
@@ -27,6 +27,7 @@ wheels/
 
 # Virtual environments
 venv/
+.venv/
 env/
 ENV/
 
@@ -46,3 +47,25 @@ logs/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Testing / Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Type checking
+.mypy_cache/
+.ruff_cache/
+
+# Local databases
+*.sqlite3
+*.db
+
+# TLS / Certificates
+*.pem
+*.key
+*.crt
+
+# Credentials config (never commit secrets)
+credentials.conf

@@ -35,11 +35,12 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 # Always use the project logger if available, but fall back to standard logging.
 try:
     from core.logging_config import logger as _wf_logger  # type: ignore
+
     SCRIPT_LOGGER = getattr(_wf_logger, "logger", _wf_logger)
 except Exception:
     SCRIPT_LOGGER = logging.getLogger(__name__)
@@ -62,14 +63,13 @@ TODO_PATTERN = re.compile(r"\b(TODO|FIXME)\b")
 # Helper utilities
 # ---------------------------------------------------------------------------
 
-def _run(cmd: List[str], cwd: Path | None = None) -> Tuple[int, str, str]:
+
+def _run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
     """Run a subprocess and capture its output.
 
     Returns (returncode, stdout, stderr).
     """
-    SCRIPT_LOGGER.info(
-        "Executing command", extra={"trace_id": TRACE_ID, "cmd": " ".join(cmd)}
-    )
+    SCRIPT_LOGGER.info("Executing command", extra={"trace_id": TRACE_ID, "cmd": " ".join(cmd)})
     try:
         proc = subprocess.run(
             cmd,
@@ -91,11 +91,12 @@ def _section(title: str, body: str) -> str:
 # Audit tasks
 # ---------------------------------------------------------------------------
 
+
 def unit_tests() -> str:
     rc, out, err = _run([sys.executable, "-m", "pytest", "-q"])
     status = "✅" if rc == 0 else "❌"
     details = err or out
-    return f"""**Status:** {status}  
+    return f"""**Status:** {status}
 
 ```
 {details}
@@ -107,7 +108,7 @@ def health_endpoint() -> str:
 
     status_data = health_checker.get_health_status()
     status = "✅" if status_data.status == "healthy" else "❌"
-    return f"""**Status:** {status}  
+    return f"""**Status:** {status}
 
 Payload:
 ```json
@@ -122,14 +123,14 @@ def static_analysis() -> str:
     rc_m, out_m, err_m = _run(["mypy", "--strict", "core"])
 
     body = "### Ruff\n"
-    body += f"""Exit code: {rc_r}  
+    body += f"""Exit code: {rc_r}
 
 ```
 {out_r or err_r}
 ```\n"""
 
     body += "### mypy\n"
-    body += f"""Exit code: {rc_m}  
+    body += f"""Exit code: {rc_m}
 
 ```
 {out_m or err_m}
@@ -138,14 +139,14 @@ def static_analysis() -> str:
 
 
 def secret_scan() -> str:
-    matches: List[str] = []
+    matches: list[str] = []
     for file_path in ROOT.rglob("*.py"):
         try:
             content = file_path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
         for m in SECRET_PATTERN.finditer(content):
-            snippet = content[max(0, m.start() - 20): m.end() + 20]
+            snippet = content[max(0, m.start() - 20) : m.end() + 20]
             matches.append(f"{file_path}: {snippet.strip()}")
 
     if not matches:
@@ -158,7 +159,7 @@ def dependency_freshness() -> str:
     if rc != 0:
         return f"Failed to fetch outdated packages: {err}"
     try:
-        data: List[Dict[str, Any]] = json.loads(out)
+        data: list[dict[str, Any]] = json.loads(out)
     except json.JSONDecodeError:
         return "Could not parse pip output."
     if not data:
@@ -182,9 +183,12 @@ def todo_tally() -> str:
 # Entry-point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a WhisperForge audit and emit a Markdown report.")
-    parser.add_argument("--output", type=Path, default=Path(f"AUDIT_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"))
+    parser.add_argument(
+        "--output", type=Path, default=Path(f"AUDIT_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md")
+    )
     args = parser.parse_args()
 
     report_parts = [REPORT_HEADER]
@@ -198,11 +202,9 @@ def main() -> None:
 
     output_text = "\n".join(report_parts)
     args.output.write_text(output_text, encoding="utf-8")
-    SCRIPT_LOGGER.info(
-        "Audit completed", extra={"trace_id": TRACE_ID, "report": str(args.output)}
-    )
+    SCRIPT_LOGGER.info("Audit completed", extra={"trace_id": TRACE_ID, "report": str(args.output)})
     print(f"\n\nAudit report written to {args.output}")
 
 
 if __name__ == "__main__":
-    main() 
+    main()

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
             cookieBanner.style.display = 'none';
         }
     }
-    
+
     // Set up event listener for the accept button
     const acceptButton = document.querySelector('.cookie-banner button');
     if (acceptButton) {
@@ -18,4 +18,4 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('.cookie-banner').style.display = 'none';
         });
     }
-}); 
+});

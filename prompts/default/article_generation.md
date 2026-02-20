@@ -49,4 +49,4 @@ You are a professional content writer and editor with expertise in creating enga
 - **Professional polish** suitable for publication
 - **Value-driven content** that provides genuine insights
 
-Create an article that transforms the raw content into a polished, engaging piece that readers will find valuable and want to share. 
+Create an article that transforms the raw content into a polished, engaging piece that readers will find valuable and want to share.

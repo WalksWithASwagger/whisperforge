@@ -1,15 +1,19 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 import streamlit as st
 
+from .constants import DEFAULT_PAGE, SESSION_EXPIRY_DAYS
+
 logger = logging.getLogger(__name__)
+
 
 class SessionManager:
     """Simple file-based session persistence"""
 
-    def __init__(self, app_name: str = "whisperforge", expiry_days: int = 7):
+    def __init__(self, app_name: str = "whisperforge", expiry_days: int = SESSION_EXPIRY_DAYS):
         self.session_dir = Path.home() / f".{app_name}_sessions"
         self.session_file = self.session_dir / "session.json"
         self.expiry_days = expiry_days
@@ -18,7 +22,7 @@ class SessionManager:
             "user_id": None,
             "user_email": None,
             "preferences": {},
-            "current_page": "Transform",
+            "current_page": DEFAULT_PAGE,
             "pipeline_active": False,
             "created_at": None,
             "last_activity": None,
@@ -28,34 +32,40 @@ class SessionManager:
     def _load(self):
         if self.session_file.exists():
             try:
-                with open(self.session_file, "r", encoding="utf-8") as f:
+                with open(self.session_file, encoding="utf-8") as f:
                     loaded = json.load(f)
                 if loaded.get("created_at"):
                     created = datetime.fromisoformat(loaded["created_at"])
-                    if datetime.utcnow() - created > timedelta(days=self.expiry_days):
+                    if datetime.now(UTC) - created > timedelta(days=self.expiry_days):
                         self.session_file.unlink()
                         return
                 self.data.update(loaded)
                 st.session_state.update(self.data)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
                 logger.error(f"Session load failed: {e}")
+            except Exception as e:
+                logger.warning(f"Unexpected error type ({type(e).__name__}) in session load: {e}")
 
     def _save(self):
         try:
             self.session_dir.mkdir(parents=True, exist_ok=True)
             with open(self.session_file, "w", encoding="utf-8") as f:
                 json.dump(self.data, f)
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Session save failed: {e}")
+        except Exception as e:
+            logger.warning(f"Unexpected error type ({type(e).__name__}) in session save: {e}")
 
     def authenticate_user(self, user_id: str, email: str) -> bool:
-        self.data.update({
-            "authenticated": True,
-            "user_id": str(user_id),
-            "user_email": email,
-            "created_at": datetime.utcnow().isoformat(),
-            "last_activity": datetime.utcnow().isoformat(),
-        })
+        self.data.update(
+            {
+                "authenticated": True,
+                "user_id": str(user_id),
+                "user_email": email,
+                "created_at": datetime.now(UTC).isoformat(),
+                "last_activity": datetime.now(UTC).isoformat(),
+            }
+        )
         st.session_state.update(self.data)
         self._save()
         return True
@@ -91,7 +101,7 @@ class SessionManager:
         self._save()
 
     def get_current_page(self) -> str:
-        return self.data.get("current_page", "Transform")
+        return self.data.get("current_page", DEFAULT_PAGE)
 
     def set_pipeline_active(self, active: bool):
         self.data["pipeline_active"] = active
@@ -108,6 +118,7 @@ class SessionManager:
             "created_at": self.data.get("created_at"),
             "last_activity": self.data.get("last_activity"),
         }
+
 
 def get_session_manager() -> SessionManager:
     if "_session_manager" not in st.session_state:

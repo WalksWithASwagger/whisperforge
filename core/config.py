@@ -5,11 +5,11 @@ Configuration Management
 Centralized configuration for WhisperForge v2.0
 """
 
+import logging
 import os
-from typing import Dict, Optional, Any
 from dataclasses import dataclass, field
 from pathlib import Path
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +19,19 @@ class AIProviderConfig:
     """Configuration for AI providers"""
 
     name: str
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
-    models: Dict[str, Any] = field(default_factory=dict)
-    rate_limits: Dict[str, int] = field(default_factory=dict)
+    api_key: str | None = None
+    base_url: str | None = None
+    models: dict[str, Any] = field(default_factory=dict)
+    rate_limits: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
 class NotionConfig:
     """Configuration for Notion integration"""
 
-    api_key: Optional[str] = None
-    database_id: Optional[str] = None
-    template_id: Optional[str] = None
+    api_key: str | None = None
+    database_id: str | None = None
+    template_id: str | None = None
 
 
 @dataclass
@@ -46,9 +46,7 @@ class Config:
 
     # AI Providers
     openai: AIProviderConfig = field(default_factory=lambda: AIProviderConfig("openai"))
-    anthropic: AIProviderConfig = field(
-        default_factory=lambda: AIProviderConfig("anthropic")
-    )
+    anthropic: AIProviderConfig = field(default_factory=lambda: AIProviderConfig("anthropic"))
     grok: AIProviderConfig = field(default_factory=lambda: AIProviderConfig("grok"))
 
     # Integrations
@@ -99,9 +97,7 @@ class Config:
     def from_file(cls, config_path: Path) -> "Config":
         """Load configuration (simplified version without YAML)"""
         # For now, just use environment variables
-        logger.info(
-            "Using environment variables for configuration (YAML support disabled)"
-        )
+        logger.info("Using environment variables for configuration (YAML support disabled)")
         return cls.from_env()
 
     def validate(self) -> bool:
@@ -116,7 +112,7 @@ class Config:
         for dir_path in [self.data_dir, self.prompts_dir, self.temp_dir]:
             try:
                 dir_path.mkdir(parents=True, exist_ok=True)
-            except Exception as e:
+            except OSError as e:
                 errors.append(f"Cannot create directory {dir_path}: {e}")
 
         if errors:
@@ -139,7 +135,7 @@ class Config:
 
 
 # Global config instance
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:

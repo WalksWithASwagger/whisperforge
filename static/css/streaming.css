@@ -1,0 +1,157 @@
+/* Aurora Progress Animation */
+@keyframes aurora-flow {
+    0%, 100% { left: -100%; opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+@keyframes aurora-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+@keyframes completion-glow {
+    0%, 100% { left: -100%; opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+/* Enhanced Button Styling */
+.stButton > button {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.1), rgba(64, 224, 208, 0.15)) !important;
+    border: 1px solid rgba(0, 255, 255, 0.2) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.15), rgba(64, 224, 208, 0.2)) !important;
+    border-color: rgba(0, 255, 255, 0.3) !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 255, 255, 0.15);
+}
+
+/* Expander Styling */
+.streamlit-expanderHeader {
+    background: rgba(0, 255, 255, 0.03) !important;
+    border: 1px solid rgba(0, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+}
+
+.streamlit-expanderContent {
+    background: rgba(0, 255, 255, 0.02) !important;
+    border: 1px solid rgba(0, 255, 255, 0.1) !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+}
+
+/* Aurora Streaming Results Styling */
+.aurora-content-card {
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.05), rgba(64, 224, 208, 0.08));
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(0, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 24px;
+    margin: 16px 0;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.aurora-content-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00FFFF, #40E0D0, transparent);
+    animation: aurora-scan 6s ease-in-out infinite;
+}
+
+.aurora-content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+}
+
+.aurora-content-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.aurora-status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.aurora-status-badge.completed {
+    background: rgba(0, 255, 127, 0.15);
+    color: #00FF7F;
+    border: 1px solid rgba(0, 255, 127, 0.3);
+}
+
+.aurora-content-body {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.aurora-editor-section {
+    background: rgba(255, 255, 127, 0.05);
+    border: 1px solid rgba(255, 255, 127, 0.15);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+.aurora-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.aurora-editor-title {
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.aurora-editor-badge {
+    background: rgba(255, 255, 127, 0.15);
+    color: #FFFF7F;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.aurora-critique-card {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+}
+
+.aurora-critique-content {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+    font-size: 0.9rem;
+}
+
+@keyframes aurora-scan {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+}

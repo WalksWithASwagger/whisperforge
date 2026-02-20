@@ -1,10 +1,11 @@
-from __future__ import annotations
-
 """Minimal health check utilities for WhisperForge."""
 
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import Any, Dict
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from typing import Any
+
 
 @dataclass
 class HealthStatus:
@@ -28,7 +29,7 @@ class HealthChecker:
     def get_health_status(self) -> HealthStatus:
         return HealthStatus(
             status="healthy",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             uptime_seconds=0.0,
         )
 
@@ -40,7 +41,7 @@ class HealthChecker:
         return []
 
     def get_metrics_json(self) -> str:
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "health": asdict(self.get_health_status()),
             "slo_metrics": asdict(self.get_slo_metrics()),
         }

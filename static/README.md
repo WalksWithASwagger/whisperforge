@@ -30,4 +30,4 @@ When adding new assets:
 1. Place CSS files in the `css` directory
 2. Place JavaScript files in the `js` directory
 3. Update the corresponding loader function in `app.py`
-4. Document the purpose of the asset in this README 
+4. Document the purpose of the asset in this README

@@ -5,17 +5,13 @@ Thank you for considering contributing to WhisperForge!
 ## Getting Started
 
 1. Fork the repository and clone your fork.
-2. Create a virtual environment:
+2. Set up the development environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate
+   python main.py --setup --dev
    ```
-3. Install dependencies required for development and testing:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   You can also run `scripts/setup_test_env.sh` which performs these steps for you.
-4. Run the test suite to ensure everything works:
+   This creates a `.venv`, installs all dependencies (including dev/test), and
+   configures pre-commit hooks.
+3. Run the test suite to ensure everything works:
    ```bash
    pytest
    ```
