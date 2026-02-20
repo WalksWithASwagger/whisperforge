@@ -1,3 +1,29 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "S",   # flake8-bandit (security)
+]
+ignore = [
+    "E501",  # line length handled by formatter
+    "S101",  # allow assert in tests
+    "S603",  # allow subprocess without shell=True check (not relevant here)
+    "S607",  # allow partial executable paths
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"scripts/*" = ["S101"]
+
 [tool.autopep8]
 max_line_length = 120
 aggressive = 1
