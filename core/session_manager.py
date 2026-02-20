@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import streamlit as st
 
@@ -33,7 +33,7 @@ class SessionManager:
                     loaded = json.load(f)
                 if loaded.get("created_at"):
                     created = datetime.fromisoformat(loaded["created_at"])
-                    if datetime.utcnow() - created > timedelta(days=self.expiry_days):
+                    if datetime.now(timezone.utc) - created > timedelta(days=self.expiry_days):
                         self.session_file.unlink()
                         return
                 self.data.update(loaded)
@@ -54,8 +54,8 @@ class SessionManager:
             "authenticated": True,
             "user_id": str(user_id),
             "user_email": email,
-            "created_at": datetime.utcnow().isoformat(),
-            "last_activity": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "last_activity": datetime.now(timezone.utc).isoformat(),
         })
         st.session_state.update(self.data)
         self._save()

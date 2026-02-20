@@ -3,7 +3,7 @@ from __future__ import annotations
 """Minimal health check utilities for WhisperForge."""
 
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 
@@ -29,7 +29,7 @@ class HealthChecker:
     def get_health_status(self) -> HealthStatus:
         return HealthStatus(
             status="healthy",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             uptime_seconds=0.0,
         )
 
