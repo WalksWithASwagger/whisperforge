@@ -93,3 +93,51 @@ def export_to_pdf(results: dict) -> bytes:
     for line in text.split("\n"):
         pdf.cell(0, 10, txt=line, ln=1)
     return pdf.output(dest="S").encode("latin-1")
+
+
+def create_json_download(results: dict) -> str:
+    """Create JSON format download of streaming results."""
+    import json
+
+    return json.dumps(results, indent=2, ensure_ascii=False)
+
+
+def create_markdown_download(results: dict) -> str:
+    """Create Markdown format download of streaming results."""
+    content = "# WhisperForge Content Generation Results\n\n"
+
+    sections = {
+        "transcription": "## Audio Transcription\n\n",
+        "wisdom_extraction": "## Key Insights & Wisdom\n\n",
+        "outline_creation": "## Content Outline\n\n",
+        "article_creation": "## Full Article\n\n",
+        "social_content": "## Social Media Content\n\n",
+        "image_prompts": "## Image Generation Prompts\n\n",
+    }
+
+    for key, header in sections.items():
+        if key in results:
+            content += header + results[key] + "\n\n---\n\n"
+
+    return content
+
+
+def create_text_download(results: dict) -> str:
+    """Create plain text format download of streaming results."""
+    content = "WHISPERFORGE CONTENT GENERATION RESULTS\n"
+    content += "=" * 50 + "\n\n"
+
+    sections = {
+        "transcription": "AUDIO TRANSCRIPTION\n" + "-" * 20 + "\n\n",
+        "wisdom_extraction": "KEY INSIGHTS & WISDOM\n" + "-" * 20 + "\n\n",
+        "outline_creation": "CONTENT OUTLINE\n" + "-" * 15 + "\n\n",
+        "article_creation": "FULL ARTICLE\n" + "-" * 12 + "\n\n",
+        "social_content": "SOCIAL MEDIA CONTENT\n" + "-" * 20 + "\n\n",
+        "image_prompts": "IMAGE GENERATION PROMPTS\n" + "-" * 25 + "\n\n",
+    }
+
+    for key, header in sections.items():
+        if key in results:
+            content += header + results[key] + "\n\n" + "=" * 50 + "\n\n"
+
+    return content
