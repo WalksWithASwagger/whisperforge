@@ -50,11 +50,17 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verify a password against its hash"""
+    """Verify a password against its hash.
+
+    Raises on unexpected errors (e.g. DB corruption) instead of
+    silently returning False which would be indistinguishable from
+    a wrong password.
+    """
     try:
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception as e:
-        logger.error(f"Password verification error: {e}")
+    except ValueError as e:
+        # Malformed hash string (wrong prefix, bad encoding, etc.)
+        logger.error("Password verification failed – malformed hash: %s", e)
         return False
 
 
@@ -143,41 +149,41 @@ def get_enhanced_prompt(prompt_type: str, knowledge_base: dict[str, str] = None,
 
 
 def get_openai_client():
-    """Get OpenAI client with API key"""
+    """Get OpenAI client with API key.
+
+    Returns None only when the key is missing or the package isn't installed.
+    Other errors (e.g. network, auth) propagate so callers can react.
+    """
     try:
         import openai
-
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            return None
-
-        client = openai.OpenAI(api_key=api_key)
-        return client
     except ImportError:
         logger.error("OpenAI package not installed")
         return None
-    except Exception as e:
-        logger.error(f"Error initializing OpenAI client: {e}")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
         return None
+
+    return openai.OpenAI(api_key=api_key)
 
 
 def get_anthropic_client():
-    """Get Anthropic client with API key"""
+    """Get Anthropic client with API key.
+
+    Returns None only when the key is missing or the package isn't installed.
+    Other errors propagate so callers can react.
+    """
     try:
         import anthropic
-
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            return None
-
-        client = anthropic.Anthropic(api_key=api_key)
-        return client
     except ImportError:
         logger.error("Anthropic package not installed")
         return None
-    except Exception as e:
-        logger.error(f"Error initializing Anthropic client: {e}")
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
         return None
+
+    return anthropic.Anthropic(api_key=api_key)
 
 
 def get_grok_api_key():
