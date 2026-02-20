@@ -51,7 +51,8 @@ def load_template(template_name: str) -> Optional[str]:
     """Load an article template by name"""
     template_path = os.path.join('templates', f'{template_name}.md')
     if os.path.exists(template_path):
-        return open(template_path, 'r', encoding='utf-8').read()
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
     return None
 
 
@@ -518,255 +519,12 @@ def process_audio_pipeline(audio_file):
                     processing_time=f"{time.time() - start_time:.1f}s"
                 )
 
-            # Step 2: Wisdom Extraction
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=1,
-                    step_progress=0,
-                    total_progress=17,
-                    status_message="Extracting wisdom and insights...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            from core.content_generation import generate_wisdom
-            wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=1,
-                    step_progress=50,
-                    total_progress=25,
-                    status_message="Analyzing content for key insights...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            wisdom = generate_wisdom(transcript, custom_prompt=wisdom_prompt, knowledge_base={})
-            results['wisdom'] = wisdom
-
-            # Stream wisdom to UI immediately
-            with wisdom_container:
-                st.markdown("**✅ Wisdom Extraction Complete**")
-                st.markdown(wisdom)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=1,
-                    step_progress=100,
-                    total_progress=33,
-                    status_message="Wisdom extraction complete!",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Step 3: Outline Creation
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=2,
-                    step_progress=0,
-                    total_progress=33,
-                    status_message="Creating structured outline...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            from core.content_generation import generate_outline
-            outline_prompt = get_prompt_for_step('outline', custom_prompts)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=2,
-                    step_progress=50,
-                    total_progress=42,
-                    status_message="Structuring content hierarchy...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            outline = generate_outline(transcript, wisdom, custom_prompt=outline_prompt, knowledge_base={})
-            results['outline'] = outline
-
-            # Stream outline to UI immediately
-            with outline_container:
-                st.markdown("**✅ Outline Creation Complete**")
-                st.markdown(outline)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=2,
-                    step_progress=100,
-                    total_progress=50,
-                    status_message="Outline creation complete!",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Step 4: Article Generation
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=3,
-                    step_progress=0,
-                    total_progress=50,
-                    status_message="Generating comprehensive article...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            from core.content_generation import generate_article
-            article_prompt = get_prompt_for_step('article', custom_prompts)
-            selected_template = st.session_state.get('article_template')
-            if selected_template:
-                template_text = load_template(selected_template)
-                if template_text:
-                    article_prompt = template_text + "\n" + article_prompt
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=3,
-                    step_progress=50,
-                    total_progress=58,
-                    status_message="Writing detailed article content...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            article = generate_article(transcript, wisdom, outline, custom_prompt=article_prompt, knowledge_base={})
-            results['article'] = article
-
-            # Stream article to UI immediately
-            with article_container:
-                st.markdown("**✅ Article Generation Complete**")
-                st.markdown(article)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=3,
-                    step_progress=100,
-                    total_progress=67,
-                    status_message="Article generation complete!",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Step 5: Social Content
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=4,
-                    step_progress=0,
-                    total_progress=67,
-                    status_message="Creating social media content...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            from core.content_generation import generate_social_content
-            social_prompt = get_prompt_for_step('social', custom_prompts)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=4,
-                    step_progress=50,
-                    total_progress=75,
-                    status_message="Generating social media posts...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            social = generate_social_content(wisdom, outline, article, custom_prompt=social_prompt, knowledge_base={})
-            results['social_content'] = social
-
-            # Stream social content to UI immediately
-            with social_container:
-                st.markdown("**✅ Social Content Creation Complete**")
-                st.markdown(social)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=4,
-                    step_progress=100,
-                    total_progress=83,
-                    status_message="Social content creation complete!",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Step 6: Auto-publish to Notion
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=5,
-                    step_progress=0,
-                    total_progress=83,
-                    status_message="Publishing to Notion workspace...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
-                # Generate AI title
-                ai_title = generate_ai_title(transcript)
-
-                with pipeline_placeholder.container():
-                    show_processing_pipeline(
-                        current_step=5,
-                        step_progress=30,
-                        total_progress=88,
-                        status_message="Creating Notion page structure...",
-                        processing_time=f"{time.time() - start_time:.1f}s"
-                    )
-
-                with pipeline_placeholder.container():
-                    show_processing_pipeline(
-                        current_step=5,
-                        step_progress=60,
-                        total_progress=92,
-                        status_message="Uploading content to Notion...",
-                        processing_time=f"{time.time() - start_time:.1f}s"
-                    )
-
-                # Publish to Notion
-                notion_url = create_notion_page(ai_title, results)
-                if notion_url:
-                    results['notion_url'] = notion_url
-
-                    # Stream Notion success to UI
-                    with notion_container:
-                        st.markdown("**✅ Notion Publishing Complete**")
-                        st.markdown(f"**Page Title:** {ai_title}")
-                        st.markdown(f"🔗 [Open in Notion]({notion_url})")
-                else:
-                    # Stream Notion failure to UI
-                    with notion_container:
-                        st.markdown("**⚠️ Notion Publishing Failed**")
-                        st.warning("Check your Notion API configuration in Settings.")
-            else:
-                # Show disabled status in UI
-                with notion_container:
-                    st.markdown("**ℹ️ Notion Publishing Disabled**")
-                    st.info("Configure Notion API in Settings to enable auto-publishing.")
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=5,
-                    step_progress=90,
-                    total_progress=96,
-                    status_message="Saving to database...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Save to Supabase database
-            try:
-                save_content_to_db(results)
-            except Exception as e:
-                st.warning(f"⚠️ Content saved locally but database save failed: {e}")
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=5,
-                    step_progress=100,
-                    total_progress=100,
-                    status_message="Pipeline complete! All content generated successfully.",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Aurora completion celebration
-            st.markdown("""
-            <div class="aurora-celebration">
-                <h1 class="aurora-celebration-title">Pipeline Complete!</h1>
-                <p class="aurora-celebration-subtitle">Your content has been transformed with AI magic</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Clear the pipeline display after a moment
-            time.sleep(2)
-            pipeline_placeholder.empty()
+            _run_generation_steps(
+                transcript, results, custom_prompts,
+                pipeline_placeholder, start_time,
+                wisdom_container, outline_container,
+                article_container, social_container, notion_container
+            )
 
             return results
 
@@ -800,305 +558,232 @@ def process_audio_pipeline_live(audio_file):
     return controller.get_results()
 
 
-def process_audio_pipeline_with_transcript(transcript: str):
-    """Process audio pipeline with pre-transcribed content using beautiful Aurora visualization"""
+def _run_generation_steps(transcript, results, custom_prompts,
+                          pipeline_placeholder, start_time,
+                          wisdom_container, outline_container,
+                          article_container, social_container, notion_container):
+    """Shared generation steps used by both pipeline functions"""
     import time
-    from datetime import datetime
+
+    # Wisdom Extraction
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=1, step_progress=0, total_progress=17,
+            status_message="Extracting wisdom and insights...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=1, step_progress=50, total_progress=25,
+            status_message="Analyzing content for key insights...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    wisdom = generate_wisdom(transcript, custom_prompt=wisdom_prompt, knowledge_base={})
+    results['wisdom'] = wisdom
+
+    with wisdom_container:
+        st.markdown("**Wisdom Extraction Complete**")
+        st.markdown(wisdom)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=1, step_progress=100, total_progress=33,
+            status_message="Wisdom extraction complete!",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    # Outline Creation
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=2, step_progress=0, total_progress=33,
+            status_message="Creating structured outline...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    outline_prompt = get_prompt_for_step('outline', custom_prompts)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=2, step_progress=50, total_progress=42,
+            status_message="Structuring content hierarchy...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    outline = generate_outline(transcript, wisdom, custom_prompt=outline_prompt, knowledge_base={})
+    results['outline'] = outline
+
+    with outline_container:
+        st.markdown("**Outline Creation Complete**")
+        st.markdown(outline)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=2, step_progress=100, total_progress=50,
+            status_message="Outline creation complete!",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    # Article Generation
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=3, step_progress=0, total_progress=50,
+            status_message="Generating comprehensive article...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    article_prompt = get_prompt_for_step('article', custom_prompts)
+    selected_template = st.session_state.get('article_template')
+    if selected_template:
+        template_text = load_template(selected_template)
+        if template_text and article_prompt:
+            article_prompt = template_text + "\n" + article_prompt
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=3, step_progress=50, total_progress=58,
+            status_message="Writing detailed article content...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    article = generate_article(transcript, wisdom, outline, custom_prompt=article_prompt, knowledge_base={})
+    results['article'] = article
+
+    with article_container:
+        st.markdown("**Article Generation Complete**")
+        st.markdown(article)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=3, step_progress=100, total_progress=67,
+            status_message="Article generation complete!",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    # Social Content
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=4, step_progress=0, total_progress=67,
+            status_message="Creating social media content...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    social_prompt = get_prompt_for_step('social', custom_prompts)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=4, step_progress=50, total_progress=75,
+            status_message="Generating social media posts...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    social = generate_social_content(wisdom, outline, article, custom_prompt=social_prompt, knowledge_base={})
+    results['social_content'] = social
+
+    with social_container:
+        st.markdown("**Social Content Creation Complete**")
+        st.markdown(social)
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=4, step_progress=100, total_progress=83,
+            status_message="Social content creation complete!",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    # Notion Publishing
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=5, step_progress=0, total_progress=83,
+            status_message="Publishing to Notion workspace...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
+        ai_title = generate_ai_title(transcript)
+
+        with pipeline_placeholder.container():
+            show_processing_pipeline(
+                current_step=5, step_progress=50, total_progress=90,
+                status_message="Uploading content to Notion...",
+                processing_time=f"{time.time() - start_time:.1f}s")
+
+        notion_url = create_notion_page(ai_title, results)
+        if notion_url:
+            results['notion_url'] = notion_url
+            with notion_container:
+                st.markdown("**Notion Publishing Complete**")
+                st.markdown(f"**Page Title:** {ai_title}")
+                st.markdown(f"[Open in Notion]({notion_url})")
+        else:
+            with notion_container:
+                st.markdown("**Notion Publishing Failed**")
+                st.warning("Check your Notion API configuration in Settings.")
+    else:
+        with notion_container:
+            st.markdown("**Notion Publishing Disabled**")
+            st.info("Configure Notion API in Settings to enable auto-publishing.")
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=5, step_progress=90, total_progress=96,
+            status_message="Saving to database...",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    try:
+        save_content_to_db(results)
+    except Exception as e:
+        st.warning(f"Content saved locally but database save failed: {e}")
+
+    with pipeline_placeholder.container():
+        show_processing_pipeline(
+            current_step=5, step_progress=100, total_progress=100,
+            status_message="Pipeline complete! All content generated successfully.",
+            processing_time=f"{time.time() - start_time:.1f}s")
+
+    st.markdown("""
+    <div class="aurora-celebration">
+        <h1 class="aurora-celebration-title">Pipeline Complete!</h1>
+        <p class="aurora-celebration-subtitle">Your content has been transformed with AI magic</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    time.sleep(2)
+    pipeline_placeholder.empty()
+
+
+def process_audio_pipeline_with_transcript(transcript: str):
+    """Process pipeline with pre-transcribed content, skipping transcription step"""
+    import time
 
     results = {'transcript': transcript}
     start_time = time.time()
 
-    # Load custom prompts
     custom_prompts = load_custom_prompts()
     if custom_prompts:
-        st.info(f"📝 Using {len(custom_prompts)} custom prompts")
+        st.info(f"Using {len(custom_prompts)} custom prompts")
 
-    # Initialize beautiful pipeline visualization (starting from step 1)
     pipeline_placeholder = st.empty()
+    st.markdown("### Live Content Generation")
 
-    # Create real-time content display containers
-    st.markdown("### 🌌 Live Content Generation")
-
-    # Create expandable containers for each step (skip transcription)
-    wisdom_container = st.expander("💡 Wisdom Extraction", expanded=False)
-    outline_container = st.expander("📋 Outline Creation", expanded=False)
-    article_container = st.expander("📝 Article Generation", expanded=False)
-    social_container = st.expander("📱 Social Content", expanded=False)
-    notion_container = st.expander("🌌 Notion Publishing", expanded=False)
+    wisdom_container = st.expander("Wisdom Extraction", expanded=False)
+    outline_container = st.expander("Outline Creation", expanded=False)
+    article_container = st.expander("Article Generation", expanded=False)
+    social_container = st.expander("Social Content", expanded=False)
+    notion_container = st.expander("Notion Publishing", expanded=False)
 
     try:
-        # Show initial state with transcription already complete
         with pipeline_placeholder.container():
             show_processing_pipeline(
-                current_step=1,
-                step_progress=0,
-                total_progress=17,
+                current_step=1, step_progress=0, total_progress=17,
                 status_message=f"Using pre-transcribed content ({len(transcript)} characters)",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
+                processing_time=f"{time.time() - start_time:.1f}s")
 
-        # Step 2: Wisdom Extraction
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=1,
-                step_progress=0,
-                total_progress=17,
-                status_message="Extracting wisdom and insights...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        from core.content_generation import generate_wisdom
-        wisdom_prompt = get_prompt_for_step('wisdom', custom_prompts)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=1,
-                step_progress=50,
-                total_progress=25,
-                status_message="Analyzing content for key insights...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        wisdom = generate_wisdom(transcript, custom_prompt=wisdom_prompt, knowledge_base={})
-        results['wisdom'] = wisdom
-
-        # Stream wisdom to UI immediately
-        with wisdom_container:
-            st.markdown("**✅ Wisdom Extraction Complete**")
-            st.markdown(wisdom)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=1,
-                step_progress=100,
-                total_progress=33,
-                status_message="Wisdom extraction complete!",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Step 3: Outline Creation
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=2,
-                step_progress=0,
-                total_progress=33,
-                status_message="Creating structured outline...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        from core.content_generation import generate_outline
-        outline_prompt = get_prompt_for_step('outline', custom_prompts)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=2,
-                step_progress=50,
-                total_progress=42,
-                status_message="Structuring content hierarchy...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        outline = generate_outline(transcript, wisdom, custom_prompt=outline_prompt, knowledge_base={})
-        results['outline'] = outline
-
-        # Stream outline to UI immediately
-        with outline_container:
-            st.markdown("**✅ Outline Creation Complete**")
-            st.markdown(outline)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=2,
-                step_progress=100,
-                total_progress=50,
-                status_message="Outline creation complete!",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Step 4: Article Generation
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=3,
-                step_progress=0,
-                total_progress=50,
-                status_message="Generating comprehensive article...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        from core.content_generation import generate_article
-        article_prompt = get_prompt_for_step('article', custom_prompts)
-        selected_template = st.session_state.get('article_template')
-        if selected_template:
-            template_text = load_template(selected_template)
-            if template_text:
-                article_prompt = template_text + "\n" + article_prompt
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=3,
-                step_progress=50,
-                total_progress=58,
-                status_message="Writing detailed article content...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        article = generate_article(transcript, wisdom, outline, custom_prompt=article_prompt, knowledge_base={})
-        results['article'] = article
-
-        # Stream article to UI immediately
-        with article_container:
-            st.markdown("**✅ Article Generation Complete**")
-            st.markdown(article)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=3,
-                step_progress=100,
-                total_progress=67,
-                status_message="Article generation complete!",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Step 5: Social Content
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=4,
-                step_progress=0,
-                total_progress=67,
-                status_message="Creating social media content...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        from core.content_generation import generate_social_content
-        social_prompt = get_prompt_for_step('social', custom_prompts)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=4,
-                step_progress=50,
-                total_progress=75,
-                status_message="Generating social media posts...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        social = generate_social_content(wisdom, outline, article, custom_prompt=social_prompt, knowledge_base={})
-        results['social_content'] = social
-
-        # Stream social content to UI immediately
-        with social_container:
-            st.markdown("**✅ Social Content Creation Complete**")
-            st.markdown(social)
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=4,
-                step_progress=100,
-                total_progress=83,
-                status_message="Social content creation complete!",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Step 6: Auto-publish to Notion
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=5,
-                step_progress=0,
-                total_progress=83,
-                status_message="Publishing to Notion workspace...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
-            # Generate AI title
-            ai_title = generate_ai_title(transcript)
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=5,
-                    step_progress=30,
-                    total_progress=88,
-                    status_message="Creating Notion page structure...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            with pipeline_placeholder.container():
-                show_processing_pipeline(
-                    current_step=5,
-                    step_progress=60,
-                    total_progress=92,
-                    status_message="Uploading content to Notion...",
-                    processing_time=f"{time.time() - start_time:.1f}s"
-                )
-
-            # Publish to Notion
-            notion_url = create_notion_page(ai_title, results)
-            if notion_url:
-                results['notion_url'] = notion_url
-
-                # Stream Notion success to UI
-                with notion_container:
-                    st.markdown("**✅ Notion Publishing Complete**")
-                    st.markdown(f"**Page Title:** {ai_title}")
-                    st.markdown(f"🔗 [Open in Notion]({notion_url})")
-            else:
-                # Stream Notion failure to UI
-                with notion_container:
-                    st.markdown("**⚠️ Notion Publishing Failed**")
-                    st.warning("Check your Notion API configuration in Settings.")
-        else:
-            # Show disabled status in UI
-            with notion_container:
-                st.markdown("**ℹ️ Notion Publishing Disabled**")
-                st.info("Configure Notion API in Settings to enable auto-publishing.")
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=5,
-                step_progress=90,
-                total_progress=96,
-                status_message="Saving to database...",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Save to Supabase database
-        try:
-            save_content_to_db(results)
-        except Exception as e:
-            st.warning(f"⚠️ Content saved locally but database save failed: {e}")
-
-        with pipeline_placeholder.container():
-            show_processing_pipeline(
-                current_step=5,
-                step_progress=100,
-                total_progress=100,
-                status_message="Pipeline complete! All content generated successfully.",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
-
-        # Aurora completion celebration
-        st.markdown("""
-        <div class="aurora-celebration">
-            <h1 class="aurora-celebration-title">Pipeline Complete!</h1>
-            <p class="aurora-celebration-subtitle">Your content has been transformed with AI magic</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Clear the pipeline display after a moment
-        time.sleep(2)
-        pipeline_placeholder.empty()
+        _run_generation_steps(
+            transcript, results, custom_prompts,
+            pipeline_placeholder, start_time,
+            wisdom_container, outline_container,
+            article_container, social_container, notion_container
+        )
 
         return results
 
     except Exception as e:
-        # Show error state
         with pipeline_placeholder.container():
             show_processing_pipeline(
-                current_step=1,
-                step_progress=0,
-                total_progress=17,
+                current_step=1, step_progress=0, total_progress=17,
                 status_message=f"Error: {str(e)}",
-                processing_time=f"{time.time() - start_time:.1f}s"
-            )
+                processing_time=f"{time.time() - start_time:.1f}s")
         st.error(f"Pipeline failed: {str(e)}")
         return None
 
