@@ -3,6 +3,8 @@ from core.file_upload import EnhancedLargeFileProcessor
 from core.supabase_integration import get_supabase_client
 from core.styling import apply_aurora_theme, create_aurora_header, create_aurora_progress_card, create_aurora_step_card, create_aurora_content_card, AuroraComponents
 from core.content_generation import transcribe_audio, generate_wisdom, generate_outline, generate_article, generate_social_content
+from core.utils import safe_path
+import html as html_mod
 import streamlit as st
 import os
 import tempfile
@@ -828,22 +830,27 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
     # Content type specific styling
     type_class = content_type.lower()
 
-    # Create the enhanced card HTML
-    safe_content = content.replace('`', '\\`')
+    # Escape user-controlled content for safe HTML embedding
+    safe_title = html_mod.escape(title)
+    safe_icon = html_mod.escape(icon)
+    escaped_content = html_mod.escape(content)
+    escaped_preview = html_mod.escape(preview_content)
+    # For JS template literal: escape backticks and ${}
+    js_safe_content = content.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
 
     card_html = f"""
     <div class="aurora-content-card {type_class}" id="{card_id}">
         <div class="aurora-content-card-header">
             <h3 class="aurora-content-card-title">
-                <span class="aurora-content-card-icon">{icon}</span>
-                {title}
+                <span class="aurora-content-card-icon">{safe_icon}</span>
+                {safe_title}
             </h3>
             <div class="aurora-content-card-actions">
                 <button class="aurora-content-action-btn copy-btn" id="{copy_btn_id}" onclick="copyToClipboard('{card_id}', '{copy_btn_id}')">
                     <span>📋</span>
                     <span class="copy-text">Copy</span>
                 </button>
-                <button class="aurora-content-action-btn" onclick="downloadContent('{title}', `{safe_content}`)">
+                <button class="aurora-content-action-btn" onclick="downloadContent('{safe_title}', `{js_safe_content}`)">
                     <span>💾</span>
                     <span>Save</span>
                 </button>
@@ -852,12 +859,12 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
 
         <div class="aurora-content-card-body">
             <div class="aurora-content-preview" id="preview_{card_id}">
-                {preview_content}
+                {escaped_preview}
             </div>
 
             {f'''
             <div class="aurora-content-full" id="{full_content_id}">
-                {content[preview_length:]}
+                {html_mod.escape(content[preview_length:])}
             </div>
             ''' if needs_expansion else ''}
 
@@ -877,7 +884,7 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
         </div>
 
         <!-- Hidden content for copying -->
-        <textarea id="content_{card_id}" style="position: absolute; left: -9999px; opacity: 0;">{content}</textarea>
+        <textarea id="content_{card_id}" style="position: absolute; left: -9999px; opacity: 0;">{escaped_content}</textarea>
     </div>
 
     <script>
@@ -960,10 +967,12 @@ def show_results(results):
     """, unsafe_allow_html=True)
 
     # Aurora Notion link if available with enhanced styling
-    if results.get('notion_url'):
+    notion_url = results.get('notion_url', '')
+    if notion_url and notion_url.startswith('https://'):
+        safe_url = html_mod.escape(notion_url)
         st.markdown(f"""
         <div class="aurora-notion-link">
-            <a href="{results['notion_url']}" target="_blank" class="aurora-notion-button">
+            <a href="{safe_url}" target="_blank" class="aurora-notion-button">
                 🌌 View in Notion Workspace
             </a>
         </div>
@@ -1803,7 +1812,7 @@ def show_knowledge_base():
                 if files:
                     selected_file = st.selectbox("Select knowledge file:", files)
                     if selected_file:
-                        file_path = os.path.join(kb_path, selected_file)
+                        file_path = safe_path(kb_path, selected_file)
                         with open(file_path, 'r') as f:
                             content = f.read()
 
@@ -1831,19 +1840,24 @@ def show_knowledge_base():
 
         if st.button("💾 Save Knowledge", type="primary"):
             if kb_title and kb_content:
-                try:
-                    os.makedirs(kb_path, exist_ok=True)
-                    filename = f"{kb_title.lower().replace(' ', '_')}.md"
-                    file_path = os.path.join(kb_path, filename)
+                if len(kb_title) > 100:
+                    st.error("Title must be 100 characters or fewer.")
+                else:
+                    try:
+                        os.makedirs(kb_path, exist_ok=True)
+                        filename = f"{kb_title.lower().replace(' ', '_')}.md"
+                        file_path = safe_path(kb_path, filename)
 
-                    with open(file_path, 'w') as f:
-                        f.write(f"# {kb_title}\n\n")
-                        f.write(f"**Category:** {kb_category}\n\n")
-                        f.write(kb_content)
+                        with open(file_path, 'w') as f:
+                            f.write(f"# {kb_title}\n\n")
+                            f.write(f"**Category:** {kb_category}\n\n")
+                            f.write(kb_content)
 
-                    st.success(f"✅ Knowledge saved as `{filename}`")
-                except Exception as e:
-                    st.error(f"❌ Error saving knowledge: {e}")
+                        st.success(f"✅ Knowledge saved as `{filename}`")
+                    except ValueError as e:
+                        st.error(f"Invalid filename: {e}")
+                    except Exception as e:
+                        st.error(f"❌ Error saving knowledge: {e}")
             else:
                 st.error("❌ Please provide both title and content")
 
@@ -1864,10 +1878,11 @@ def show_knowledge_base():
                         with col3:
                             if st.button("🗑️ Delete", key=f"delete_{file}"):
                                 try:
-                                    os.remove(os.path.join(kb_path, file))
+                                    validated_path = safe_path(kb_path, file)
+                                    os.remove(validated_path)
                                     st.success(f"✅ Deleted `{file}`")
                                     st.rerun()
-                                except Exception as e:
+                                except (ValueError, Exception) as e:
                                     st.error(f"❌ Error deleting file: {e}")
                 else:
                     st.info("📭 No knowledge files found")

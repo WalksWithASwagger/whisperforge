@@ -6,6 +6,7 @@ Contains functions that are shared between the original app and Supabase version
 import hashlib
 import bcrypt
 import os
+import re
 import time
 import logging
 import requests
@@ -13,6 +14,35 @@ from typing import Dict, Optional, Any
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# --- Path safety ---
+
+# Only allow alphanumeric, hyphens, underscores, and single dots (no ..)
+_SAFE_FILENAME_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._-]*$')
+
+
+def safe_path(root: str, untrusted_name: str) -> Path:
+    """Build a file path that is guaranteed to stay within *root*.
+
+    Raises ValueError if the resulting path escapes the root directory
+    or if the filename contains disallowed characters.
+    """
+    if not _SAFE_FILENAME_RE.match(untrusted_name):
+        raise ValueError(
+            f"Invalid filename: {untrusted_name!r}. "
+            "Only alphanumeric characters, hyphens, underscores, and dots are allowed."
+        )
+    if '..' in untrusted_name:
+        raise ValueError("Path traversal sequences are not allowed.")
+
+    root_resolved = Path(root).resolve()
+    target = (root_resolved / untrusted_name).resolve()
+
+    if not target.is_relative_to(root_resolved):
+        raise ValueError(
+            f"Path escapes allowed directory: {target} is not under {root_resolved}"
+        )
+    return target
 
 
 def hash_password(password: str) -> str:
@@ -59,12 +89,13 @@ def load_prompt_from_file(prompt_type: str, user_id: str = None) -> str:
     try:
         # Check for user-specific prompt first (for paid tiers)
         if user_id:
-            user_prompt_path = Path(f"prompts/users/{user_id}/{prompt_type}.md")
+            user_dir = str(safe_path("prompts/users", user_id))
+            user_prompt_path = safe_path(user_dir, f"{prompt_type}.md")
             if user_prompt_path.exists():
                 return user_prompt_path.read_text(encoding='utf-8').strip()
 
         # Load default prompt
-        default_prompt_path = Path(f"prompts/default/{prompt_type}.md")
+        default_prompt_path = safe_path("prompts/default", f"{prompt_type}.md")
         if default_prompt_path.exists():
             return default_prompt_path.read_text(encoding='utf-8').strip()
 
