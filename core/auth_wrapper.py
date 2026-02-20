@@ -56,7 +56,7 @@ class AuthWrapper:
         Maintains backward compatibility with existing auth logic
         """
         try:
-            logger.logger.info(f"Authentication attempt for: {email}")
+            logger.info(f"Authentication attempt for: {email}")
 
             if not self.supabase_client:
                 logger.log_error(Exception("Supabase client not available"), "Authentication failed")
@@ -66,7 +66,7 @@ class AuthWrapper:
             result = self.supabase_client.client.table("users").select("*").eq("email", email).execute()
 
             if not result.data:
-                logger.logger.warning(f"User not found: {email}")
+                logger.warning(f"User not found: {email}")
                 return False
 
             user = result.data[0]
@@ -89,7 +89,7 @@ class AuthWrapper:
                         self.supabase_client.client.table("users").update({"password": new_hash}).eq(
                             "id", user["id"]
                         ).execute()
-                        logger.logger.info(f"Password migrated to bcrypt for user: {email}")
+                        logger.info(f"Password migrated to bcrypt for user: {email}")
                     except (APIError, ValueError) as e:
                         logger.log_error(e, "Failed to migrate password")
                     except Exception as e:
@@ -98,7 +98,7 @@ class AuthWrapper:
             if password_valid:
                 # Create persistent session using SessionManager
                 if self.session_manager.authenticate_user(user["id"], email):
-                    logger.logger.info(f"User authenticated successfully: {email}")
+                    logger.info(f"User authenticated successfully: {email}")
 
                     # Load user preferences from database
                     self._load_user_preferences(user["id"])
@@ -110,7 +110,7 @@ class AuthWrapper:
                     )
                     return False
             else:
-                logger.logger.warning(f"Invalid password for user: {email}")
+                logger.warning(f"Invalid password for user: {email}")
                 return False
 
         except (APIError, ValueError) as e:
@@ -130,7 +130,7 @@ class AuthWrapper:
             # Check if user already exists
             existing = self.supabase_client.client.table("users").select("id").eq("email", email).execute()
             if existing.data:
-                logger.logger.warning(f"User already exists: {email}")
+                logger.warning(f"User already exists: {email}")
                 return False
 
             # Hash password
@@ -143,11 +143,11 @@ class AuthWrapper:
 
             if result.data:
                 user = result.data[0]
-                logger.logger.info(f"User registered successfully: {email}")
+                logger.info(f"User registered successfully: {email}")
 
                 # Create session for new user
                 if self.session_manager.authenticate_user(user["id"], email):
-                    logger.logger.info(f"Session created for new user: {email}")
+                    logger.info(f"Session created for new user: {email}")
                     return True
                 else:
                     logger.log_error(
@@ -170,7 +170,7 @@ class AuthWrapper:
         try:
             email = self.get_user_email()
             if self.session_manager.logout():
-                logger.logger.info(f"User logged out: {email}")
+                logger.info(f"User logged out: {email}")
                 return True
             else:
                 logger.log_error(Exception(f"Failed to logout user: {email}"), "Logout failed")
@@ -216,7 +216,7 @@ class AuthWrapper:
             self.session_manager.set_preference("api_keys", api_keys)
             self.session_manager.set_preference("custom_prompts", prompts)
 
-            logger.logger.debug(f"Loaded preferences for user: {user_id}")
+            logger.debug(f"Loaded preferences for user: {user_id}")
 
         except (APIError, ValueError) as e:
             logger.log_error(e, "Failed to load user preferences")
@@ -248,7 +248,7 @@ class AuthWrapper:
                 api_keys[key_name] = key_value
                 self.session_manager.set_preference("api_keys", api_keys)
 
-                logger.logger.info(f"API key updated: {key_name}")
+                logger.info(f"API key updated: {key_name}")
                 return True
             else:
                 logger.log_error(Exception(f"Failed to update API key: {key_name}"), "API key update failed")

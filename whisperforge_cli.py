@@ -259,7 +259,7 @@ def run(
             click.echo(f"\nTranscript preview:\n{results['transcript'][:300]}...")
 
     except Exception as e:
-        logger.logger.error(f"CLI pipeline error: {e}")
+        logger.error(f"CLI pipeline error: {e}")
         click.echo(f"Pipeline failed: {e}", err=True)
         sys.exit(1)
 
@@ -307,7 +307,7 @@ def transcribe(input_file: str, output: str | None):
         click.echo(f"Preview: {transcript[:200]}...")
 
     except Exception as e:
-        logger.logger.error(f"CLI transcription error: {e}")
+        logger.error(f"CLI transcription error: {e}")
         click.echo(f"Transcription failed: {e}", err=True)
         sys.exit(1)
 

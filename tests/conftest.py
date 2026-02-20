@@ -175,9 +175,9 @@ def mock_anthropic():
 @pytest.fixture(autouse=True)
 def setup_logging():
     """Set up logging for tests"""
-    logger.logger.info("🧪 Starting test session")
+    logger.info("🧪 Starting test session")
     yield
-    logger.logger.info("🧪 Test session completed")
+    logger.info("🧪 Test session completed")
 
 
 # Test markers
