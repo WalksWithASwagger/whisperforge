@@ -8,17 +8,18 @@ import logging
 import os
 
 from .api_clients import get_anthropic_client, get_grok_client, get_openai_client
+from .constants import (
+    ARTICLE_PREVIEW_LENGTH,
+    MAX_TOKENS_ARTICLE,
+    MAX_TOKENS_DEFAULT,
+    TRANSCRIPT_PREVIEW_LENGTH,
+)
 from .exceptions import PipelineError
 from .prompts import get_enhanced_prompt
 
 logger = logging.getLogger(__name__)
 
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "whisper-1")
-
-MAX_TOKENS_DEFAULT = 1500
-MAX_TOKENS_ARTICLE = 2000
-TRANSCRIPT_PREVIEW_LENGTH = 2000
-ARTICLE_PREVIEW_LENGTH = 1500
 
 DEFAULT_MODELS = {
     "openai": os.getenv("GPT_MODEL", "gpt-4o"),

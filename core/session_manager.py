@@ -5,13 +5,15 @@ from pathlib import Path
 
 import streamlit as st
 
+from .constants import DEFAULT_PAGE, SESSION_EXPIRY_DAYS
+
 logger = logging.getLogger(__name__)
 
 
 class SessionManager:
     """Simple file-based session persistence"""
 
-    def __init__(self, app_name: str = "whisperforge", expiry_days: int = 7):
+    def __init__(self, app_name: str = "whisperforge", expiry_days: int = SESSION_EXPIRY_DAYS):
         self.session_dir = Path.home() / f".{app_name}_sessions"
         self.session_file = self.session_dir / "session.json"
         self.expiry_days = expiry_days
@@ -20,7 +22,7 @@ class SessionManager:
             "user_id": None,
             "user_email": None,
             "preferences": {},
-            "current_page": "Transform",
+            "current_page": DEFAULT_PAGE,
             "pipeline_active": False,
             "created_at": None,
             "last_activity": None,
@@ -99,7 +101,7 @@ class SessionManager:
         self._save()
 
     def get_current_page(self) -> str:
-        return self.data.get("current_page", "Transform")
+        return self.data.get("current_page", DEFAULT_PAGE)
 
     def set_pipeline_active(self, active: bool):
         self.data["pipeline_active"] = active

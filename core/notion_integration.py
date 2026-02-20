@@ -9,13 +9,16 @@ import logging
 import os
 from datetime import datetime
 
+from .constants import (
+    MAX_NOTION_BLOCKS,
+    NOTION_CHUNK_SIZE,
+    NOTION_TITLE_EXCERPT_LENGTH,
+    NOTION_TITLE_MAX_LENGTH,
+    NOTION_TITLE_MAX_TOKENS,
+)
 from .content_generation import ContentGenerationError, _chat_completion
 
 logger = logging.getLogger(__name__)
-
-# Notion API limits content blocks to 2000 chars each
-_NOTION_CHUNK_SIZE = 1800
-_MAX_NOTION_BLOCKS = 50
 
 
 def generate_ai_title(transcript: str) -> str:
@@ -26,10 +29,10 @@ def generate_ai_title(transcript: str) -> str:
             "The title should be clear, specific, professional, and capture the main topic. "
             "No quotes or special characters. Respond with only the title."
         )
-        user_content = f"Here is the transcript excerpt:\n\n{transcript[:500]}..."
+        user_content = f"Here is the transcript excerpt:\n\n{transcript[:NOTION_TITLE_EXCERPT_LENGTH]}..."
 
-        title = _chat_completion(system_prompt, user_content, max_tokens=30)
-        return title.strip().replace('"', "").replace("'", "")[:60]
+        title = _chat_completion(system_prompt, user_content, max_tokens=NOTION_TITLE_MAX_TOKENS)
+        return title.strip().replace('"', "").replace("'", "")[:NOTION_TITLE_MAX_LENGTH]
     except ContentGenerationError:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     except Exception:
@@ -62,7 +65,7 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
             parent={"database_id": database_id},
             icon={"type": "emoji", "emoji": "\U0001f30c"},
             properties={"Name": {"title": [{"text": {"content": title[:100]}}]}},
-            children=children[:_MAX_NOTION_BLOCKS],
+            children=children[:MAX_NOTION_BLOCKS],
         )
 
         if response and "id" in response:
@@ -127,7 +130,7 @@ def _build_notion_children(title: str, content_data: dict) -> list[dict]:
                 "callout": {
                     "rich_text": [
                         {"type": "text", "text": {"content": "Key Insights & Wisdom"}},
-                        {"type": "text", "text": {"content": f"\n\n{content_data['wisdom'][:_NOTION_CHUNK_SIZE]}"}},
+                        {"type": "text", "text": {"content": f"\n\n{content_data['wisdom'][:NOTION_CHUNK_SIZE]}"}},
                     ],
                     "color": "purple_background",
                     "icon": {"type": "emoji", "emoji": "\U0001f4a1"},
@@ -153,7 +156,7 @@ def _build_notion_children(title: str, content_data: dict) -> list[dict]:
             children.append(_build_research_toggle(section_title, section_content))
         elif isinstance(section_content, str):
             chunks = [
-                section_content[i : i + _NOTION_CHUNK_SIZE] for i in range(0, len(section_content), _NOTION_CHUNK_SIZE)
+                section_content[i : i + NOTION_CHUNK_SIZE] for i in range(0, len(section_content), NOTION_CHUNK_SIZE)
             ]
             children.append(
                 {

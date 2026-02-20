@@ -11,6 +11,7 @@ from datetime import datetime
 
 import streamlit as st
 
+from .constants import CONTENT_PREVIEW_LENGTH
 from .export import create_text_export, export_to_markdown, export_to_word
 
 
@@ -24,7 +25,7 @@ def create_enhanced_aurora_content_card(title, content, content_type="text", ico
     word_count = len(content.split()) if content else 0
     char_count = len(content) if content else 0
 
-    preview_length = 300
+    preview_length = CONTENT_PREVIEW_LENGTH
     needs_expansion = len(content) > preview_length
     preview_content = content[:preview_length] + "..." if needs_expansion else content
 
