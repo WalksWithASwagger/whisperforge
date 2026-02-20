@@ -264,8 +264,12 @@ header[data-testid="stHeader"],
 
 /* Text Inputs */
 .stTextInput > div > div > input,
-.stTextArea > div > div > textarea {
-    background: var(--aurora-bg-card) !important;
+.stTextArea > div > div > textarea,
+.stTextInput input,
+.stTextArea textarea,
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    background: var(--aurora-bg-darker) !important;
     border: 1px solid var(--aurora-border) !important;
     border-radius: var(--aurora-radius-small) !important;
     color: var(--aurora-text) !important;
@@ -273,17 +277,45 @@ header[data-testid="stHeader"],
 }
 
 .stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
+.stTextArea > div > div > textarea:focus,
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+[data-testid="stTextInput"] input:focus,
+[data-testid="stTextArea"] textarea:focus {
+    background: var(--aurora-bg-darker) !important;
     border-color: var(--aurora-border-hover) !important;
     box-shadow: var(--aurora-glow-subtle) !important;
 }
 
+/* Text area label styling */
+[data-testid="stTextArea"] label,
+[data-testid="stTextInput"] label {
+    color: var(--aurora-text) !important;
+}
+
 /* Select Boxes */
-.stSelectbox > div > div {
+.stSelectbox > div > div,
+[data-testid="stSelectbox"] > div > div {
     background: var(--aurora-bg-card) !important;
     border: 1px solid var(--aurora-border) !important;
     border-radius: var(--aurora-radius-small) !important;
     color: var(--aurora-text) !important;
+}
+
+/* Number Inputs */
+[data-testid="stNumberInput"] input,
+.stNumberInput input {
+    background: var(--aurora-bg-card) !important;
+    border: 1px solid var(--aurora-border) !important;
+    border-radius: var(--aurora-radius-small) !important;
+    color: var(--aurora-text) !important;
+    font-family: var(--aurora-font-primary) !important;
+}
+
+[data-testid="stNumberInput"] input:focus,
+.stNumberInput input:focus {
+    border-color: var(--aurora-border-hover) !important;
+    box-shadow: var(--aurora-glow-subtle) !important;
 }
 
 /* Progress Bars */
