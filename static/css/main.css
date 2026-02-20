@@ -1227,15 +1227,40 @@ audio {
     }
 }
 
-/* Override Streamlit Default Tab Styling */
-.stTabs {
-    display: none !important;
+/* Aurora-styled Streamlit Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    border-bottom: 1px solid rgba(64, 224, 208, 0.2);
+    padding-bottom: 4px;
 }
 
-/* Ensure our custom tabs are visible */
-.aurora-tabs-container {
-    display: block !important;
-    visibility: visible !important;
+.stTabs [data-baseweb="tab"] {
+    background: rgba(64, 224, 208, 0.05);
+    border: 1px solid rgba(64, 224, 208, 0.15);
+    border-radius: 8px 8px 0 0;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 8px 20px;
+    transition: all 0.3s ease;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(64, 224, 208, 0.1);
+    border-color: rgba(64, 224, 208, 0.3);
+    color: #7DF9FF;
+}
+
+.stTabs [aria-selected="true"] {
+    background: rgba(64, 224, 208, 0.12) !important;
+    border-color: #40E0D0 !important;
+    color: #40E0D0 !important;
+}
+
+.stTabs [data-baseweb="tab-highlight"] {
+    background-color: #40E0D0 !important;
+}
+
+.stTabs [data-baseweb="tab-border"] {
+    display: none;
 }
 
 /* Enhanced Content Cards (moved from previous location) */
