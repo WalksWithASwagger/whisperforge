@@ -8,13 +8,16 @@ import venv
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_DIR = os.path.join(PROJECT_DIR, ".venv")
 REQUIREMENTS = os.path.join(PROJECT_DIR, "requirements.txt")
+REQUIREMENTS_DEV = os.path.join(PROJECT_DIR, "requirements-dev.txt")
 
 if sys.platform == "win32":
     PYTHON = os.path.join(VENV_DIR, "Scripts", "python")
     PIP = os.path.join(VENV_DIR, "Scripts", "pip")
+    PRE_COMMIT = os.path.join(VENV_DIR, "Scripts", "pre-commit")
 else:
     PYTHON = os.path.join(VENV_DIR, "bin", "python")
     PIP = os.path.join(VENV_DIR, "bin", "pip")
+    PRE_COMMIT = os.path.join(VENV_DIR, "bin", "pre-commit")
 
 
 def print_step(msg):
@@ -38,8 +41,8 @@ def create_venv():
     print("     Done.")
 
 
-def install_requirements():
-    """Install project dependencies from requirements.txt."""
+def install_requirements(dev=False):
+    """Install project dependencies from requirements.txt (and dev deps if requested)."""
     if not os.path.exists(REQUIREMENTS):
         print("  !! requirements.txt not found, skipping dependency install.")
         return
@@ -50,9 +53,24 @@ def install_requirements():
         stdout=subprocess.DEVNULL,
     )
 
-    print_step(f"Installing dependencies from {os.path.basename(REQUIREMENTS)}")
-    subprocess.check_call([PIP, "install", "-r", REQUIREMENTS])
+    if dev:
+        req_file = REQUIREMENTS_DEV
+        if not os.path.exists(req_file):
+            print("  !! requirements-dev.txt not found, falling back to requirements.txt")
+            req_file = REQUIREMENTS
+    else:
+        req_file = REQUIREMENTS
+
+    print_step(f"Installing dependencies from {os.path.basename(req_file)}")
+    subprocess.check_call([PIP, "install", "-r", req_file])
     print("\n     All dependencies installed.")
+
+
+def install_pre_commit_hooks():
+    """Install pre-commit git hooks into the repository."""
+    print_step("Installing pre-commit hooks")
+    subprocess.check_call([PRE_COMMIT, "install"], cwd=PROJECT_DIR)
+    print("     Hooks installed.")
 
 
 def verify_install():
@@ -71,14 +89,19 @@ def verify_install():
         sys.exit(1)
 
 
-def run():
+def run(dev=False):
     print("=" * 50)
     print("  WhisperForge - Environment Setup")
+    if dev:
+        print("  (dev mode)")
     print("=" * 50)
 
     create_venv()
-    install_requirements()
+    install_requirements(dev=dev)
     verify_install()
+
+    if dev:
+        install_pre_commit_hooks()
 
     print("\n" + "=" * 50)
     print("  Setup complete. Run main.py to start the app.")
@@ -86,4 +109,5 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    dev = "--dev" in sys.argv
+    run(dev=dev)

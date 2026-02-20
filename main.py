@@ -29,11 +29,14 @@ def venv_ready():
     return result.returncode == 0
 
 
-def run_setup():
+def run_setup(dev=False):
     """Run setup.py using the system Python to create the venv."""
     print("[whisperforge] Virtual environment not found or incomplete.")
     print("[whisperforge] Running first-time setup...\n")
-    subprocess.check_call([sys.executable, SETUP_SCRIPT])
+    cmd = [sys.executable, SETUP_SCRIPT]
+    if dev:
+        cmd.append("--dev")
+    subprocess.check_call(cmd)
     print()
 
 
@@ -50,8 +53,10 @@ def main():
     args = sys.argv[1:]
 
     # Handle explicit flags
+    dev = "--dev" in args
+
     if "--setup" in args:
-        run_setup()
+        run_setup(dev=dev)
         return
 
     if "--help" in args or "-h" in args:
@@ -62,6 +67,7 @@ def main():
             "\n"
             "Options:\n"
             "  --setup   Force re-create the virtual environment\n"
+            "  --dev     Include dev dependencies (testing, linting, pre-commit)\n"
             "  --help    Show this help message\n"
             "\n"
             "Any arguments after -- are forwarded to streamlit.\n"
@@ -69,6 +75,7 @@ def main():
             "Examples:\n"
             "  python main.py                       Start the app\n"
             "  python main.py --setup               Re-create the venv\n"
+            "  python main.py --setup --dev         Re-create venv with dev deps\n"
             "  python main.py -- --server.port 8080 Start on a custom port"
         )
         return
@@ -81,7 +88,7 @@ def main():
 
     # Ensure environment is ready
     if not venv_ready():
-        run_setup()
+        run_setup(dev=dev)
         # Re-check after setup
         if not venv_ready():
             print("[whisperforge] Setup finished but environment still looks broken.")
