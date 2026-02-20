@@ -3,24 +3,32 @@ Streaming Pipeline Controller for WhisperForge
 Enables real-time progress updates and content streaming during processing
 """
 
-import streamlit as st
 import time
-from typing import Dict, Optional, Any
-from datetime import datetime
+from typing import Any
+
+import streamlit as st
+
 from .content_generation import (
-    transcribe_audio, generate_wisdom, generate_outline, generate_article,
-    generate_social_content
+    generate_article,
+    generate_outline,
+    generate_social_content,
+    generate_wisdom,
+    transcribe_audio,
 )
-from .visible_thinking import thinking_step_start, thinking_step_complete, thinking_error, render_thinking_stream
+from .visible_thinking import thinking_error, thinking_step_complete, thinking_step_start
 
 
 class StreamingPipelineController:
     """Controls step-by-step pipeline execution with real-time UI updates"""
 
     PIPELINE_STEPS = [
-        "upload_validation", "transcription", "wisdom_extraction",
-        "outline_creation", "article_creation",
-        "social_content", "database_storage"
+        "upload_validation",
+        "transcription",
+        "wisdom_extraction",
+        "outline_creation",
+        "article_creation",
+        "social_content",
+        "database_storage",
     ]
 
     def __init__(self):
@@ -45,12 +53,12 @@ class StreamingPipelineController:
             "name": audio_file.name,
             "size": len(audio_file.getvalue()),
             "size_mb": file_size_mb,
-            "is_large_file": file_size_mb > 20
+            "is_large_file": file_size_mb > 20,
         }
 
-        if not hasattr(st.session_state, 'prompts'):
+        if not hasattr(st.session_state, "prompts"):
             st.session_state.prompts = {}
-        if not hasattr(st.session_state, 'knowledge_base'):
+        if not hasattr(st.session_state, "knowledge_base"):
             st.session_state.knowledge_base = {}
 
     def process_next_step(self):
@@ -112,22 +120,19 @@ class StreamingPipelineController:
             thinking_error(step_id, str(e))
             raise
 
-    def _step_upload_validation(self) -> Dict[str, Any]:
+    def _step_upload_validation(self) -> dict[str, Any]:
         """Step 1: Validate uploaded file"""
         file_info = st.session_state.pipeline_file_info
 
-        MAX_FILE_SIZE_MB = 25
-        if file_info["size_mb"] > MAX_FILE_SIZE_MB:
-            raise ValueError(
-                f"File too large: {file_info['size_mb']:.1f}MB (max {MAX_FILE_SIZE_MB}MB)")
+        from .config import get_config
+
+        max_file_size_mb = get_config().audio_chunk_size_mb
+        if file_info["size_mb"] > max_file_size_mb:
+            raise ValueError(f"File too large: {file_info['size_mb']:.1f}MB (max {max_file_size_mb}MB)")
 
         time.sleep(0.5)
 
-        return {
-            "status": "validated",
-            "file_name": file_info["name"],
-            "file_size_mb": file_info["size_mb"]
-        }
+        return {"status": "validated", "file_name": file_info["name"], "file_size_mb": file_info["size_mb"]}
 
     def _step_transcription(self) -> str:
         """Step 2: Transcribe audio with large file support"""
@@ -168,8 +173,8 @@ class StreamingPipelineController:
 
         st.success(f"""
         Large File Transcription Complete!
-        - Chunks processed: {result.get('chunks', 'N/A')}
-        - Processing time: {result.get('processing_time', 'N/A')}
+        - Chunks processed: {result.get("chunks", "N/A")}
+        - Processing time: {result.get("processing_time", "N/A")}
         - Transcript length: {len(transcript)} characters
         """)
 
@@ -180,13 +185,12 @@ class StreamingPipelineController:
         """Step 3: Extract wisdom"""
         transcript = st.session_state.pipeline_transcript
 
-        custom_prompt = st.session_state.prompts.get(
-            "wisdom_extraction") if hasattr(st.session_state, 'prompts') else None
+        custom_prompt = (
+            st.session_state.prompts.get("wisdom_extraction") if hasattr(st.session_state, "prompts") else None
+        )
 
         wisdom = generate_wisdom(
-            transcript,
-            custom_prompt=custom_prompt,
-            knowledge_base=st.session_state.knowledge_base
+            transcript, custom_prompt=custom_prompt, knowledge_base=st.session_state.knowledge_base
         )
 
         st.session_state.pipeline_wisdom = wisdom
@@ -197,14 +201,12 @@ class StreamingPipelineController:
         transcript = st.session_state.pipeline_transcript
         wisdom = st.session_state.pipeline_wisdom
 
-        custom_prompt = st.session_state.prompts.get(
-            "outline_creation") if hasattr(st.session_state, 'prompts') else None
+        custom_prompt = (
+            st.session_state.prompts.get("outline_creation") if hasattr(st.session_state, "prompts") else None
+        )
 
         outline = generate_outline(
-            transcript,
-            wisdom,
-            custom_prompt=custom_prompt,
-            knowledge_base=st.session_state.knowledge_base
+            transcript, wisdom, custom_prompt=custom_prompt, knowledge_base=st.session_state.knowledge_base
         )
 
         st.session_state.pipeline_outline = outline
@@ -216,15 +218,12 @@ class StreamingPipelineController:
         wisdom = st.session_state.pipeline_wisdom
         outline = st.session_state.pipeline_outline
 
-        custom_prompt = st.session_state.prompts.get(
-            "article_creation") if hasattr(st.session_state, 'prompts') else None
+        custom_prompt = (
+            st.session_state.prompts.get("article_creation") if hasattr(st.session_state, "prompts") else None
+        )
 
         article = generate_article(
-            transcript,
-            wisdom,
-            outline,
-            custom_prompt=custom_prompt,
-            knowledge_base=st.session_state.knowledge_base
+            transcript, wisdom, outline, custom_prompt=custom_prompt, knowledge_base=st.session_state.knowledge_base
         )
 
         st.session_state.pipeline_article = article
@@ -236,15 +235,10 @@ class StreamingPipelineController:
         outline = st.session_state.pipeline_outline
         article = st.session_state.pipeline_article
 
-        custom_prompt = st.session_state.prompts.get(
-            "social_media") if hasattr(st.session_state, 'prompts') else None
+        custom_prompt = st.session_state.prompts.get("social_media") if hasattr(st.session_state, "prompts") else None
 
         social = generate_social_content(
-            wisdom,
-            outline,
-            article,
-            custom_prompt=custom_prompt,
-            knowledge_base=st.session_state.knowledge_base
+            wisdom, outline, article, custom_prompt=custom_prompt, knowledge_base=st.session_state.knowledge_base
         )
 
         st.session_state.pipeline_social = social
@@ -261,16 +255,22 @@ class StreamingPipelineController:
 
             results = st.session_state.pipeline_results
 
-            result = db.client.table("content").insert({
-                "user_id": st.session_state.user_id,
-                "title": f"Content from {st.session_state.pipeline_file_info['name']}",
-                "transcript": results.get("transcription", ""),
-                "wisdom": results.get("wisdom_extraction", ""),
-                "outline": results.get("outline_creation", ""),
-                "article": results.get("article_creation", ""),
-                "social_content": results.get("social_content", ""),
-                "created_at": "now()"
-            }).execute()
+            result = (
+                db.client.table("content")
+                .insert(
+                    {
+                        "user_id": st.session_state.user_id,
+                        "title": f"Content from {st.session_state.pipeline_file_info['name']}",
+                        "transcript": results.get("transcription", ""),
+                        "wisdom": results.get("wisdom_extraction", ""),
+                        "outline": results.get("outline_creation", ""),
+                        "article": results.get("article_creation", ""),
+                        "social_content": results.get("social_content", ""),
+                        "created_at": "now()",
+                    }
+                )
+                .execute()
+            )
 
             content_id = result.data[0]["id"] if result.data else ""
             if not content_id:
@@ -290,8 +290,7 @@ class StreamingPipelineController:
     @property
     def is_complete(self) -> bool:
         """Check if pipeline has completed"""
-        return (not self.is_active and
-                st.session_state.get("pipeline_step_index", 0) >= len(self.PIPELINE_STEPS))
+        return not self.is_active and st.session_state.get("pipeline_step_index", 0) >= len(self.PIPELINE_STEPS)
 
     @property
     def current_step_index(self) -> int:
@@ -303,17 +302,17 @@ class StreamingPipelineController:
         """Get overall progress percentage"""
         return (self.current_step_index / len(self.PIPELINE_STEPS)) * 100
 
-    def get_results(self) -> Dict[str, Any]:
+    def get_results(self) -> dict[str, Any]:
         """Get all pipeline results"""
         return st.session_state.get("pipeline_results", {})
 
-    def get_errors(self) -> Dict[str, str]:
+    def get_errors(self) -> dict[str, str]:
         """Get any pipeline errors"""
         return st.session_state.get("pipeline_errors", {})
 
 
 def get_pipeline_controller() -> StreamingPipelineController:
     """Get or create the global pipeline controller"""
-    if 'pipeline_controller' not in st.session_state:
+    if "pipeline_controller" not in st.session_state:
         st.session_state.pipeline_controller = StreamingPipelineController()
     return st.session_state.pipeline_controller

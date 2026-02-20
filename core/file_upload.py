@@ -45,8 +45,10 @@ class FileUploadManager:
             "video": [".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"],
             "text": [".txt", ".md", ".pdf", ".docx"],
         }
+        from .config import get_config
+
         self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
-        self.chunk_size_mb = 20  # 20MB chunks for pydub processing
+        self.chunk_size_mb = get_config().audio_chunk_size_mb
         self.max_parallel_chunks = 3
 
     def create_upload_zone(self):
