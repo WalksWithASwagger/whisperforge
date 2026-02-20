@@ -12,8 +12,10 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from dotenv import load_dotenv
+from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
+from .constants import DEFAULT_ANALYTICS_DAYS, DEFAULT_CONTENT_QUERY_LIMIT, DEFAULT_USAGE_QUOTA_MINUTES
 from .utils import hash_password
 
 # Load environment variables
@@ -55,8 +57,11 @@ class SupabaseClient:
             self.client.table("users").select("id").limit(1).execute()
             logger.info("Supabase connection test successful")
             return True
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Supabase connection test failed: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error in Supabase connection test: {e}")
             return False
 
     # User Management
@@ -70,7 +75,7 @@ class SupabaseClient:
                 "email": email,
                 "password": hashed_password,  # Store hashed password
                 "created_at": datetime.now().isoformat(),
-                "usage_quota": 60,  # Default 60 minutes per month
+                "usage_quota": DEFAULT_USAGE_QUOTA_MINUTES,
                 "usage_current": 0,
                 "is_admin": False,
                 "subscription_tier": "free",
@@ -82,8 +87,11 @@ class SupabaseClient:
             result = self.client.table("users").insert(user_data).execute()
             logger.info(f"User created successfully: {email}")
             return result.data[0] if result.data else {}
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error creating user: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error creating user: {e}")
             raise
 
     def get_user(self, user_id: int) -> dict[str, Any] | None:
@@ -91,8 +99,11 @@ class SupabaseClient:
         try:
             result = self.client.table("users").select("*").eq("id", user_id).execute()
             return result.data[0] if result.data else None
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching user: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error fetching user: {e}")
             return None
 
     def get_user_by_email(self, email: str) -> dict[str, Any] | None:
@@ -100,8 +111,11 @@ class SupabaseClient:
         try:
             result = self.client.table("users").select("*").eq("email", email).execute()
             return result.data[0] if result.data else None
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching user by email: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error fetching user by email: {e}")
             return None
 
     def update_user_usage(self, user_id: int, usage_seconds: int) -> bool:
@@ -113,8 +127,11 @@ class SupabaseClient:
             result = self.client.table("users").update({"usage_current": usage_minutes}).eq("id", user_id).execute()
 
             return bool(result.data)
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error updating user usage: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error updating user usage: {e}")
             return False
 
     # Content Storage
@@ -142,11 +159,14 @@ class SupabaseClient:
                 logger.info(f"Content saved successfully with ID: {content_id}")
                 return content_id
             return None
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error saving content: {e}")
             return None
+        except Exception as e:
+            logger.error(f"Unexpected error saving content: {e}")
+            return None
 
-    def get_user_content(self, user_id: int, limit: int = 50) -> list[dict[str, Any]]:
+    def get_user_content(self, user_id: int, limit: int = DEFAULT_CONTENT_QUERY_LIMIT) -> list[dict[str, Any]]:
         """Get user's content history"""
         try:
             result = (
@@ -158,8 +178,11 @@ class SupabaseClient:
                 .execute()
             )
             return result.data or []
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching user content: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error fetching user content: {e}")
             return []
 
     # API Key Management
@@ -175,8 +198,11 @@ class SupabaseClient:
             )
 
             return bool(result.data)
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error saving API keys: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error saving API keys: {e}")
             return False
 
     def get_user_api_keys(self, user_id: int) -> dict[str, str]:
@@ -186,8 +212,11 @@ class SupabaseClient:
             if result.data and result.data[0]["api_keys"]:
                 return result.data[0]["api_keys"]
             return {}
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching API keys: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching API keys: {e}")
             return {}
 
     # Knowledge Base Management
@@ -225,8 +254,11 @@ class SupabaseClient:
                 result = self.client.table("knowledge_base").insert(kb_record).execute()
 
             return bool(result.data)
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error saving knowledge base file: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error saving knowledge base file: {e}")
             return False
 
     def get_user_knowledge_base(self, user_id: int) -> dict[str, str]:
@@ -241,8 +273,11 @@ class SupabaseClient:
                 kb_dict[name] = item["content"]
 
             return kb_dict
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching knowledge base: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching knowledge base: {e}")
             return {}
 
     # Custom Prompts Management
@@ -280,8 +315,11 @@ class SupabaseClient:
                 result = self.client.table("custom_prompts").insert(prompt_record).execute()
 
             return bool(result.data)
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error saving custom prompt: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error saving custom prompt: {e}")
             return False
 
     def get_user_prompts(self, user_id: int) -> dict[str, str]:
@@ -294,8 +332,11 @@ class SupabaseClient:
                 prompts_dict[item["prompt_type"]] = item["content"]
 
             return prompts_dict
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching custom prompts: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching custom prompts: {e}")
             return {}
 
     # Analytics and Monitoring
@@ -316,11 +357,14 @@ class SupabaseClient:
 
             result = self.client.table("pipeline_logs").insert(log_record).execute()
             return bool(result.data)
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error logging pipeline execution: {e}")
             return False
+        except Exception as e:
+            logger.error(f"Unexpected error logging pipeline execution: {e}")
+            return False
 
-    def get_user_analytics(self, user_id: int, days: int = 30) -> dict[str, Any]:
+    def get_user_analytics(self, user_id: int, days: int = DEFAULT_ANALYTICS_DAYS) -> dict[str, Any]:
         """Get user analytics for the last N days"""
         try:
             start_date = (datetime.now() - timedelta(days=days)).isoformat()
@@ -345,8 +389,11 @@ class SupabaseClient:
             }
 
             return analytics
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error fetching user analytics: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching user analytics: {e}")
             return {}
 
     def _get_most_frequent(self, logs: list[dict], field: str) -> str:
@@ -410,8 +457,11 @@ class MCPSupabaseIntegration:
             }
 
             return context
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error getting user context for MCP: {e}")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error getting user context for MCP: {e}")
             return {}
 
     def update_context_from_interaction(self, user_id: int, interaction_data: dict[str, Any]) -> bool:
@@ -429,8 +479,11 @@ class MCPSupabaseIntegration:
                 self.db.save_content(user_id, interaction_data["content"])
 
             return True
-        except Exception as e:
+        except APIError as e:
             logger.error(f"Error updating context from interaction: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error updating context from interaction: {e}")
             return False
 
 

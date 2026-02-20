@@ -12,9 +12,12 @@ import tempfile
 import time
 from datetime import datetime
 
+import openai
 import streamlit as st
+from postgrest.exceptions import APIError
 
 from .content_generation import (
+    ContentGenerationError,
     generate_article,
     generate_outline,
     generate_social_content,
@@ -118,9 +121,13 @@ def process_pipeline(audio_file=None, transcript: str | None = None) -> dict | N
 
         return results
 
-    except Exception as e:
+    except (ContentGenerationError, openai.APIError, OSError) as e:
         _update_pipeline(pipeline_placeholder, 0, 0, 0, f"Error: {e!s}", start_time)
         st.error(f"Pipeline failed: {e!s}")
+        return None
+    except Exception as e:
+        _update_pipeline(pipeline_placeholder, 0, 0, 0, f"Unexpected error: {e!s}", start_time)
+        st.error(f"Unexpected pipeline error: {e!s}")
         return None
 
 
@@ -222,8 +229,10 @@ def _run_generation_steps(
     _update_pipeline(pipeline_placeholder, 5, 90, 96, "Saving to database...", start_time)
     try:
         save_content_to_db(results)
-    except Exception as e:
+    except APIError as e:
         st.warning(f"Content saved locally but database save failed: {e}")
+    except Exception as e:
+        st.warning(f"Content saved locally but unexpected database error: {e}")
 
     _update_pipeline(
         pipeline_placeholder, 5, 100, 100, "Pipeline complete! All content generated successfully.", start_time
@@ -275,8 +284,10 @@ def save_content_to_db(content_data: dict):
             )
             if content_id:
                 st.success(f"Content saved to database (ID: {content_id})")
-    except Exception as e:
+    except APIError as e:
         st.warning(f"Database save failed: {e}")
+    except Exception as e:
+        st.warning(f"Unexpected database save error: {e}")
 
 
 def show_processing_pipeline(

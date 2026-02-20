@@ -6,6 +6,8 @@ Provides backward compatibility while adding session persistence
 
 from typing import Any
 
+from postgrest.exceptions import APIError
+
 from core.logging_config import logger
 
 from .session_manager import get_session_manager
@@ -29,8 +31,11 @@ class AuthWrapper:
             from .supabase_integration import get_supabase_client
 
             self.supabase_client = get_supabase_client()
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, "Failed to initialize Supabase")
+            self.supabase_client = None
+        except Exception as e:
+            logger.log_error(e, "Unexpected error initializing Supabase")
             self.supabase_client = None
 
     def is_authenticated(self) -> bool:
@@ -85,8 +90,10 @@ class AuthWrapper:
                             "id", user["id"]
                         ).execute()
                         logger.logger.info(f"Password migrated to bcrypt for user: {email}")
-                    except Exception as e:
+                    except (APIError, ValueError) as e:
                         logger.log_error(e, "Failed to migrate password")
+                    except Exception as e:
+                        logger.log_error(e, "Unexpected error migrating password")
 
             if password_valid:
                 # Create persistent session using SessionManager
@@ -106,8 +113,11 @@ class AuthWrapper:
                 logger.logger.warning(f"Invalid password for user: {email}")
                 return False
 
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, f"Authentication error for {email}")
+            return False
+        except Exception as e:
+            logger.log_error(e, f"Unexpected authentication error for {email}")
             return False
 
     def register_user(self, email: str, password: str) -> bool:
@@ -148,8 +158,11 @@ class AuthWrapper:
                 logger.log_error(Exception(f"Failed to create user in database: {email}"), "Registration failed")
                 return False
 
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, f"Registration error for {email}")
+            return False
+        except Exception as e:
+            logger.log_error(e, f"Unexpected registration error for {email}")
             return False
 
     def logout(self) -> bool:
@@ -162,8 +175,11 @@ class AuthWrapper:
             else:
                 logger.log_error(Exception(f"Failed to logout user: {email}"), "Logout failed")
                 return False
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, "Logout error")
+            return False
+        except Exception as e:
+            logger.log_error(e, "Unexpected logout error")
             return False
 
     def _load_user_preferences(self, user_id: str):
@@ -202,8 +218,10 @@ class AuthWrapper:
 
             logger.logger.debug(f"Loaded preferences for user: {user_id}")
 
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, "Failed to load user preferences")
+        except Exception as e:
+            logger.log_error(e, "Unexpected error loading user preferences")
 
     def get_api_keys(self) -> dict[str, str]:
         """Get user API keys from session cache"""
@@ -236,8 +254,11 @@ class AuthWrapper:
                 logger.log_error(Exception(f"Failed to update API key: {key_name}"), "API key update failed")
                 return False
 
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, f"Error updating API key {key_name}")
+            return False
+        except Exception as e:
+            logger.log_error(e, f"Unexpected error updating API key {key_name}")
             return False
 
     def get_custom_prompts(self) -> dict[str, str]:
@@ -273,8 +294,11 @@ class AuthWrapper:
                 )
                 return False
 
-        except Exception as e:
+        except (APIError, ValueError) as e:
             logger.log_error(e, f"Error updating custom prompt {prompt_type}")
+            return False
+        except Exception as e:
+            logger.log_error(e, f"Unexpected error updating custom prompt {prompt_type}")
             return False
 
     # Session Manager delegation methods

@@ -9,28 +9,28 @@ Supports files up to 2GB with memory-efficient streaming.
 import logging
 import math
 import os
+import subprocess
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import openai
 import streamlit as st
 
+from .constants import (
+    AUDIO_CHANNELS,
+    AUDIO_SAMPLE_RATE,
+    CHUNK_DURATION_MINUTES,
+    CHUNK_SUCCESS_THRESHOLD_FFMPEG,
+    FFMPEG_CHUNK_TIMEOUT,
+    FFMPEG_VERSION_CHECK_TIMEOUT,
+    FFPROBE_TIMEOUT,
+    LARGE_FILE_THRESHOLD_BYTES,
+    MAX_PARALLEL_CHUNKS_FFMPEG,
+    MAX_UPLOAD_SIZE_BYTES,
+)
+
 logger = logging.getLogger(__name__)
-
-_UPLOAD_CSS_CACHE = None
-
-
-def _load_upload_css():
-    """Load upload CSS from static file (cached)."""
-    global _UPLOAD_CSS_CACHE  # noqa: PLW0603
-    if _UPLOAD_CSS_CACHE is None:
-        css_path = os.path.join("static", "css", "upload.css")
-        if os.path.exists(css_path):
-            with open(css_path, encoding="utf-8") as f:
-                _UPLOAD_CSS_CACHE = f"<style>{f.read()}</style>"
-        else:
-            _UPLOAD_CSS_CACHE = ""
-    return _UPLOAD_CSS_CACHE
 
 
 class EnhancedLargeFileProcessor:
@@ -49,9 +49,9 @@ class EnhancedLargeFileProcessor:
             "audio": [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".wma", ".webm", ".mpeg", ".mpga", ".oga"],
             "video": [".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"],
         }
-        self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
-        self.chunk_duration_minutes = 10
-        self.max_parallel_chunks = 4
+        self.max_file_size = MAX_UPLOAD_SIZE_BYTES
+        self.chunk_duration_minutes = CHUNK_DURATION_MINUTES
+        self.max_parallel_chunks = MAX_PARALLEL_CHUNKS_FFMPEG
         self.temp_dir = None
 
     def check_ffmpeg_availability(self) -> bool:
@@ -59,7 +59,9 @@ class EnhancedLargeFileProcessor:
         try:
             import subprocess
 
-            result = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=5)  # noqa: S603
+            result = subprocess.run(
+                ["ffmpeg", "-version"], capture_output=True, text=True, timeout=FFMPEG_VERSION_CHECK_TIMEOUT
+            )  # noqa: S603
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
             return False
@@ -72,7 +74,7 @@ class EnhancedLargeFileProcessor:
 
             cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", file_path]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)  # noqa: S603
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=FFPROBE_TIMEOUT)  # noqa: S603
             if result.returncode != 0:
                 return {"error": f"ffprobe failed: {result.stderr}"}
 
@@ -100,8 +102,10 @@ class EnhancedLargeFileProcessor:
                 "channels": int(audio_stream.get("channels", 0)),
             }
 
-        except Exception as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"error": f"Failed to get audio info: {e!s}"}
+        except Exception as e:
+            return {"error": f"Unexpected error getting audio info: {e!s}"}
 
     def validate_file(self, uploaded_file) -> dict:
         """Enhanced file validation for large files."""
@@ -118,7 +122,7 @@ class EnhancedLargeFileProcessor:
         if file_extension not in all_formats:
             return {"valid": False, "error": f"Unsupported format: {file_extension}"}
 
-        if file_size > 100 * 1024 * 1024 and not self.check_ffmpeg_availability():
+        if file_size > LARGE_FILE_THRESHOLD_BYTES and not self.check_ffmpeg_availability():
             return {
                 "valid": False,
                 "error": "FFmpeg required for large files but not available. Please install FFmpeg.",
@@ -128,7 +132,7 @@ class EnhancedLargeFileProcessor:
             "valid": True,
             "size": file_size,
             "size_mb": file_size / (1024 * 1024),
-            "requires_chunking": file_size > 100 * 1024 * 1024,
+            "requires_chunking": file_size > LARGE_FILE_THRESHOLD_BYTES,
             "format": file_extension,
         }
 
@@ -174,6 +178,8 @@ class EnhancedLargeFileProcessor:
             </div>
         </div>
         """
+
+        from .file_upload import _load_upload_css
 
         st.markdown(_load_upload_css(), unsafe_allow_html=True)
         st.markdown(upload_html, unsafe_allow_html=True)
@@ -241,8 +247,10 @@ class EnhancedLargeFileProcessor:
                 if os.path.exists(tmp_file_path):
                     os.unlink(tmp_file_path)
 
-        except Exception as e:
+        except (openai.APIError, OSError) as e:
             return {"success": False, "error": f"Standard processing failed: {e!s}"}
+        except Exception as e:
+            return {"success": False, "error": f"Unexpected standard processing error: {e!s}"}
 
     def _process_with_ffmpeg_chunking(self, uploaded_file) -> dict:
         """Process large files using FFmpeg chunking."""
@@ -291,8 +299,10 @@ class EnhancedLargeFileProcessor:
                 "success_rate": transcription_result.get("success_rate", "unknown"),
             }
 
-        except Exception as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"success": False, "error": f"FFmpeg processing failed: {e!s}"}
+        except Exception as e:
+            return {"success": False, "error": f"Unexpected FFmpeg processing error: {e!s}"}
 
         finally:
             self._cleanup_temp_dir()
@@ -322,16 +332,16 @@ class EnhancedLargeFileProcessor:
                     "-t",
                     str(chunk_duration_seconds),
                     "-ar",
-                    "16000",
+                    str(AUDIO_SAMPLE_RATE),
                     "-ac",
-                    "1",
+                    str(AUDIO_CHANNELS),
                     "-acodec",
                     "pcm_s16le",
                     "-y",
                     chunk_path,
                 ]
 
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # noqa: S603
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=FFMPEG_CHUNK_TIMEOUT)  # noqa: S603
 
                 if result.returncode != 0:
                     return {"success": False, "error": f"FFmpeg chunk creation failed: {result.stderr}"}
@@ -352,8 +362,10 @@ class EnhancedLargeFileProcessor:
 
             return {"success": True, "chunks": chunks}
 
-        except Exception as e:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"success": False, "error": f"Chunk creation failed: {e!s}"}
+        except Exception as e:
+            return {"success": False, "error": f"Unexpected chunk creation error: {e!s}"}
 
     def _transcribe_chunks_parallel(self, chunks: list[dict]) -> dict:
         """Transcribe chunks in parallel using ThreadPoolExecutor."""
@@ -372,9 +384,12 @@ class EnhancedLargeFileProcessor:
                 file_path = chunk_info["file_path"]
                 transcript = transcribe_audio(file_path)
                 return chunk_index, transcript, True
-            except Exception as e:
+            except (openai.APIError, OSError) as e:
                 logger.error(f"Failed to transcribe chunk {chunk_info['index']}: {e}")
                 return chunk_info["index"], f"[Transcription failed for chunk {chunk_info['index']}]", False
+            except Exception as e:
+                logger.error(f"Unexpected error transcribing chunk {chunk_info['index']}: {e}")
+                return chunk_info["index"], f"[Unexpected error for chunk {chunk_info['index']}]", False
 
         start_time = time.time()
         completed_chunks = 0
@@ -406,7 +421,7 @@ class EnhancedLargeFileProcessor:
         processing_time = time.time() - start_time
         successful_chunks = len(chunk_transcripts)
 
-        if successful_chunks < total_chunks * 0.7:
+        if successful_chunks < total_chunks * CHUNK_SUCCESS_THRESHOLD_FFMPEG:
             return {"success": False, "error": f"Too many failed chunks: {successful_chunks}/{total_chunks} successful"}
 
         return {
@@ -429,5 +444,5 @@ class EnhancedLargeFileProcessor:
 
                 shutil.rmtree(self.temp_dir)
                 self.temp_dir = None
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Failed to cleanup temp directory {self.temp_dir}: {e}")

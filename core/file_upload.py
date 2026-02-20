@@ -14,8 +14,11 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import openai
 import streamlit as st
 
+from .constants import CHUNK_SUCCESS_THRESHOLD_STANDARD, MAX_PARALLEL_CHUNKS_STANDARD, MAX_UPLOAD_SIZE_BYTES
+from .content_generation import ContentGenerationError
 from .large_file_processor import EnhancedLargeFileProcessor  # noqa: F401 - re-export
 
 logger = logging.getLogger(__name__)
@@ -47,9 +50,9 @@ class FileUploadManager:
         }
         from .config import get_config
 
-        self.max_file_size = 2 * 1024 * 1024 * 1024  # 2GB
+        self.max_file_size = MAX_UPLOAD_SIZE_BYTES
         self.chunk_size_mb = get_config().audio_chunk_size_mb
-        self.max_parallel_chunks = 3
+        self.max_parallel_chunks = MAX_PARALLEL_CHUNKS_STANDARD
 
     def create_upload_zone(self):
         """Create enhanced upload zone for large files."""
@@ -142,8 +145,11 @@ class FileUploadManager:
                 progress_bar.progress(1.0, "\u2705 Transcription complete!")
                 return {"success": True, "transcript": transcript, "chunks": 1, "total_duration": "N/A"}
 
-            except Exception as e:
+            except (ContentGenerationError, openai.APIError, OSError) as e:
                 progress_bar.progress(1.0, f"\u274c Error: {e!s}")
+                return {"success": False, "error": str(e)}
+            except Exception as e:
+                progress_bar.progress(1.0, f"\u274c Unexpected error: {e!s}")
                 return {"success": False, "error": str(e)}
 
     def _process_large_file_chunked(self, uploaded_file) -> dict:
@@ -186,9 +192,13 @@ class FileUploadManager:
                 "processing_time": transcription_results.get("total_time", "N/A"),
             }
 
-        except Exception as e:
+        except (ContentGenerationError, openai.APIError, OSError) as e:
             logger.exception("Error in large file processing:")
             st.error(f"\u274c Large file processing failed: {e!s}")
+            return {"success": False, "error": str(e)}
+        except Exception as e:
+            logger.exception("Unexpected error in large file processing:")
+            st.error(f"\u274c Unexpected large file processing error: {e!s}")
             return {"success": False, "error": str(e)}
 
     def _create_audio_chunks(self, uploaded_file) -> dict:
@@ -242,9 +252,12 @@ class FileUploadManager:
 
             return {"success": True, "chunks": chunks}
 
-        except Exception as e:
+        except OSError as e:
             logger.exception("Error creating audio chunks:")
             return {"success": False, "error": f"Failed to create chunks: {e!s}"}
+        except Exception as e:
+            logger.exception("Unexpected error creating audio chunks:")
+            return {"success": False, "error": f"Unexpected error creating chunks: {e!s}"}
 
     def _transcribe_chunks_parallel(self, chunks: list[dict], progress_container, chunks_container) -> dict:
         """Transcribe chunks in parallel with real-time progress tracking."""
@@ -273,10 +286,14 @@ class FileUploadManager:
                 chunk_statuses[chunk_index] = "completed"
                 return chunk_index, transcript.text, True
 
-            except Exception as e:
+            except (openai.APIError, OSError) as e:
                 chunk_statuses[chunk_index] = "error"
                 logger.exception(f"Error transcribing chunk {chunk_index}:")
                 return chunk_index, f"Error: {e!s}", False
+            except Exception as e:
+                chunk_statuses[chunk_index] = "error"
+                logger.exception(f"Unexpected error transcribing chunk {chunk_index}:")
+                return chunk_index, f"Unexpected error: {e!s}", False
 
         with ThreadPoolExecutor(max_workers=self.max_parallel_chunks) as executor:
             future_to_chunk = {executor.submit(transcribe_single_chunk, chunk): chunk["index"] for chunk in chunks}
@@ -329,7 +346,7 @@ class FileUploadManager:
         processing_time = time.time() - start_time
         successful_chunks = len(chunk_transcripts)
 
-        if successful_chunks < total_chunks * 0.8:
+        if successful_chunks < total_chunks * CHUNK_SUCCESS_THRESHOLD_STANDARD:
             return {"success": False, "error": f"Too many failed chunks: {successful_chunks}/{total_chunks} successful"}
 
         return {
@@ -350,7 +367,7 @@ class FileUploadManager:
             try:
                 if os.path.exists(chunk["file_path"]):
                     os.unlink(chunk["file_path"])
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Failed to cleanup chunk file {chunk['file_path']}: {e}")
 
     def validate_large_file(self, file) -> dict:

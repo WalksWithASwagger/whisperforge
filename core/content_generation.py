@@ -6,6 +6,7 @@ Handles AI-powered content creation including transcription, wisdom extraction, 
 import logging
 import os
 
+from .exceptions import PipelineError
 from .utils import get_enhanced_prompt, get_openai_client
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ TRANSCRIPT_PREVIEW_LENGTH = 2000
 ARTICLE_PREVIEW_LENGTH = 1500
 
 
-class ContentGenerationError(Exception):
+class ContentGenerationError(PipelineError):
     """Raised when content generation fails"""
 
     pass

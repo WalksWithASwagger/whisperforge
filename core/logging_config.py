@@ -162,7 +162,7 @@ class WhisperForgeLogger:
         try:
             with open(json_log_file, "a") as f:
                 f.write(json.dumps(data) + "\n")
-        except Exception as e:
+        except OSError as e:
             self.logger.error(f"Failed to write structured log: {e}")
 
     # -------------------------------------------------------------------

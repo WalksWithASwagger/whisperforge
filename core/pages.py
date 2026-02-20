@@ -8,6 +8,7 @@ Secondary page functions for settings, knowledge base, and prompt management.
 import os
 
 import streamlit as st
+from postgrest.exceptions import APIError
 
 from .content_display import create_enhanced_aurora_content_card
 from .supabase_integration import get_supabase_client
@@ -98,8 +99,10 @@ def show_settings_page():
                         st.success("Supabase connected")
                     else:
                         st.error("Supabase connection failed")
-                except Exception as e:
+                except APIError as e:
                     st.error(f"Supabase error: {e}")
+                except Exception as e:
+                    st.error(f"Unexpected Supabase error: {e}")
 
                 try:
                     if os.getenv("NOTION_API_KEY") and os.getenv("NOTION_DATABASE_ID"):
@@ -110,8 +113,10 @@ def show_settings_page():
                         st.success("Notion connected")
                     else:
                         st.warning("Notion not configured")
-                except Exception as e:
+                except OSError as e:
                     st.error(f"Notion error: {e}")
+                except Exception as e:
+                    st.error(f"Unexpected Notion error: {e}")
 
 
 def show_knowledge_base():
@@ -144,8 +149,10 @@ def show_knowledge_base():
                     st.info("No knowledge files found")
             else:
                 st.info("Knowledge base directory not found")
-        except Exception as e:
+        except OSError as e:
             st.error(f"Error reading knowledge base: {e}")
+        except Exception as e:
+            st.error(f"Unexpected error reading knowledge base: {e}")
 
     with tabs[1]:
         st.markdown("#### Add New Knowledge")
@@ -176,8 +183,10 @@ def show_knowledge_base():
                         st.success(f"Knowledge saved as `{filename}`")
                     except ValueError as e:
                         st.error(f"Invalid filename: {e}")
-                    except Exception as e:
+                    except OSError as e:
                         st.error(f"Error saving knowledge: {e}")
+                    except Exception as e:
+                        st.error(f"Unexpected error saving knowledge: {e}")
             else:
                 st.error("Please provide both title and content")
 
@@ -198,14 +207,18 @@ def show_knowledge_base():
                                     os.remove(validated_path)
                                     st.success(f"Deleted `{file}`")
                                     st.rerun()
-                                except (ValueError, Exception) as e:
+                                except (ValueError, OSError) as e:
                                     st.error(f"Error deleting file: {e}")
+                                except Exception as e:
+                                    st.error(f"Unexpected error deleting file: {e}")
                 else:
                     st.info("No knowledge files found")
             else:
                 st.info("Knowledge base directory not found")
-        except Exception as e:
+        except OSError as e:
             st.error(f"Error managing files: {e}")
+        except Exception as e:
+            st.error(f"Unexpected error managing files: {e}")
 
 
 def show_prompts_page():
@@ -242,8 +255,10 @@ def show_prompts_page():
                         current_prompt = f.read()
                 else:
                     current_prompt = f"# {prompt_name} Prompt\n\nDefault prompt for {prompt_key} generation."
-            except Exception as e:
+            except OSError as e:
                 st.error(f"Error loading prompt: {e}")
+            except Exception as e:
+                st.error(f"Unexpected error loading prompt: {e}")
 
             new_prompt = st.text_area(
                 f"Edit {prompt_name} Prompt",
@@ -260,8 +275,10 @@ def show_prompts_page():
                         with open(prompt_file, "w") as f:
                             f.write(new_prompt)
                         st.success(f"{prompt_name} prompt saved!")
-                    except Exception as e:
+                    except OSError as e:
                         st.error(f"Error saving prompt: {e}")
+                    except Exception as e:
+                        st.error(f"Unexpected error saving prompt: {e}")
 
             with col2:
                 if st.button("Reset", key=f"reset_{prompt_key}"):

@@ -112,7 +112,7 @@ class Config:
         for dir_path in [self.data_dir, self.prompts_dir, self.temp_dir]:
             try:
                 dir_path.mkdir(parents=True, exist_ok=True)
-            except Exception as e:
+            except OSError as e:
                 errors.append(f"Cannot create directory {dir_path}: {e}")
 
         if errors:

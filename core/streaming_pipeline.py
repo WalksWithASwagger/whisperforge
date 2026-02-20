@@ -6,9 +6,13 @@ Enables real-time progress updates and content streaming during processing
 import time
 from typing import Any
 
+import openai
 import streamlit as st
+from postgrest.exceptions import APIError
 
+from .constants import LARGE_FILE_THRESHOLD_MB
 from .content_generation import (
+    ContentGenerationError,
     generate_article,
     generate_outline,
     generate_social_content,
@@ -53,7 +57,7 @@ class StreamingPipelineController:
             "name": audio_file.name,
             "size": len(audio_file.getvalue()),
             "size_mb": file_size_mb,
-            "is_large_file": file_size_mb > 20,
+            "is_large_file": file_size_mb > LARGE_FILE_THRESHOLD_MB,
         }
 
         if not hasattr(st.session_state, "prompts"):
@@ -84,11 +88,17 @@ class StreamingPipelineController:
             st.session_state.pipeline_step_index += 1
             return True
 
-        except Exception as e:
+        except (ContentGenerationError, openai.APIError, ValueError) as e:
             error_msg = str(e)
             st.session_state.pipeline_errors[step_id] = error_msg
             st.session_state.pipeline_active = False
             st.error(f"Error in {step_id}: {error_msg}")
+            return False
+        except Exception as e:
+            error_msg = str(e)
+            st.session_state.pipeline_errors[step_id] = error_msg
+            st.session_state.pipeline_active = False
+            st.error(f"Unexpected error in {step_id}: {error_msg}")
             return False
 
     def _execute_step(self, step_id: str, step_index: int) -> Any:
@@ -116,8 +126,11 @@ class StreamingPipelineController:
             thinking_step_complete(step_id)
             return result
 
-        except Exception as e:
+        except (ContentGenerationError, openai.APIError, ValueError) as e:
             thinking_error(step_id, str(e))
+            raise
+        except Exception as e:
+            thinking_error(step_id, f"Unexpected: {e!s}")
             raise
 
     def _step_upload_validation(self) -> dict[str, Any]:
@@ -279,8 +292,10 @@ class StreamingPipelineController:
             time.sleep(0.3)
             return f"Content saved with ID: {content_id}"
 
-        except Exception as e:
+        except APIError as e:
             return f"Database save failed: {str(e)}"
+        except Exception as e:
+            return f"Unexpected database error: {str(e)}"
 
     @property
     def is_active(self) -> bool:

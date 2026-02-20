@@ -39,16 +39,20 @@ class SessionManager:
                         return
                 self.data.update(loaded)
                 st.session_state.update(self.data)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, KeyError) as e:
                 logger.error(f"Session load failed: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error in session load: {e}")
 
     def _save(self):
         try:
             self.session_dir.mkdir(parents=True, exist_ok=True)
             with open(self.session_file, "w", encoding="utf-8") as f:
                 json.dump(self.data, f)
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Session save failed: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error in session save: {e}")
 
     def authenticate_user(self, user_id: str, email: str) -> bool:
         self.data.update(
