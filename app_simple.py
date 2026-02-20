@@ -1421,25 +1421,25 @@ def show_transform_page():
                 file_size = len(uploaded_file.getvalue()) / (1024 * 1024)
                 file_extension = uploaded_file.name.split('.')[-1].upper()
 
-            st.markdown(f"""
-            <div class="aurora-file-preview">
-                <div class="aurora-file-preview-header">
-                    <div class="aurora-file-info">
-                        <div class="aurora-file-icon">🎵</div>
-                        <div class="aurora-file-details">
-                            <h4>{uploaded_file.name}</h4>
-                            <p>{file_size:.1f} MB • {file_extension} Format</p>
+                st.markdown(f"""
+                <div class="aurora-file-preview">
+                    <div class="aurora-file-preview-header">
+                        <div class="aurora-file-info">
+                            <div class="aurora-file-icon">🎵</div>
+                            <div class="aurora-file-details">
+                                <h4>{uploaded_file.name}</h4>
+                                <p>{file_size:.1f} MB • {file_extension} Format</p>
+                            </div>
+                        </div>
+                        <div class="aurora-file-actions">
+                            <div class="aurora-file-action-btn">Ready to process</div>
                         </div>
                     </div>
-                    <div class="aurora-file-actions">
-                        <div class="aurora-file-action-btn">Ready to process</div>
-                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-               # Enhanced audio player
-               if file_size < 50:  # Only show player for files under 50MB
+                # Enhanced audio player
+                if file_size < 50:  # Only show player for files under 50MB
                     st.markdown('<div class="aurora-audio-player">', unsafe_allow_html=True)
                     st.audio(uploaded_file.getvalue())
                     st.markdown('</div>', unsafe_allow_html=True)
@@ -1605,7 +1605,7 @@ def show_content_library():
                             if item.get('transcript'):
                                 st.markdown("**Transcript Preview:**")
                                 st.text(item['transcript'][:200] +
-     "..." if len(item['transcript']) > 200 else item['transcript'])
+                                        "..." if len(item['transcript']) > 200 else item['transcript'])
 
                         with col2:
                             if st.button(f"🔄 Reprocess", key=f"reprocess_{item.get('id')}"):
@@ -1622,22 +1622,22 @@ def show_content_library():
                         if item.get('article'):
                             st.markdown("**📰 Article:**")
                             st.text_area(
-    "",
-    item['article'],
-    height=150,
-    disabled=True,
-    key=f"article_{
-        item.get('id')}")
+                                "",
+                                item['article'],
+                                height=150,
+                                disabled=True,
+                                key=f"article_{
+                                    item.get('id')}")
 
                         if item.get('social_content'):
                             st.markdown("**📱 Social Content:**")
                             st.text_area(
-    "",
-    item['social_content'],
-    height=100,
-    disabled=True,
-    key=f"social_{
-        item.get('id')}")
+                                "",
+                                item['social_content'],
+                                height=100,
+                                disabled=True,
+                                key=f"social_{
+                                    item.get('id')}")
             else:
                 st.info("📭 No content found. Process some audio files to see them here!")
         else:
@@ -2071,6 +2071,7 @@ def create_aurora_tabs(tab_data, default_tab=0):
 
 # === MAIN APP ===
 
+
 def show_main_app():
     """Main application interface with navigation"""
     # Create navigation
@@ -2093,6 +2094,7 @@ def show_main_app():
         show_prompts_page()
 
 # === ENTRY POINT ===
+
 
 def main():
     """Application entry point"""
