@@ -5,10 +5,12 @@ import time
 import streamlit as st
 from dotenv import load_dotenv
 
+from core.config import Config
 from core.content_display import show_results
 from core.file_upload import EnhancedLargeFileProcessor
 from core.pages import show_knowledge_base, show_prompts_page, show_settings_page
 from core.pipeline import process_pipeline
+from core.services import Services, set_services
 from core.styling import (
     apply_aurora_theme,
     create_aurora_header,
@@ -28,13 +30,18 @@ apply_aurora_theme()
 
 
 def init_session():
-    """Initialize simple session state."""
+    """Initialize simple session state and wire up the DI container."""
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     if "user_id" not in st.session_state:
         st.session_state.user_id = None
     if "user_email" not in st.session_state:
         st.session_state.user_email = None
+
+    # Initialise the service container once per process
+    if "services_initialised" not in st.session_state:
+        set_services(Services(config=Config.from_env()))
+        st.session_state.services_initialised = True
 
 
 def show_login():

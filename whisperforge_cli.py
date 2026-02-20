@@ -18,14 +18,9 @@ sys.path.insert(0, str(project_root))
 try:
     from dotenv import load_dotenv
 
-    from core.content_generation import (
-        generate_article,
-        generate_outline,
-        generate_wisdom,
-        transcribe_audio,
-    )
+    from core.content_generation import transcribe_audio
     from core.logging_config import logger
-    from core.utils import DEFAULT_PROMPTS
+    from core.pipeline_engine import NullListener, PipelineConfig, run_pipeline
 
     # Load environment variables
     load_dotenv()
@@ -34,6 +29,19 @@ except ImportError as e:
     print(f"Error importing WhisperForge modules: {e}")
     print("Make sure you're running this from the WhisperForge project directory.")
     sys.exit(1)
+
+
+class CLIPipelineListener(NullListener):
+    """Pipeline listener that prints progress to the terminal via click."""
+
+    def on_step_start(self, step_index, step_name, message):
+        click.echo(f"  [{step_index + 1}/6] {step_name}: {message}")
+
+    def on_step_complete(self, step_index, step_name, result):
+        click.echo(f"  [{step_index + 1}/6] {step_name}: done")
+
+    def on_error(self, step_index, error):
+        click.echo(f"  Error at step {step_index}: {error}", err=True)
 
 
 class CLIFile:
@@ -187,75 +195,72 @@ def run(
 
     # Create CLI file wrapper
     audio_file = CLIFile(input_file)
+    stem = Path(input_file).stem
 
     try:
-        # Step 1: Transcription
-        click.echo("🎵 Transcribing audio...")
-        transcript = transcribe_audio(audio_file)
-
-        if not transcript or "Error" in transcript:
-            click.echo(f"❌ Transcription failed: {transcript}", err=True)
-            sys.exit(1)
-
-        # Save transcript
-        transcript_file = output_dir / f"{Path(input_file).stem}_transcript.txt"
-        with open(transcript_file, "w", encoding="utf-8") as f:
-            f.write(transcript)
-
-        click.echo(f"✅ Transcript saved: {transcript_file}")
-
+        # --- Transcription-only shortcut ---
         if output_format == "transcript":
-            click.echo(f"📄 Transcript preview: {transcript[:200]}...")
+            click.echo("Transcribing audio...")
+            transcript = transcribe_audio(str(audio_file.file_path))
+            if not transcript:
+                click.echo("Transcription failed: empty result", err=True)
+                sys.exit(1)
+
+            transcript_file = output_dir / f"{stem}_transcript.txt"
+            with open(transcript_file, "w", encoding="utf-8") as f:
+                f.write(transcript)
+            click.echo(f"Transcript saved: {transcript_file}")
+            if verbose:
+                click.echo(f"Preview: {transcript[:200]}...")
             return
 
-        # Step 2: Generate content based on format
-        results = {}
+        # --- Full pipeline via engine ---
+        config = PipelineConfig(publish_to_notion=False)
+        listener = CLIPipelineListener() if verbose else NullListener()
 
-        if output_format in ["wisdom", "all"]:
-            click.echo("🧠 Generating wisdom extraction...")
-            wisdom = generate_wisdom(transcript, DEFAULT_PROMPTS["wisdom_extraction"])
-            if wisdom and "Error" not in wisdom:
-                wisdom_file = output_dir / f"{Path(input_file).stem}_wisdom.md"
-                with open(wisdom_file, "w", encoding="utf-8") as f:
-                    f.write(wisdom)
-                results["wisdom"] = wisdom_file
-                click.echo(f"✅ Wisdom saved: {wisdom_file}")
+        results = run_pipeline(
+            audio_file=audio_file,
+            config=config,
+            listener=listener,
+        )
 
-        if output_format in ["outline", "all"]:
-            click.echo("📋 Generating outline...")
-            outline = generate_outline(transcript, DEFAULT_PROMPTS["outline_creation"])
-            if outline and "Error" not in outline:
-                outline_file = output_dir / f"{Path(input_file).stem}_outline.md"
-                with open(outline_file, "w", encoding="utf-8") as f:
-                    f.write(outline)
-                results["outline"] = outline_file
-                click.echo(f"✅ Outline saved: {outline_file}")
+        if results is None:
+            click.echo("Pipeline failed -- see errors above.", err=True)
+            sys.exit(1)
 
-        if output_format in ["article", "all"]:
-            click.echo("📝 Generating article...")
-            article = generate_article(transcript, DEFAULT_PROMPTS["article_writing"])
-            if article and "Error" not in article:
-                article_file = output_dir / f"{Path(input_file).stem}_article.md"
-                with open(article_file, "w", encoding="utf-8") as f:
-                    f.write(article)
-                results["article"] = article_file
-                click.echo(f"✅ Article saved: {article_file}")
+        # --- Write results to files ---
+        output_map = {
+            "transcript": ("_transcript.txt", "transcript"),
+            "wisdom": ("_wisdom.md", "wisdom"),
+            "outline": ("_outline.md", "outline"),
+            "article": ("_article.md", "article"),
+            "social_content": ("_social.md", "social_content"),
+        }
+
+        saved_files: dict[str, Path] = {}
+        for key, (suffix, result_key) in output_map.items():
+            content = results.get(result_key)
+            if not content:
+                continue
+            if output_format not in ("all", key):
+                continue
+            out_path = output_dir / f"{stem}{suffix}"
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(content)
+            saved_files[key] = out_path
 
         # Summary
-        click.echo("\n🎉 Pipeline completed successfully!")
-        click.echo(f"📁 Output directory: {output_dir}")
-        click.echo(f"📄 Transcript: {transcript_file}")
+        click.echo("\nPipeline completed successfully!")
+        click.echo(f"Output directory: {output_dir}")
+        for content_type, file_path in saved_files.items():
+            click.echo(f"  {content_type}: {file_path}")
 
-        for content_type, file_path in results.items():
-            click.echo(f"📝 {content_type.title()}: {file_path}")
-
-        # Show preview
-        if verbose and transcript:
-            click.echo(f"\n📄 Transcript preview:\n{transcript[:300]}...")
+        if verbose and results.get("transcript"):
+            click.echo(f"\nTranscript preview:\n{results['transcript'][:300]}...")
 
     except Exception as e:
         logger.logger.error(f"CLI pipeline error: {e}")
-        click.echo(f"❌ Pipeline failed: {e}", err=True)
+        click.echo(f"Pipeline failed: {e}", err=True)
         sys.exit(1)
 
 
@@ -286,27 +291,24 @@ def transcribe(input_file: str, output: str | None):
     # Set up output file
     output_file = Path(output) if output else Path(f"{Path(input_file).stem}_transcript.txt")
 
-    # Create CLI file wrapper
-    audio_file = CLIFile(input_file)
-
     try:
-        click.echo("🎵 Transcribing audio...")
-        transcript = transcribe_audio(audio_file)
+        click.echo("Transcribing audio...")
+        transcript = transcribe_audio(input_file)
 
-        if not transcript or "Error" in transcript:
-            click.echo(f"❌ Transcription failed: {transcript}", err=True)
+        if not transcript:
+            click.echo("Transcription failed: empty result", err=True)
             sys.exit(1)
 
         # Save transcript
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(transcript)
 
-        click.echo(f"✅ Transcript saved: {output_file}")
-        click.echo(f"📄 Preview: {transcript[:200]}...")
+        click.echo(f"Transcript saved: {output_file}")
+        click.echo(f"Preview: {transcript[:200]}...")
 
     except Exception as e:
         logger.logger.error(f"CLI transcription error: {e}")
-        click.echo(f"❌ Transcription failed: {e}", err=True)
+        click.echo(f"Transcription failed: {e}", err=True)
         sys.exit(1)
 
 
