@@ -13,6 +13,7 @@ import time
 import streamlit as st
 
 from . import pipeline_engine
+from .exceptions import DatabaseError
 from .pipeline_engine import NullListener, PipelineConfig
 from .prompt_loader import load_custom_prompts
 from .supabase_integration import get_supabase_client
@@ -104,7 +105,7 @@ def process_pipeline(audio_file=None, transcript: str | None = None) -> dict | N
     # --- Obtain content store (Supabase) ---
     try:
         content_store = get_supabase_client()
-    except Exception:
+    except (DatabaseError, ImportError):
         logger.warning("Supabase client unavailable -- content will not be persisted")
         content_store = None
 

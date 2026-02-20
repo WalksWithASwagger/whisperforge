@@ -8,6 +8,7 @@ Includes the 2025 content display and pipeline status visualization.
 
 import streamlit as st
 
+from .exceptions import WhisperForgeError
 from .streaming_pipeline import get_pipeline_controller
 
 
@@ -257,7 +258,7 @@ def show_enhanced_streaming_status():
                 from .visible_thinking import render_thinking_stream
 
                 render_thinking_stream(thinking_container)
-            except Exception:
+            except (WhisperForgeError, ImportError):
                 st.info("\U0001f4ad AI is thinking... (thinking system loading)")
 
     # Main processing status

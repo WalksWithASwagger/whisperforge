@@ -10,6 +10,7 @@ from postgrest.exceptions import APIError
 
 from core.logging_config import logger
 
+from .exceptions import AuthenticationError, DatabaseError
 from .session_manager import get_session_manager
 from .utils import hash_password, legacy_hash_password, verify_password
 
@@ -34,7 +35,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, "Failed to initialize Supabase")
             self.supabase_client = None
-        except Exception as e:
+        except DatabaseError as e:
             logger.log_error(e, "Unexpected error initializing Supabase")
             self.supabase_client = None
 
@@ -92,7 +93,7 @@ class AuthWrapper:
                         logger.info(f"Password migrated to bcrypt for user: {email}")
                     except (APIError, ValueError) as e:
                         logger.log_error(e, "Failed to migrate password")
-                    except Exception as e:
+                    except DatabaseError as e:
                         logger.log_error(e, "Unexpected error migrating password")
 
             if password_valid:
@@ -116,7 +117,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, f"Authentication error for {email}")
             return False
-        except Exception as e:
+        except (AuthenticationError, DatabaseError) as e:
             logger.log_error(e, f"Unexpected authentication error for {email}")
             return False
 
@@ -161,7 +162,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, f"Registration error for {email}")
             return False
-        except Exception as e:
+        except (AuthenticationError, DatabaseError) as e:
             logger.log_error(e, f"Unexpected registration error for {email}")
             return False
 
@@ -178,7 +179,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, "Logout error")
             return False
-        except Exception as e:
+        except (AuthenticationError, DatabaseError) as e:
             logger.log_error(e, "Unexpected logout error")
             return False
 
@@ -220,7 +221,7 @@ class AuthWrapper:
 
         except (APIError, ValueError) as e:
             logger.log_error(e, "Failed to load user preferences")
-        except Exception as e:
+        except DatabaseError as e:
             logger.log_error(e, "Unexpected error loading user preferences")
 
     def get_api_keys(self) -> dict[str, str]:
@@ -257,7 +258,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, f"Error updating API key {key_name}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.log_error(e, f"Unexpected error updating API key {key_name}")
             return False
 
@@ -297,7 +298,7 @@ class AuthWrapper:
         except (APIError, ValueError) as e:
             logger.log_error(e, f"Error updating custom prompt {prompt_type}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.log_error(e, f"Unexpected error updating custom prompt {prompt_type}")
             return False
 

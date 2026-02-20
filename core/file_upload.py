@@ -19,6 +19,7 @@ import streamlit as st
 
 from .constants import CHUNK_SUCCESS_THRESHOLD_STANDARD, MAX_PARALLEL_CHUNKS_STANDARD, MAX_UPLOAD_SIZE_BYTES
 from .content_generation import ContentGenerationError
+from .exceptions import APIClientError, FileProcessingError
 from .large_file_processor import EnhancedLargeFileProcessor  # noqa: F401 - re-export
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ class FileUploadManager:
             except (ContentGenerationError, openai.APIError, OSError) as e:
                 progress_bar.progress(1.0, f"\u274c Error: {e!s}")
                 return {"success": False, "error": str(e)}
-            except Exception as e:
+            except (FileProcessingError, APIClientError) as e:
                 progress_bar.progress(1.0, f"\u274c Unexpected error: {e!s}")
                 return {"success": False, "error": str(e)}
 
@@ -196,7 +197,7 @@ class FileUploadManager:
             logger.exception("Error in large file processing:")
             st.error(f"\u274c Large file processing failed: {e!s}")
             return {"success": False, "error": str(e)}
-        except Exception as e:
+        except (FileProcessingError, APIClientError) as e:
             logger.exception("Unexpected error in large file processing:")
             st.error(f"\u274c Unexpected large file processing error: {e!s}")
             return {"success": False, "error": str(e)}
@@ -255,7 +256,7 @@ class FileUploadManager:
         except OSError as e:
             logger.exception("Error creating audio chunks:")
             return {"success": False, "error": f"Failed to create chunks: {e!s}"}
-        except Exception as e:
+        except FileProcessingError as e:
             logger.exception("Unexpected error creating audio chunks:")
             return {"success": False, "error": f"Unexpected error creating chunks: {e!s}"}
 
@@ -290,7 +291,7 @@ class FileUploadManager:
                 chunk_statuses[chunk_index] = "error"
                 logger.exception(f"Error transcribing chunk {chunk_index}:")
                 return chunk_index, f"Error: {e!s}", False
-            except Exception as e:
+            except APIClientError as e:
                 chunk_statuses[chunk_index] = "error"
                 logger.exception(f"Unexpected error transcribing chunk {chunk_index}:")
                 return chunk_index, f"Unexpected error: {e!s}", False

@@ -7,6 +7,7 @@ concatenation.
 
 import logging
 
+from .exceptions import FileProcessingError
 from .path_safety import safe_path
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ def load_prompt_from_file(prompt_type: str, user_id: str = None) -> str:
         logger.error(f"No prompt found for type: {prompt_type}")
         return f"Please provide content for {prompt_type.replace('_', ' ')}."
 
-    except Exception as e:
+    except (FileProcessingError, OSError) as e:
         logger.error(f"Error loading prompt {prompt_type}: {e}")
         return DEFAULT_PROMPTS.get(prompt_type, f"Error loading {prompt_type} prompt.")
 

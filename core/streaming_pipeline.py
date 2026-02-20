@@ -19,6 +19,7 @@ from .content_generation import (
     generate_wisdom,
     transcribe_audio,
 )
+from .exceptions import DatabaseError, PipelineError
 from .visible_thinking import thinking_error, thinking_step_complete, thinking_step_start
 
 
@@ -94,7 +95,7 @@ class StreamingPipelineController:
             st.session_state.pipeline_active = False
             st.error(f"Error in {step_id}: {error_msg}")
             return False
-        except Exception as e:
+        except PipelineError as e:
             error_msg = str(e)
             st.session_state.pipeline_errors[step_id] = error_msg
             st.session_state.pipeline_active = False
@@ -129,7 +130,7 @@ class StreamingPipelineController:
         except (ContentGenerationError, openai.APIError, ValueError) as e:
             thinking_error(step_id, str(e))
             raise
-        except Exception as e:
+        except PipelineError as e:
             thinking_error(step_id, f"Unexpected: {e!s}")
             raise
 
@@ -294,7 +295,7 @@ class StreamingPipelineController:
 
         except APIError as e:
             return f"Database save failed: {str(e)}"
-        except Exception as e:
+        except DatabaseError as e:
             return f"Unexpected database error: {str(e)}"
 
     @property

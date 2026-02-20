@@ -44,7 +44,7 @@ class SessionManager:
             except (json.JSONDecodeError, OSError, KeyError) as e:
                 logger.error(f"Session load failed: {e}")
             except Exception as e:
-                logger.error(f"Unexpected error in session load: {e}")
+                logger.warning(f"Unexpected error type ({type(e).__name__}) in session load: {e}")
 
     def _save(self):
         try:
@@ -54,7 +54,7 @@ class SessionManager:
         except OSError as e:
             logger.error(f"Session save failed: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error in session save: {e}")
+            logger.warning(f"Unexpected error type ({type(e).__name__}) in session save: {e}")
 
     def authenticate_user(self, user_id: str, email: str) -> bool:
         self.data.update(

@@ -23,6 +23,7 @@ from .content_generation import (
     generate_wisdom,
     transcribe_audio,
 )
+from .exceptions import DatabaseError
 from .notion_integration import create_notion_page, generate_ai_title
 from .prompt_loader import get_prompt_for_step, load_custom_prompts, load_template
 
@@ -292,7 +293,7 @@ def run_pipeline(
                     "created_at": datetime.now().isoformat(),
                 }
                 content_store.save_content(config.user_id, content_data)
-        except Exception as exc:
+        except DatabaseError as exc:
             logger.warning("Content saved locally but database save failed: %s", exc)
 
         listener.on_step_progress(5, 100, 100, "Pipeline complete! All content generated successfully.")

@@ -14,7 +14,7 @@ from .constants import (
     MAX_TOKENS_DEFAULT,
     TRANSCRIPT_PREVIEW_LENGTH,
 )
-from .exceptions import PipelineError
+from .exceptions import APIClientError, PipelineError
 from .prompts import get_enhanced_prompt
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ def _chat_completion(system_prompt: str, user_content: str, max_tokens: int = MA
             return _call_provider(provider, system_prompt, user_content, max_tokens)
         except ContentGenerationError:
             raise
-        except Exception as e:
+        except (APIClientError, OSError) as e:
             logger.warning("Provider '%s' failed: %s. Trying next provider.", provider, e)
             last_error = e
 

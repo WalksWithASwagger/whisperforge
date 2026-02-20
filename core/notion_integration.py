@@ -17,6 +17,7 @@ from .constants import (
     NOTION_TITLE_MAX_TOKENS,
 )
 from .content_generation import ContentGenerationError, _chat_completion
+from .exceptions import APIClientError
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def generate_ai_title(transcript: str) -> str:
         return title.strip().replace('"', "").replace("'", "")[:NOTION_TITLE_MAX_LENGTH]
     except ContentGenerationError:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-    except Exception:
+    except APIClientError:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
 
@@ -77,7 +78,7 @@ def create_notion_page(title: str, content_data: dict[str, str]) -> str | None:
     except (ContentGenerationError, OSError) as e:
         logger.error(f"Notion publishing failed: {e!s}")
         return None
-    except Exception as e:
+    except APIClientError as e:
         logger.error(f"Unexpected error in Notion publishing: {e!s}")
         return None
 

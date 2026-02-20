@@ -29,6 +29,7 @@ from .constants import (
     MAX_PARALLEL_CHUNKS_FFMPEG,
     MAX_UPLOAD_SIZE_BYTES,
 )
+from .exceptions import APIClientError, FileProcessingError
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ class EnhancedLargeFileProcessor:
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"error": f"Failed to get audio info: {e!s}"}
-        except Exception as e:
+        except FileProcessingError as e:
             return {"error": f"Unexpected error getting audio info: {e!s}"}
 
     def validate_file(self, uploaded_file) -> dict:
@@ -249,7 +250,7 @@ class EnhancedLargeFileProcessor:
 
         except (openai.APIError, OSError) as e:
             return {"success": False, "error": f"Standard processing failed: {e!s}"}
-        except Exception as e:
+        except (APIClientError, FileProcessingError) as e:
             return {"success": False, "error": f"Unexpected standard processing error: {e!s}"}
 
     def _process_with_ffmpeg_chunking(self, uploaded_file) -> dict:
@@ -301,7 +302,7 @@ class EnhancedLargeFileProcessor:
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"success": False, "error": f"FFmpeg processing failed: {e!s}"}
-        except Exception as e:
+        except (FileProcessingError, APIClientError) as e:
             return {"success": False, "error": f"Unexpected FFmpeg processing error: {e!s}"}
 
         finally:
@@ -364,7 +365,7 @@ class EnhancedLargeFileProcessor:
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
             return {"success": False, "error": f"Chunk creation failed: {e!s}"}
-        except Exception as e:
+        except FileProcessingError as e:
             return {"success": False, "error": f"Unexpected chunk creation error: {e!s}"}
 
     def _transcribe_chunks_parallel(self, chunks: list[dict]) -> dict:
@@ -387,7 +388,7 @@ class EnhancedLargeFileProcessor:
             except (openai.APIError, OSError) as e:
                 logger.error(f"Failed to transcribe chunk {chunk_info['index']}: {e}")
                 return chunk_info["index"], f"[Transcription failed for chunk {chunk_info['index']}]", False
-            except Exception as e:
+            except APIClientError as e:
                 logger.error(f"Unexpected error transcribing chunk {chunk_info['index']}: {e}")
                 return chunk_info["index"], f"[Unexpected error for chunk {chunk_info['index']}]", False
 

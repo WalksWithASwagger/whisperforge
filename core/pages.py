@@ -11,6 +11,7 @@ import streamlit as st
 from postgrest.exceptions import APIError
 
 from .content_display import create_enhanced_aurora_content_card
+from .exceptions import APIClientError, DatabaseError, FileProcessingError
 from .supabase_integration import get_supabase_client
 from .utils import safe_path
 
@@ -169,7 +170,7 @@ def show_settings_page():
                         st.error("Supabase connection failed")
                 except APIError as e:
                     st.error(f"Supabase error: {e}")
-                except Exception as e:
+                except DatabaseError as e:
                     st.error(f"Unexpected Supabase error: {e}")
 
                 try:
@@ -183,7 +184,7 @@ def show_settings_page():
                         st.warning("Notion not configured")
                 except OSError as e:
                     st.error(f"Notion error: {e}")
-                except Exception as e:
+                except APIClientError as e:
                     st.error(f"Unexpected Notion error: {e}")
 
 
@@ -219,7 +220,7 @@ def show_knowledge_base():
                 st.info("Knowledge base directory not found")
         except OSError as e:
             st.error(f"Error reading knowledge base: {e}")
-        except Exception as e:
+        except FileProcessingError as e:
             st.error(f"Unexpected error reading knowledge base: {e}")
 
     with tabs[1]:
@@ -253,7 +254,7 @@ def show_knowledge_base():
                         st.error(f"Invalid filename: {e}")
                     except OSError as e:
                         st.error(f"Error saving knowledge: {e}")
-                    except Exception as e:
+                    except FileProcessingError as e:
                         st.error(f"Unexpected error saving knowledge: {e}")
             else:
                 st.error("Please provide both title and content")
@@ -277,7 +278,7 @@ def show_knowledge_base():
                                     st.rerun()
                                 except (ValueError, OSError) as e:
                                     st.error(f"Error deleting file: {e}")
-                                except Exception as e:
+                                except FileProcessingError as e:
                                     st.error(f"Unexpected error deleting file: {e}")
                 else:
                     st.info("No knowledge files found")
@@ -285,7 +286,7 @@ def show_knowledge_base():
                 st.info("Knowledge base directory not found")
         except OSError as e:
             st.error(f"Error managing files: {e}")
-        except Exception as e:
+        except FileProcessingError as e:
             st.error(f"Unexpected error managing files: {e}")
 
 
@@ -325,7 +326,7 @@ def show_prompts_page():
                     current_prompt = f"# {prompt_name} Prompt\n\nDefault prompt for {prompt_key} generation."
             except OSError as e:
                 st.error(f"Error loading prompt: {e}")
-            except Exception as e:
+            except FileProcessingError as e:
                 st.error(f"Unexpected error loading prompt: {e}")
 
             new_prompt = st.text_area(
@@ -345,7 +346,7 @@ def show_prompts_page():
                         st.success(f"{prompt_name} prompt saved!")
                     except OSError as e:
                         st.error(f"Error saving prompt: {e}")
-                    except Exception as e:
+                    except FileProcessingError as e:
                         st.error(f"Unexpected error saving prompt: {e}")
 
             with col2:
