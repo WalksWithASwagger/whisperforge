@@ -292,7 +292,7 @@ Title:"""
 
         title = generate_content(prompt, "OpenAI", "gpt-4", {})
         return title.strip().replace('"', '').replace("'", "")[:60]
-    except BaseException:
+    except Exception:
         return f"WhisperForge Content - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
 # === SIMPLE AUTHENTICATION ===
@@ -498,8 +498,8 @@ def process_audio_pipeline(audio_file):
                 )
 
             transcript = transcribe_audio(tmp_file_path)
-            if not transcript or "Error" in transcript:
-                st.error(f"Transcription failed: {transcript}")
+            if not transcript:
+                st.error("Transcription failed: empty result")
                 return None
 
             results['transcript'] = transcript

@@ -302,7 +302,7 @@ def test_streamlit_compatibility(result):
                 result.pass_test("Streamlit version compatibility")
             else:
                 result.warn_test("Streamlit version", f"Version {version} may be outdated")
-        except BaseException:
+        except (ValueError, AttributeError):
             result.warn_test("Streamlit version", "Could not check version")
 
     except Exception as e:

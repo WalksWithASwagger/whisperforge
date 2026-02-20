@@ -9,151 +9,124 @@ from typing import Dict, Optional
 
 from .utils import get_openai_client, get_prompt, DEFAULT_PROMPTS, get_enhanced_prompt
 
-# Configure logging
 logger = logging.getLogger(__name__)
+
+AI_MODEL = os.getenv("GPT_MODEL", "gpt-4o")
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "whisper-1")
+
+
+class ContentGenerationError(Exception):
+    """Raised when content generation fails"""
+    pass
+
+
+def _get_client():
+    """Get OpenAI client or raise if not configured"""
+    client = get_openai_client()
+    if not client:
+        raise ContentGenerationError("OpenAI API key is not configured.")
+    return client
 
 
 def generate_wisdom(transcript: str, custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Extract key insights and wisdom from a transcript"""
-    try:
-        # Use enhanced prompt system with automatic KB concatenation
-        system_prompt = custom_prompt or get_enhanced_prompt("wisdom_extraction", knowledge_base)
+    system_prompt = custom_prompt or get_enhanced_prompt(
+        "wisdom_extraction", knowledge_base)
 
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured."
+    client = _get_client()
+    response = client.chat.completions.create(
+        model=AI_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
+        ],
+        max_tokens=1500
+    )
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Here's the transcription to analyze:\n\n{transcript}"}
-            ],
-            max_tokens=1500
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        logger.exception("Error in wisdom generation:")
-        return f"Error generating wisdom: {str(e)}"
+    return response.choices[0].message.content
 
 
 def generate_outline(transcript: str, wisdom: str, custom_prompt: str = None,
                      knowledge_base: Dict[str, str] = None) -> str:
     """Create a structured outline based on transcript and wisdom"""
-    try:
-        # Use enhanced prompt system with automatic KB concatenation
-        system_prompt = custom_prompt or get_enhanced_prompt("outline_creation", knowledge_base)
+    system_prompt = custom_prompt or get_enhanced_prompt(
+        "outline_creation", knowledge_base)
 
-        content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
+    content = f"TRANSCRIPT:\n{transcript}\n\nWISDOM:\n{wisdom}"
 
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured."
+    client = _get_client()
+    response = client.chat.completions.create(
+        model=AI_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content}
+        ],
+        max_tokens=1500
+    )
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content}
-            ],
-            max_tokens=1500
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        logger.exception("Error in outline generation:")
-        return f"Error generating outline: {str(e)}"
+    return response.choices[0].message.content
 
 
 def generate_article(transcript: str, wisdom: str, outline: str, custom_prompt: str = None,
                      knowledge_base: Dict[str, str] = None) -> str:
     """Generate a comprehensive article based on transcript, wisdom, and outline"""
-    try:
-        # Use enhanced prompt system with automatic KB concatenation
-        system_prompt = custom_prompt or get_enhanced_prompt("article_writing", knowledge_base)
+    system_prompt = custom_prompt or get_enhanced_prompt(
+        "article_writing", knowledge_base)
 
-        # Limit transcript length to avoid token limits
-        transcript_excerpt = transcript[:2000] if len(transcript) > 2000 else transcript
-        content = f"TRANSCRIPT:\n{transcript_excerpt}\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
+    transcript_excerpt = transcript[:2000] if len(
+        transcript) > 2000 else transcript
+    content = f"TRANSCRIPT:\n{transcript_excerpt}\n\nWISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}"
 
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured."
+    client = _get_client()
+    response = client.chat.completions.create(
+        model=AI_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content}
+        ],
+        max_tokens=2000
+    )
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content}
-            ],
-            max_tokens=2000
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        logger.exception("Error in article generation:")
-        return f"Error generating article: {str(e)}"
+    return response.choices[0].message.content
 
 
 def generate_social_content(wisdom: str, outline: str, article: str,
                             custom_prompt: str = None, knowledge_base: Dict[str, str] = None) -> str:
     """Generate 5 distinct social media posts"""
-    try:
-        # Use enhanced prompt system with automatic KB concatenation
-        system_prompt = custom_prompt or get_enhanced_prompt("social_media", knowledge_base)
+    system_prompt = custom_prompt or get_enhanced_prompt(
+        "social_media", knowledge_base)
 
-        # Include article in content for richer context
-        article_excerpt = article[:1500] if len(article) > 1500 else article
-        content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}\n\nARTICLE:\n{article_excerpt}"
+    article_excerpt = article[:1500] if len(article) > 1500 else article
+    content = f"WISDOM:\n{wisdom}\n\nOUTLINE:\n{outline}\n\nARTICLE:\n{article_excerpt}"
 
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI API key is not configured."
+    client = _get_client()
+    response = client.chat.completions.create(
+        model=AI_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content}
+        ],
+        max_tokens=1500
+    )
 
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content}
-            ],
-            max_tokens=1500
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-        logger.exception("Error in social content generation:")
-        return f"Error generating social content: {str(e)}"
+    return response.choices[0].message.content
 
 
 def transcribe_audio(audio_file) -> str:
     """Transcribe audio using OpenAI Whisper - handles both file paths and file objects"""
-    try:
-        openai_client = get_openai_client()
-        if not openai_client:
-            return "Error: OpenAI client not available."
+    client = _get_client()
 
-        # Handle both file paths (strings) and file objects
-        if isinstance(audio_file, str):
-            # It's a file path, open it
-            with open(audio_file, 'rb') as f:
-                response = openai_client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=f
-                )
-        else:
-            # It's a file object, reset pointer and use directly
-            audio_file.seek(0)
-            response = openai_client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
+    if isinstance(audio_file, str):
+        with open(audio_file, 'rb') as f:
+            response = client.audio.transcriptions.create(
+                model=WHISPER_MODEL,
+                file=f
             )
+    else:
+        audio_file.seek(0)
+        response = client.audio.transcriptions.create(
+            model=WHISPER_MODEL,
+            file=audio_file
+        )
 
-        return response.text
-
-    except Exception as e:
-        return f"Transcription failed: {str(e)}"
+    return response.text
