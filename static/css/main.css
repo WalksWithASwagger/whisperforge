@@ -48,6 +48,13 @@
     --aurora-font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
+/* Hide Streamlit default header bar */
+header[data-testid="stHeader"],
+.stAppHeader {
+    background: transparent !important;
+    backdrop-filter: none !important;
+}
+
 /* Global Styles */
 .stApp {
     background: linear-gradient(135deg, var(--aurora-bg-dark) 0%, var(--aurora-bg-darker) 100%);
