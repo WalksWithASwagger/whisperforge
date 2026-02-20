@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """WhisperForge launcher - sets up the environment if needed and starts the app."""
 
+import os
 import subprocess
 import sys
-import os
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 VENV_DIR = os.path.join(PROJECT_DIR, ".venv")
@@ -46,7 +46,7 @@ def start_app(extra_args):
     print("[whisperforge] Starting WhisperForge...")
     print(f"[whisperforge] Command: {' '.join(cmd)}")
     print("-" * 50)
-    os.execv(STREAMLIT, cmd)
+    sys.exit(subprocess.run(cmd).returncode)
 
 
 def main():
@@ -84,7 +84,7 @@ def main():
     st_args = []
     if "--" in args:
         idx = args.index("--")
-        st_args = args[idx + 1:]
+        st_args = args[idx + 1 :]
 
     # Ensure environment is ready
     if not venv_ready():
