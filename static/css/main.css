@@ -140,12 +140,32 @@ header[data-testid="stHeader"],
     font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.3s ease;
+    user-select: none;
 }
 
-.pipeline-badge:hover {
-    border-color: var(--aurora-border-hover);
-    box-shadow: var(--aurora-glow-subtle);
+/* Completed badge - results available, clickable */
+.pipeline-badge.badge-completed {
+    border-color: var(--aurora-primary);
+    background: rgba(64, 224, 208, 0.15);
+    color: var(--aurora-primary);
+    box-shadow: 0 0 8px rgba(64, 224, 208, 0.2);
+}
+
+.pipeline-badge.badge-completed:hover {
+    border-color: var(--aurora-secondary);
+    box-shadow: 0 0 16px rgba(64, 224, 208, 0.4);
     transform: translateY(-2px);
+    background: rgba(64, 224, 208, 0.25);
+}
+
+/* Pending badge - no results yet */
+.pipeline-badge.badge-pending {
+    opacity: 0.5;
+    border-color: rgba(64, 224, 208, 0.1);
+}
+
+.pipeline-badge.badge-pending:hover {
+    opacity: 0.6;
 }
 
 /* Completion Celebration */

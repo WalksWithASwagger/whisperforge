@@ -997,77 +997,66 @@ def show_results(results):
     </div>
     """, unsafe_allow_html=True)
 
-    # Prepare tab data for custom Aurora tabs
-    tab_data = []
+    # Define result sections with anchor IDs matching the header badge keys
+    result_sections = [
+        ('transcript', '🎙️ Transcript', results.get('transcript', '')),
+        ('wisdom', '💎 Wisdom', results.get('wisdom', '')),
+        ('article', '📰 Article', results.get('article', '')),
+        ('social_content', '📱 Social Content', results.get('social_content', '')),
+    ]
 
-    # Add main content tabs
-    if results.get('transcript'):
-        tab_data.append({
-            'title': 'Transcript',
-            'icon': '🎙️',
-            'type': 'transcript',
-            'content': results['transcript']
-        })
+    # Add Notion link section
+    if results.get('notion_url'):
+        result_sections.append(
+            ('notion_url', '🌌 Notion', f"[View in Notion]({results['notion_url']})")
+        )
 
-    if results.get('wisdom'):
-        tab_data.append({
-            'title': 'Wisdom',
-            'icon': '💎',
-            'type': 'wisdom',
-            'content': results['wisdom']
-        })
-
+    # Add outline if present
     if results.get('outline'):
-        tab_data.append({
-            'title': 'Outline',
-            'icon': '📋',
-            'type': 'outline',
-            'content': results['outline']
-        })
+        result_sections.insert(2, ('outline', '📋 Outline', results['outline']))
 
-    if results.get('article'):
-        tab_data.append({
-            'title': 'Article',
-            'icon': '📰',
-            'type': 'article',
-            'content': results['article']
-        })
-
-    if results.get('social_content'):
-        tab_data.append({
-            'title': 'Social',
-            'icon': '📱',
-            'type': 'social',
-            'content': results['social_content']
-        })
-
-    # Add Editor tab if editor content exists
+    # Add editor section if present
     if results.get('editor_notes') or results.get('revised_content'):
         editor_content = ""
-
         if results.get('editor_notes'):
             editor_content += "=== EDITOR NOTES ===\n\n"
             for section, notes in results['editor_notes'].items():
                 if notes:
                     editor_content += f"## {section.title()} Notes:\n{notes}\n\n"
-
         if results.get('revised_content'):
             editor_content += "\n=== REVISED CONTENT ===\n\n"
             for section, content in results['revised_content'].items():
                 if content:
                     editor_content += f"## Revised {section.title()}:\n{content}\n\n"
+        result_sections.append(('editor', '📝 Editor Review', editor_content))
 
-        tab_data.append({
-            'title': 'Editor Review',
-            'icon': '📝',
-            'type': 'editor',
-            'content': editor_content
-        })
+    # Render each section with an anchor ID for badge scroll-to linking
+    has_content = False
+    for key, title, content in result_sections:
+        if not content:
+            continue
+        has_content = True
+        # Anchor div for scroll targeting from header badges
+        st.markdown(f'<div id="result-{key}"></div>', unsafe_allow_html=True)
+        word_count = len(str(content).split())
+        with st.expander(f"{title} ({word_count} words)", expanded=False):
+            col1, col2, col3 = st.columns([1, 1, 3])
+            with col1:
+                if st.button("📋 Copy", key=f"copy_{key}", use_container_width=True):
+                    st.code(content, language='text')
+                    st.success("Content displayed above - copy with Ctrl+A, Ctrl+C")
+            with col2:
+                st.download_button(
+                    label="💾 Download",
+                    data=content,
+                    file_name=f"{key}.txt",
+                    mime="text/plain",
+                    key=f"download_{key}",
+                    use_container_width=True
+                )
+            st.markdown(content)
 
-    # Display the custom Aurora tabs
-    if tab_data:
-        create_aurora_tabs(tab_data, default_tab=0)
-    else:
+    if not has_content:
         st.warning("No content available to display.")
 
     # Add export all functionality
@@ -1237,20 +1226,44 @@ def export_to_pdf(results):
 
 def create_aurora_navigation():
     """Beautiful Aurora bioluminescent navigation - Clean and professional"""
-    st.markdown("""
-    <div class="aurora-header">
-        <div class="aurora-glow"></div>
-        <h1 class="aurora-title">WhisperForge Aurora</h1>
-        <p class="aurora-subtitle">Transform Audio into Structured Content with AI</p>
-        <div class="aurora-pipeline">
-            <span class="pipeline-badge">Transcription</span>
-            <span class="pipeline-badge">Wisdom</span>
-            <span class="pipeline-badge">Article</span>
-            <span class="pipeline-badge">Social</span>
-            <span class="pipeline-badge">Notion</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Determine badge states based on whether results exist
+    results = st.session_state.get('current_results', {})
+    badge_map = [
+        ('🎤', 'Transcription', 'transcript'),
+        ('💡', 'Wisdom', 'wisdom'),
+        ('📰', 'Article', 'article'),
+        ('📱', 'Social', 'social_content'),
+        ('🌌', 'Notion', 'notion_url'),
+    ]
+
+    badge_spans = []
+    for icon, label, key in badge_map:
+        has_result = bool(results.get(key))
+        state_class = "badge-completed" if has_result else "badge-pending"
+        if has_result:
+            scroll_js = "document.getElementById('result-" + key + \
+                "').scrollIntoView({behavior:'smooth',block:'start'})"
+            badge_spans.append(
+                '<span class="pipeline-badge ' + state_class + '" onclick="' + scroll_js + '" title="Click to view">'
+                + icon + ' ' + label + '</span>'
+            )
+        else:
+            badge_spans.append(
+                '<span class="pipeline-badge ' + state_class + '" title="No results yet">'
+                + icon + ' ' + label + '</span>'
+            )
+
+    badges_html = " ".join(badge_spans)
+
+    header_html = (
+        '<div class="aurora-header">'
+        '<div class="aurora-glow"></div>'
+        '<h1 class="aurora-title">WhisperForge Aurora</h1>'
+        '<p class="aurora-subtitle">Transform Audio into Structured Content with AI</p>'
+        '<div class="aurora-pipeline">' + badges_html + '</div>'
+        '</div>'
+    )
+    st.markdown(header_html, unsafe_allow_html=True)
 
     # Clean navigation tabs without emojis
     tabs = st.tabs([
