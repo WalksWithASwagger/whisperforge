@@ -16,6 +16,7 @@ from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
 from .constants import DEFAULT_ANALYTICS_DAYS, DEFAULT_CONTENT_QUERY_LIMIT, DEFAULT_USAGE_QUOTA_MINUTES
+from .exceptions import DatabaseError
 from .utils import hash_password
 
 # Load environment variables
@@ -60,7 +61,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Supabase connection test failed: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error in Supabase connection test: {e}")
             return False
 
@@ -90,7 +91,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error creating user: {e}")
             raise
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error creating user: {e}")
             raise
 
@@ -102,7 +103,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching user: {e}")
             return None
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching user: {e}")
             return None
 
@@ -114,7 +115,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching user by email: {e}")
             return None
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching user by email: {e}")
             return None
 
@@ -130,7 +131,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error updating user usage: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error updating user usage: {e}")
             return False
 
@@ -162,7 +163,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error saving content: {e}")
             return None
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error saving content: {e}")
             return None
 
@@ -181,7 +182,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching user content: {e}")
             return []
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching user content: {e}")
             return []
 
@@ -201,7 +202,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error saving API keys: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error saving API keys: {e}")
             return False
 
@@ -215,7 +216,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching API keys: {e}")
             return {}
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching API keys: {e}")
             return {}
 
@@ -257,7 +258,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error saving knowledge base file: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error saving knowledge base file: {e}")
             return False
 
@@ -276,7 +277,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching knowledge base: {e}")
             return {}
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching knowledge base: {e}")
             return {}
 
@@ -318,7 +319,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error saving custom prompt: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error saving custom prompt: {e}")
             return False
 
@@ -335,7 +336,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching custom prompts: {e}")
             return {}
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching custom prompts: {e}")
             return {}
 
@@ -360,7 +361,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error logging pipeline execution: {e}")
             return False
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error logging pipeline execution: {e}")
             return False
 
@@ -392,7 +393,7 @@ class SupabaseClient:
         except APIError as e:
             logger.error(f"Error fetching user analytics: {e}")
             return {}
-        except Exception as e:
+        except DatabaseError as e:
             logger.error(f"Unexpected error fetching user analytics: {e}")
             return {}
 
@@ -407,89 +408,8 @@ class SupabaseClient:
         return Counter(values).most_common(1)[0][0]
 
 
-# MCP Integration Functions
-class MCPSupabaseIntegration:
-    """
-    Model Context Protocol integration for Supabase
-    Provides AI models with context about user data and preferences
-    """
-
-    def __init__(self, supabase_client: SupabaseClient):
-        self.db = supabase_client
-
-    def get_user_context(self, user_id: int) -> dict[str, Any]:
-        """Get comprehensive user context for AI models"""
-        try:
-            # Get user profile
-            user = self.db.get_user(user_id)
-            if not user:
-                return {}
-
-            # Get user's knowledge base
-            knowledge_base = self.db.get_user_knowledge_base(user_id)
-
-            # Get user's custom prompts
-            custom_prompts = self.db.get_user_prompts(user_id)
-
-            # Get recent content history (for style learning)
-            recent_content = self.db.get_user_content(user_id, limit=10)
-
-            # Get user analytics
-            analytics = self.db.get_user_analytics(user_id, days=30)
-
-            context = {
-                "user_profile": {
-                    "subscription_tier": user.get("subscription_tier", "free"),
-                    "usage_quota": user.get("usage_quota", 60),
-                    "usage_current": user.get("usage_current", 0),
-                    "created_at": user.get("created_at"),
-                },
-                "knowledge_base": knowledge_base,
-                "custom_prompts": custom_prompts,
-                "content_history": recent_content,
-                "analytics": analytics,
-                "preferences": {
-                    "preferred_ai_provider": analytics.get("ai_providers_used", ["openai"])[0]
-                    if analytics.get("ai_providers_used")
-                    else "openai",
-                    "most_used_model": analytics.get("most_used_model", "gpt-3.5-turbo"),
-                },
-            }
-
-            return context
-        except APIError as e:
-            logger.error(f"Error getting user context for MCP: {e}")
-            return {}
-        except Exception as e:
-            logger.error(f"Unexpected error getting user context for MCP: {e}")
-            return {}
-
-    def update_context_from_interaction(self, user_id: int, interaction_data: dict[str, Any]) -> bool:
-        """Update user context based on AI interaction results"""
-        try:
-            # Log the interaction
-            self.db.log_pipeline_execution(user_id, interaction_data)
-
-            # Update usage if provided
-            if "duration_seconds" in interaction_data:
-                self.db.update_user_usage(user_id, interaction_data["duration_seconds"])
-
-            # Save generated content if provided
-            if "content" in interaction_data:
-                self.db.save_content(user_id, interaction_data["content"])
-
-            return True
-        except APIError as e:
-            logger.error(f"Error updating context from interaction: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error updating context from interaction: {e}")
-            return False
-
-
 # Global instance
 _supabase_client = None
-_mcp_integration = None
 
 
 def get_supabase_client() -> SupabaseClient:
@@ -500,9 +420,12 @@ def get_supabase_client() -> SupabaseClient:
     return _supabase_client
 
 
-def get_mcp_integration() -> MCPSupabaseIntegration:
-    """Get or create MCP integration instance"""
-    global _mcp_integration
-    if _mcp_integration is None:
-        _mcp_integration = MCPSupabaseIntegration(get_supabase_client())
-    return _mcp_integration
+# Re-exports for backward compatibility (extracted to core.mcp_integration)
+from .mcp_integration import MCPSupabaseIntegration, get_mcp_integration  # noqa: E402
+
+__all__ = [
+    "SupabaseClient",
+    "get_supabase_client",
+    "MCPSupabaseIntegration",
+    "get_mcp_integration",
+]
