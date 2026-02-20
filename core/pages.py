@@ -10,10 +10,29 @@ import os
 import streamlit as st
 from postgrest.exceptions import APIError
 
+from .auth_wrapper import get_auth
 from .content_display import create_enhanced_aurora_content_card
 from .exceptions import APIClientError, DatabaseError, FileProcessingError
 from .supabase_integration import get_supabase_client
 from .utils import safe_path
+
+
+def _get_api_key(env_var: str) -> str:
+    """Get API key from auth session cache (if authenticated) or environment."""
+    auth = get_auth()
+    if auth.is_authenticated():
+        stored = auth.get_api_keys()
+        if env_var in stored:
+            return stored[env_var]
+    return os.getenv(env_var, "")
+
+
+def _set_api_key(env_var: str, value: str) -> None:
+    """Persist API key via auth wrapper and set in environment for SDK clients."""
+    os.environ[env_var] = value
+    auth = get_auth()
+    if auth.is_authenticated():
+        auth.update_api_key(env_var, value)
 
 
 def show_settings_page():
@@ -46,10 +65,10 @@ def show_settings_page():
         with col1:
             st.markdown("**OpenAI**")
             openai_key = st.text_input(
-                "OpenAI API Key", type="password", value=os.getenv("OPENAI_API_KEY", ""), help="Your OpenAI API key"
+                "OpenAI API Key", type="password", value=_get_api_key("OPENAI_API_KEY"), help="Your OpenAI API key"
             )
             if openai_key:
-                os.environ["OPENAI_API_KEY"] = openai_key
+                _set_api_key("OPENAI_API_KEY", openai_key)
                 st.success("OpenAI key configured")
 
             openai_model = st.selectbox(
@@ -64,11 +83,11 @@ def show_settings_page():
             anthropic_key = st.text_input(
                 "Anthropic API Key",
                 type="password",
-                value=os.getenv("ANTHROPIC_API_KEY", ""),
+                value=_get_api_key("ANTHROPIC_API_KEY"),
                 help="Your Anthropic API key",
             )
             if anthropic_key:
-                os.environ["ANTHROPIC_API_KEY"] = anthropic_key
+                _set_api_key("ANTHROPIC_API_KEY", anthropic_key)
                 st.success("Anthropic key configured")
 
             anthropic_model = st.selectbox(
@@ -83,11 +102,11 @@ def show_settings_page():
             grok_key = st.text_input(
                 "Grok API Key",
                 type="password",
-                value=os.getenv("GROK_API_KEY", ""),
+                value=_get_api_key("GROK_API_KEY"),
                 help="Your xAI / Grok API key",
             )
             if grok_key:
-                os.environ["GROK_API_KEY"] = grok_key
+                _set_api_key("GROK_API_KEY", grok_key)
                 st.success("Grok key configured")
 
             grok_model = st.selectbox(
@@ -102,15 +121,15 @@ def show_settings_page():
         notion_key = st.text_input(
             "Notion API Key",
             type="password",
-            value=os.getenv("NOTION_API_KEY", ""),
+            value=_get_api_key("NOTION_API_KEY"),
             help="Your Notion integration token",
         )
         if notion_key:
-            os.environ["NOTION_API_KEY"] = notion_key
+            _set_api_key("NOTION_API_KEY", notion_key)
 
-        notion_db = st.text_input("Notion Database ID", value=os.getenv("NOTION_DATABASE_ID", ""))
+        notion_db = st.text_input("Notion Database ID", value=_get_api_key("NOTION_DATABASE_ID"))
         if notion_db:
-            os.environ["NOTION_DATABASE_ID"] = notion_db
+            _set_api_key("NOTION_DATABASE_ID", notion_db)
 
         if notion_key and notion_db:
             st.success("Notion configured")
