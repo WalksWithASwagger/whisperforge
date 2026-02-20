@@ -100,7 +100,7 @@ def large_audio_file(temp_dir):
 @pytest.fixture
 def mock_supabase():
     """Mock Supabase client for testing"""
-    with patch('core.supabase_client.create_client') as mock_create:
+    with patch('core.supabase_integration.create_client') as mock_create:
         mock_client = Mock()
         mock_create.return_value = mock_client
 
