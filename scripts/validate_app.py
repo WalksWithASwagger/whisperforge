@@ -4,10 +4,9 @@ WhisperForge App Validation Script
 Tests all critical functionality to prevent deployment errors
 """
 
-import sys
-import os
 import importlib
-import traceback
+import os
+import sys
 from pathlib import Path
 
 # Add the project root to path
@@ -37,24 +36,24 @@ class ValidationResult:
     def summary(self):
         total = self.tests_passed + self.tests_failed
         print(f"\n{'=' * 50}")
-        print(f"VALIDATION SUMMARY")
+        print("VALIDATION SUMMARY")
         print(f"{'=' * 50}")
         print(f"Tests Passed: {self.tests_passed}/{total}")
         print(f"Tests Failed: {self.tests_failed}")
         print(f"Warnings: {len(self.warnings)}")
 
         if self.errors:
-            print(f"\n🚨 ERRORS:")
+            print("\n🚨 ERRORS:")
             for error in self.errors:
                 print(f"  - {error}")
 
         if self.warnings:
-            print(f"\n⚠️  WARNINGS:")
+            print("\n⚠️  WARNINGS:")
             for warning in self.warnings:
                 print(f"  - {warning}")
 
         if self.tests_failed == 0:
-            print(f"\n🎉 ALL TESTS PASSED! App is ready for deployment.")
+            print("\n🎉 ALL TESTS PASSED! App is ready for deployment.")
             return True
         else:
             print(f"\n💥 {self.tests_failed} TESTS FAILED! Fix errors before deployment.")
@@ -74,13 +73,11 @@ def test_imports(result):
         ("datetime", "datetime"),
         ("tempfile", None),
         ("logging", None),
-
         # Third-party
         ("dotenv", None),
         ("supabase", None),
         ("openai", None),
         ("anthropic", None),
-
         # WhisperForge modules
         ("core.supabase_integration", None),
         ("core.utils", None),
@@ -107,17 +104,9 @@ def test_environment_variables(result):
     """Test required environment variables"""
     print("\n🔍 Testing Environment Variables...")
 
-    required_vars = [
-        "SUPABASE_URL",
-        "SUPABASE_ANON_KEY"
-    ]
+    required_vars = ["SUPABASE_URL", "SUPABASE_ANON_KEY"]
 
-    optional_vars = [
-        "OPENAI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "OAUTH_REDIRECT_URL",
-        "STREAMLIT_APP_URL"
-    ]
+    optional_vars = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OAUTH_REDIRECT_URL", "STREAMLIT_APP_URL"]
 
     for var in required_vars:
         value = os.getenv(var)
@@ -150,16 +139,10 @@ def test_file_structure(result):
         "prompts/default/wisdom_extraction.md",
         "prompts/default/outline_creation.md",
         "prompts/default/social_media.md",
-        "prompts/default/image_prompts.md"
+        "prompts/default/image_prompts.md",
     ]
 
-    optional_files = [
-        "static/css/whisperforge_ui.css",
-        "core/ui_components.py",
-        ".env",
-        "Procfile",
-        "runtime.txt"
-    ]
+    optional_files = ["static/css/whisperforge_ui.css", "core/ui_components.py", ".env", "Procfile", "runtime.txt"]
 
     for file_path in required_files:
         if Path(file_path).exists():
@@ -180,6 +163,7 @@ def test_supabase_connection(result):
 
     try:
         from core.supabase_integration import get_supabase_client
+
         db, mcp = get_supabase_client()
 
         if db:
@@ -188,7 +172,7 @@ def test_supabase_connection(result):
             # Test basic connection
             try:
                 # Simple health check
-                response = db.client.table("users").select("count", count="exact").limit(1).execute()
+                db.client.table("users").select("count", count="exact").limit(1).execute()
                 result.pass_test("Supabase database connection")
             except Exception as e:
                 result.fail_test("Supabase database connection", str(e))
@@ -205,18 +189,18 @@ def test_oauth_configuration(result):
 
     try:
         from core.supabase_integration import get_supabase_client
+
         db, _ = get_supabase_client()
 
         if db:
             try:
                 # Test OAuth URL generation
                 redirect_url = os.getenv("OAUTH_REDIRECT_URL", "http://localhost:8501")
-                auth_response = db.client.auth.sign_in_with_oauth({
-                    "provider": "google",
-                    "options": {"redirect_to": redirect_url}
-                })
+                auth_response = db.client.auth.sign_in_with_oauth(
+                    {"provider": "google", "options": {"redirect_to": redirect_url}}
+                )
 
-                if hasattr(auth_response, 'url') and auth_response.url:
+                if hasattr(auth_response, "url") and auth_response.url:
                     result.pass_test("OAuth URL generation")
                 else:
                     result.warn_test("OAuth URL generation", "No URL returned")
@@ -238,12 +222,12 @@ def test_prompt_files(result):
         "prompts/default/wisdom_extraction.md",
         "prompts/default/outline_creation.md",
         "prompts/default/social_media.md",
-        "prompts/default/image_prompts.md"
+        "prompts/default/image_prompts.md",
     ]
 
     for prompt_file in prompt_files:
         try:
-            with open(prompt_file, 'r', encoding='utf-8') as f:
+            with open(prompt_file, encoding="utf-8") as f:
                 content = f.read()
                 if len(content) > 10:  # Basic content check
                     result.pass_test(f"Prompt file {prompt_file}")
@@ -264,8 +248,9 @@ def test_ai_providers(result):
     if openai_key:
         try:
             import openai
+
             # Basic client test (don't make actual API calls in validation)
-            client = openai.OpenAI(api_key=openai_key)
+            openai.OpenAI(api_key=openai_key)
             result.pass_test("OpenAI configuration")
         except Exception as e:
             result.warn_test("OpenAI configuration", str(e))
@@ -277,8 +262,9 @@ def test_ai_providers(result):
     if anthropic_key:
         try:
             import anthropic
+
             # Basic client test (don't make actual API calls in validation)
-            client = anthropic.Anthropic(api_key=anthropic_key)
+            anthropic.Anthropic(api_key=anthropic_key)
             result.pass_test("Anthropic configuration")
         except Exception as e:
             result.warn_test("Anthropic configuration", str(e))
@@ -292,12 +278,13 @@ def test_streamlit_compatibility(result):
 
     try:
         import streamlit as st
+
         result.pass_test("Streamlit import")
 
         # Check version compatibility
         try:
             version = st.__version__
-            major, minor = map(int, version.split('.')[:2])
+            major, minor = map(int, version.split(".")[:2])
             if major >= 1 and minor >= 28:
                 result.pass_test("Streamlit version compatibility")
             else:
@@ -327,7 +314,6 @@ def test_pipeline_components(result):
         result.fail_test("Pipeline controller", str(e))
 
     try:
-        from core.content_generation import transcribe_audio
         result.pass_test("Content generation import")
     except Exception as e:
         result.fail_test("Content generation import", str(e))

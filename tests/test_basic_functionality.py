@@ -2,10 +2,10 @@
 Basic functionality tests for WhisperForge v3.1.0
 """
 
-import pytest
-import os
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pytest
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -14,11 +14,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def test_imports():
     """Test that core modules can be imported without errors"""
     try:
-        from core.content_generation import transcribe_audio, generate_wisdom
-        from core.file_upload import FileUploadManager, LargeFileUploadManager
-        from core.supabase_integration import get_supabase_client
-        from core.utils import hash_password, DEFAULT_PROMPTS
-        from core.visible_thinking import thinking_step_start
+        from core.content_generation import generate_wisdom, transcribe_audio  # noqa: F401
+        from core.file_upload import FileUploadManager  # noqa: F401
+        from core.large_file_processor import EnhancedLargeFileProcessor  # noqa: F401
+        from core.supabase_integration import get_supabase_client  # noqa: F401
+        from core.utils import DEFAULT_PROMPTS, hash_password  # noqa: F401
+        from core.visible_thinking import thinking_step_start  # noqa: F401
+
         assert True, "All core imports successful"
     except ImportError as e:
         pytest.fail(f"Import error: {e}")
@@ -68,7 +70,7 @@ def test_hash_password():
     """Test password hashing utility"""
     from core.utils import hash_password
 
-    password = "test_password_123"
+    password = "test_password_123"  # noqa: S105
     hashed = hash_password(password)
 
     assert hashed != password, "Password should be hashed"
@@ -87,7 +89,7 @@ def test_default_prompts():
 @pytest.mark.unit
 def test_visible_thinking_functions():
     """Test that visible thinking functions work without errors"""
-    from core.visible_thinking import thinking_step_start, thinking_step_complete, thinking_error
+    from core.visible_thinking import thinking_error, thinking_step_complete, thinking_step_start
 
     # These should not raise exceptions
     thinking_step_start("test_step")
@@ -107,7 +109,7 @@ def test_core_directory_structure():
         "file_upload.py",
         "supabase_integration.py",
         "utils.py",
-        "visible_thinking.py"
+        "visible_thinking.py",
     ]
 
     for module in expected_modules:

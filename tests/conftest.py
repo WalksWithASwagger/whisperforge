@@ -2,24 +2,27 @@
 Pytest configuration and fixtures for WhisperForge testing
 """
 
-from core.supabase_integration import get_supabase_client
-from core.logging_config import logger
-import pytest
 import os
-import tempfile
 import shutil
-from pathlib import Path
-from unittest.mock import Mock, patch
-import streamlit as st
-from streamlit.testing.v1 import AppTest
 
 # Add project root to path
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import pytest
+from streamlit.testing.v1 import AppTest
+
+from core.logging_config import logger
+from core.supabase_integration import get_supabase_client
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass  # python-dotenv not installed, skip
@@ -31,12 +34,12 @@ def test_env():
     # Store original env vars
     original_env = {}
     test_vars = {
-        'SUPABASE_URL': os.getenv('SUPABASE_URL', 'https://test.supabase.co'),
-        'SUPABASE_ANON_KEY': os.getenv('SUPABASE_ANON_KEY', 'test-anon-key'),
-        'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY', 'test-openai-key'),
-        'ANTHROPIC_API_KEY': os.getenv('ANTHROPIC_API_KEY', 'test-anthropic-key'),
-        'GROQ_API_KEY': os.getenv('GROQ_API_KEY', 'test-groq-key'),
-        'TESTING': 'true'
+        "SUPABASE_URL": os.getenv("SUPABASE_URL", "https://test.supabase.co"),
+        "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", "test-anon-key"),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", "test-openai-key"),
+        "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY", "test-anthropic-key"),
+        "GROQ_API_KEY": os.getenv("GROQ_API_KEY", "test-groq-key"),
+        "TESTING": "true",
     }
 
     # Set test environment
@@ -69,12 +72,12 @@ def sample_audio_file(temp_dir):
     audio_file = temp_dir / "test_audio.wav"
 
     # WAV file header (44 bytes)
-    wav_header = b'RIFF\x24\x08\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00\x44\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00data\x00\x08\x00\x00'
+    wav_header = b"RIFF\x24\x08\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00\x44\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00data\x00\x08\x00\x00"
 
-    with open(audio_file, 'wb') as f:
+    with open(audio_file, "wb") as f:
         f.write(wav_header)
         # Add some dummy audio data
-        f.write(b'\x00' * 2048)
+        f.write(b"\x00" * 2048)
 
     return audio_file
 
@@ -85,14 +88,14 @@ def large_audio_file(temp_dir):
     audio_file = temp_dir / "large_test_audio.wav"
 
     # WAV file header
-    wav_header = b'RIFF\x24\x08\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00\x44\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00data\x00\x08\x00\x00'
+    wav_header = b"RIFF\x24\x08\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x02\x00\x44\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00data\x00\x08\x00\x00"
 
-    with open(audio_file, 'wb') as f:
+    with open(audio_file, "wb") as f:
         f.write(wav_header)
         # Create ~30MB file to trigger chunking
         chunk_size = 1024 * 1024  # 1MB chunks
         for _ in range(30):
-            f.write(b'\x00' * chunk_size)
+            f.write(b"\x00" * chunk_size)
 
     return audio_file
 
@@ -100,15 +103,16 @@ def large_audio_file(temp_dir):
 @pytest.fixture
 def mock_supabase():
     """Mock Supabase client for testing"""
-    with patch('core.supabase_integration.create_client') as mock_create:
+    with patch("core.supabase_integration.create_client") as mock_create:
         mock_client = Mock()
         mock_create.return_value = mock_client
 
         # Mock successful responses
-        mock_client.table.return_value.insert.return_value.execute.return_value.data = [{'id': 'test-id'}]
+        mock_client.table.return_value.insert.return_value.execute.return_value.data = [{"id": "test-id"}]
         mock_client.table.return_value.select.return_value.execute.return_value.data = []
         mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value.data = [
-            {'id': 'test-id'}]
+            {"id": "test-id"}
+        ]
 
         yield mock_client
 
@@ -136,7 +140,7 @@ def streamlit_app():
 @pytest.fixture
 def mock_openai():
     """Mock OpenAI API responses"""
-    with patch('openai.OpenAI') as mock_openai:
+    with patch("openai.OpenAI") as mock_openai:
         mock_client = Mock()
         mock_openai.return_value = mock_client
 
@@ -155,7 +159,7 @@ def mock_openai():
 @pytest.fixture
 def mock_anthropic():
     """Mock Anthropic API responses"""
-    with patch('anthropic.Anthropic') as mock_anthropic:
+    with patch("anthropic.Anthropic") as mock_anthropic:
         mock_client = Mock()
         mock_anthropic.return_value = mock_client
 
@@ -175,20 +179,13 @@ def setup_logging():
     yield
     logger.logger.info("🧪 Test session completed")
 
+
 # Test markers
 
 
 def pytest_configure(config):
     """Configure pytest markers"""
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests (may be slow)"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests (fast)"
-    )
-    config.addinivalue_line(
-        "markers", "supabase: marks tests that require Supabase connection"
-    )
-    config.addinivalue_line(
-        "markers", "ai: marks tests that require AI API keys"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests (may be slow)")
+    config.addinivalue_line("markers", "unit: marks tests as unit tests (fast)")
+    config.addinivalue_line("markers", "supabase: marks tests that require Supabase connection")
+    config.addinivalue_line("markers", "ai: marks tests that require AI API keys")

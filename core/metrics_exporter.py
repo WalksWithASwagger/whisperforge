@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from typing import Any, Dict
+from typing import Any
 
 MAX_ENTRIES = 1000
 
-metrics_exporter: Dict[str, Any] = {
+metrics_exporter: dict[str, Any] = {
     "counters": {},
     "gauges": {},
     "histograms": {},
@@ -31,11 +31,10 @@ def track_request(duration: float, status_code: int, method: str, path: str) -> 
             "path": path,
         }
     )
-    metrics_exporter["counters"]["http_requests_total"] = (
-        metrics_exporter["counters"].get("http_requests_total", 0) + 1
+    metrics_exporter["counters"]["http_requests_total"] = metrics_exporter["counters"].get("http_requests_total", 0) + 1
+    metrics_exporter["histograms"].setdefault("http_request_duration_seconds", deque(maxlen=MAX_ENTRIES)).append(
+        duration
     )
-    metrics_exporter["histograms"].setdefault(
-        "http_request_duration_seconds", deque(maxlen=MAX_ENTRIES)).append(duration)
 
 
 def track_pipeline(name: str, duration: float, success: bool) -> None:
@@ -48,8 +47,7 @@ def track_pipeline(name: str, duration: float, success: bool) -> None:
     )
     key = "pipeline_success_total" if success else "pipeline_failure_total"
     metrics_exporter["counters"][key] = metrics_exporter["counters"].get(key, 0) + 1
-    metrics_exporter["histograms"].setdefault(
-        f"pipeline_{name}_duration", deque(maxlen=MAX_ENTRIES)).append(duration)
+    metrics_exporter["histograms"].setdefault(f"pipeline_{name}_duration", deque(maxlen=MAX_ENTRIES)).append(duration)
 
 
 def reset_metrics() -> None:
@@ -78,13 +76,15 @@ def export_prometheus_metrics() -> str:
     return "\n".join(lines)
 
 
-def export_json_metrics() -> Dict[str, Any]:
+def export_json_metrics() -> dict[str, Any]:
     """Return the metrics as a JSON-serialisable object."""
 
-    return json.loads(json.dumps(
-        {
-            "counters": metrics_exporter["counters"],
-            "gauges": metrics_exporter["gauges"],
-            "histograms": {k: list(v) for k, v in metrics_exporter["histograms"].items()},
-        }
-    ))
+    return json.loads(
+        json.dumps(
+            {
+                "counters": metrics_exporter["counters"],
+                "gauges": metrics_exporter["gauges"],
+                "histograms": {k: list(v) for k, v in metrics_exporter["histograms"].items()},
+            }
+        )
+    )

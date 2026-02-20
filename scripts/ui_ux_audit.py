@@ -5,7 +5,6 @@ Comprehensive verification of OAuth, progress indicators, and user experience
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add project root to path
@@ -17,7 +16,7 @@ def audit_section(title: str):
     """Print audit section header"""
     print(f"\n{'=' * 60}")
     print(f"🎨 {title}")
-    print('=' * 60)
+    print("=" * 60)
 
 
 def check_ui_feature(feature_name: str, description: str, status: bool):
@@ -34,12 +33,12 @@ def main():
 
     # Track results
     results = {
-        'oauth_flow': 0,
-        'progress_indicators': 0,
-        'ui_components': 0,
-        'user_feedback': 0,
-        'error_handling': 0,
-        'accessibility': 0
+        "oauth_flow": 0,
+        "progress_indicators": 0,
+        "ui_components": 0,
+        "user_feedback": 0,
+        "error_handling": 0,
+        "accessibility": 0,
     }
 
     # 1. OAuth Flow Audit
@@ -51,19 +50,19 @@ def main():
 
         # OAuth callback handling
         oauth_features = [
-            ("OAuth Callback Handler", "handle_oauth_callback function exists", hasattr(app, 'handle_oauth_callback')),
+            ("OAuth Callback Handler", "handle_oauth_callback function exists", hasattr(app, "handle_oauth_callback")),
             ("Google OAuth Integration", "Google sign-in with proper redirect", True),  # Verified in code
-            ("Fallback Authentication", "Email/password fallback available", hasattr(app, 'authenticate_user')),
-            ("User Registration", "Account creation flow", hasattr(app, 'register_user_supabase')),
+            ("Fallback Authentication", "Email/password fallback available", hasattr(app, "authenticate_user")),
+            ("User Registration", "Account creation flow", hasattr(app, "register_user_supabase")),
             ("Session Management", "Simple session state handling", True),  # Verified in code
             ("Local Testing Bypass", "Database unavailable bypass", True),  # Verified in code
             ("Error Recovery", "OAuth error handling with fallback", True),  # Verified in code
-            ("Beautiful Auth Page", "Aurora-themed authentication UI", True)  # Verified in code
+            ("Beautiful Auth Page", "Aurora-themed authentication UI", True),  # Verified in code
         ]
 
         for feature, desc, status in oauth_features:
             if check_ui_feature(feature, desc, status):
-                results['oauth_flow'] += 1
+                results["oauth_flow"] += 1
 
     except Exception as e:
         print(f"❌ OAuth audit failed: {e}")
@@ -72,24 +71,26 @@ def main():
     audit_section("Progress Indicators & Status Updates")
 
     try:
-        from core.streaming_results import show_streaming_results, show_real_time_content_stream
-        from core.streaming_pipeline import get_pipeline_controller
         from core.ui_components import AuroraComponents
 
         progress_features = [
             ("Real-time Streaming", "Live content generation display", True),
             ("Step-by-step Progress", "Pipeline step indicators", True),
-            ("Aurora Progress Bars", "Beautiful animated progress bars", hasattr(AuroraComponents, 'aurora_progress_bar')),
+            (
+                "Aurora Progress Bars",
+                "Beautiful animated progress bars",
+                hasattr(AuroraComponents, "aurora_progress_bar"),
+            ),
             ("File Upload Progress", "Large file upload tracking", True),  # Verified in file_upload.py
             ("Chunk Processing", "Parallel chunk progress display", True),  # Verified in file_upload.py
             ("Status Messages", "Success/error/warning notifications", True),
             ("Loading States", "Processing indicators during operations", True),
-            ("Completion Feedback", "Clear completion status", True)
+            ("Completion Feedback", "Clear completion status", True),
         ]
 
         for feature, desc, status in progress_features:
             if check_ui_feature(feature, desc, status):
-                results['progress_indicators'] += 1
+                results["progress_indicators"] += 1
 
     except Exception as e:
         print(f"❌ Progress indicators audit failed: {e}")
@@ -98,8 +99,7 @@ def main():
     audit_section("UI Components & Visual Design")
 
     try:
-        from core.ui_components import AuroraContainer, AuroraComponents
-        from core.styling import apply_aurora_theme, create_aurora_header
+        from core.ui_components import AuroraComponents
 
         ui_features = [
             ("Aurora Theme", "Consistent bioluminescent design", True),
@@ -111,12 +111,12 @@ def main():
             ("Form Design", "Beautiful input fields and validation", True),
             ("Card Components", "Elegant content containers", True),
             ("Navigation", "Intuitive page navigation", True),
-            ("Logo & Branding", "Professional WhisperForge identity", True)
+            ("Logo & Branding", "Professional WhisperForge identity", True),
         ]
 
         for feature, desc, status in ui_features:
             if check_ui_feature(feature, desc, status):
-                results['ui_components'] += 1
+                results["ui_components"] += 1
 
     except Exception as e:
         print(f"❌ UI components audit failed: {e}")
@@ -135,12 +135,12 @@ def main():
             ("Form Validation", "Real-time input validation", True),
             ("Loading Spinners", "Activity indicators", True),
             ("Tooltips", "Helpful contextual hints", True),
-            ("Status Badges", "Clear state indicators", True)
+            ("Status Badges", "Clear state indicators", True),
         ]
 
         for feature, desc, status in feedback_features:
             if check_ui_feature(feature, desc, status):
-                results['user_feedback'] += 1
+                results["user_feedback"] += 1
 
     except Exception as e:
         print(f"❌ User feedback audit failed: {e}")
@@ -153,18 +153,18 @@ def main():
 
         error_features = [
             ("Graceful Degradation", "App works without database", True),
-            ("Error Boundaries", "Component error isolation", hasattr(ErrorBoundary, 'wrap')),
+            ("Error Boundaries", "Component error isolation", hasattr(ErrorBoundary, "wrap")),
             ("Retry Mechanisms", "Automatic retry on failures", True),
             ("Fallback UI", "Alternative UI when features fail", True),
             ("User-friendly Errors", "Non-technical error messages", True),
             ("Recovery Actions", "Clear steps to resolve issues", True),
             ("Offline Handling", "Graceful offline behavior", True),
-            ("Timeout Handling", "Long operation timeouts", True)
+            ("Timeout Handling", "Long operation timeouts", True),
         ]
 
         for feature, desc, status in error_features:
             if check_ui_feature(feature, desc, status):
-                results['error_handling'] += 1
+                results["error_handling"] += 1
 
     except Exception as e:
         print(f"❌ Error handling audit failed: {e}")
@@ -182,12 +182,12 @@ def main():
         ("Touch Friendly", "Mobile touch targets", True),
         ("Loading States", "Clear loading indicators", True),
         ("Error Recovery", "Clear error resolution paths", True),
-        ("Intuitive Flow", "Logical user journey", True)
+        ("Intuitive Flow", "Logical user journey", True),
     ]
 
     for feature, desc, status in accessibility_features:
         if check_ui_feature(feature, desc, status):
-            results['accessibility'] += 1
+            results["accessibility"] += 1
 
     # 7. Specific OAuth Flow Test
     audit_section("OAuth Flow Deep Dive")
@@ -202,12 +202,12 @@ def main():
             ("User Creation", "Automatic user record creation", True),
             ("Session Setup", "Proper session state initialization", True),
             ("Error Fallback", "Email auth when OAuth fails", True),
-            ("Debug Information", "Helpful debug info in development", True)
+            ("Debug Information", "Helpful debug info in development", True),
         ]
 
         for feature, desc, status in oauth_deep_features:
             if check_ui_feature(feature, desc, status):
-                results['oauth_flow'] += 1
+                results["oauth_flow"] += 1
 
     except Exception as e:
         print(f"❌ OAuth deep dive failed: {e}")

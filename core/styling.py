@@ -12,18 +12,22 @@ def apply_aurora_theme():
     css_file_path = "static/css/main.css"
 
     try:
-        with open(css_file_path, 'r', encoding='utf-8') as f:
+        with open(css_file_path, encoding="utf-8") as f:
             css_content = f.read()
 
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <style>
         {css_content}
         </style>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     except FileNotFoundError:
         # Fallback to basic Aurora styling if file not found
-        st.markdown("""
+        st.markdown(
+            """
         <style>
         :root {
             --aurora-primary: #40E0D0;
@@ -42,14 +46,17 @@ def apply_aurora_theme():
             color: var(--aurora-text);
         }
         </style>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
 
 def create_aurora_header():
     """Create a flagship Aurora header with integrated navigation and logout - REBUILT FOR 2025"""
 
     # First, inject the CSS using st.markdown()
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     .aurora-header {
         background: linear-gradient(135deg, rgba(0, 20, 40, 0.95), rgba(0, 40, 60, 0.98));
@@ -159,10 +166,13 @@ def create_aurora_header():
         }
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Then render the HTML structure using st.markdown()
-    st.markdown("""
+    st.markdown(
+        """
     <header class="aurora-header">
         <div class="aurora-header-content">
             <div class="aurora-brand">
@@ -177,14 +187,17 @@ def create_aurora_header():
             </div>
         </div>
     </header>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def create_aurora_nav_buttons():
     """Create integrated navigation buttons for the Aurora header"""
 
     # Enhanced styling for integrated nav buttons
-    st.markdown("""
+    st.markdown(
+        """
     <style>
     /* Aurora nav button styling */
     .aurora-nav-button {
@@ -233,16 +246,18 @@ def create_aurora_nav_buttons():
         color: #FF6B6B !important;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     pages = [
         ("Processing", "Content Pipeline"),
         ("History", "Content History"),
         ("Settings", "Settings"),
-        ("Status", "Health Check")
+        ("Status", "Health Check"),
     ]
 
-    current_page = st.session_state.get('current_page', 'Content Pipeline')
+    current_page = st.session_state.get("current_page", "Content Pipeline")
 
     # Create horizontal layout for nav buttons
     nav_cols = st.columns([1, 1, 1, 1, 0.8])  # Last column smaller for logout
@@ -254,18 +269,18 @@ def create_aurora_nav_buttons():
                 page_name,
                 key=f"nav_{page_name}",
                 type="primary" if page_key == current_page else "secondary",
-                use_container_width=True
+                use_container_width=True,
             ):
                 st.session_state.current_page = page_key
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # Logout button in the last column
     with nav_cols[4]:
         st.markdown('<div class="aurora-logout-button">', unsafe_allow_html=True)
         if st.button("Sign Out", key="logout_btn", use_container_width=True):
             return True  # Signal logout
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     return False  # No logout
 
@@ -273,7 +288,8 @@ def create_aurora_nav_buttons():
 def create_aurora_progress_card(title, current_step, total_steps, description=""):
     """Create a beautiful Aurora progress card"""
     progress = (current_step / total_steps) * 100
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div class="aurora-progress-container aurora-fade-in">
         <div class="aurora-progress-header">
             <h3 class="aurora-progress-title">{title}</h3>
@@ -286,9 +302,11 @@ def create_aurora_progress_card(title, current_step, total_steps, description=""
             <div class="aurora-progress-fill" style="width: {progress}%"></div>
         </div>
 
-        {f'<p style="color: var(--aurora-text-muted); margin: 8px 0 0 0;">{description}</p>' if description else ''}
+        {f'<p style="color: var(--aurora-text-muted); margin: 8px 0 0 0;">{description}</p>' if description else ""}
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def create_aurora_step_card(title, description, status="pending", progress=0):
@@ -331,7 +349,8 @@ def create_aurora_step_card(title, description, status="pending", progress=0):
         </div>
         """
 
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div class="{container_class} aurora-fade-in">
         <div class="aurora-step-header">
             <div class="aurora-step-info">
@@ -341,11 +360,13 @@ def create_aurora_step_card(title, description, status="pending", progress=0):
                     <p class="aurora-step-description">{description}</p>
                 </div>
             </div>
-            <div class="aurora-step-progress">{progress if status == 'processing' else (100 if status == 'completed' else 0)}%</div>
+            <div class="aurora-step-progress">{progress if status == "processing" else (100 if status == "completed" else 0)}%</div>
         </div>
         {progress_bar}
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def create_aurora_content_card(title, content, content_type="text"):
@@ -359,7 +380,8 @@ def create_aurora_content_card(title, content, content_type="text"):
         preview_content = content
         show_full = False
 
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div class="aurora-card aurora-fade-in">
         <div class="aurora-card-header">
             <h4 class="aurora-card-title">{title}</h4>
@@ -370,11 +392,14 @@ def create_aurora_content_card(title, content, content_type="text"):
             white-space: pre-wrap;
         ">{preview_content}</div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     if show_full:
         with st.expander("Show full content"):
             st.markdown(content)
+
 
 # Aurora Component Utilities
 
@@ -385,7 +410,8 @@ class AuroraComponents:
     @staticmethod
     def success_message(message):
         """Aurora success message"""
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div style="
             background: rgba(0, 255, 136, 0.1);
             border: 1px solid rgba(0, 255, 136, 0.3);
@@ -396,12 +422,15 @@ class AuroraComponents:
         ">
             ✅ {message}
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     @staticmethod
     def warning_message(message):
         """Aurora warning message"""
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div style="
             background: rgba(255, 184, 0, 0.1);
             border: 1px solid rgba(255, 184, 0, 0.3);
@@ -412,12 +441,15 @@ class AuroraComponents:
         ">
             ⚠️ {message}
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     @staticmethod
     def error_message(message):
         """Aurora error message"""
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div style="
             background: rgba(255, 68, 68, 0.1);
             border: 1px solid rgba(255, 68, 68, 0.3);
@@ -428,4 +460,6 @@ class AuroraComponents:
         ">
             ❌ {message}
         </div>
-    """, unsafe_allow_html=True)
+    """,
+            unsafe_allow_html=True,
+        )

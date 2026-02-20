@@ -1,8 +1,8 @@
 """WhisperForge environment setup - creates a virtual environment and installs dependencies."""
 
+import os
 import subprocess
 import sys
-import os
 import venv
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +29,7 @@ def create_venv():
     if os.path.exists(VENV_DIR):
         print_step(f"Removing existing venv at {VENV_DIR}")
         import shutil
+
         shutil.rmtree(VENV_DIR)
 
     print_step(f"Creating virtual environment in {VENV_DIR}")
@@ -78,7 +79,8 @@ def verify_install():
     print_step("Verifying installation")
     result = subprocess.run(
         [PYTHON, "-c", "import streamlit; print(f'  streamlit {streamlit.__version__}')"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode == 0:
         print(result.stdout.strip())

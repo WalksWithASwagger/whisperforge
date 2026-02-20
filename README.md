@@ -116,7 +116,6 @@ whisperforge/
 │   ├── session_manager.py     # User session handling
 │   ├── styling.py             # Aurora UI components
 │   └── ...
-├── shared/                    # Shared config and security utilities
 ├── prompts/                   # Default and custom AI prompts
 ├── static/                    # CSS, JS, and assets
 ├── scripts/                   # Utility and audit scripts

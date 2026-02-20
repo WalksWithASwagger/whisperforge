@@ -4,8 +4,8 @@ Test OAuth URL generation to ensure it works correctly
 """
 
 import sys
-import os
 from pathlib import Path
+
 import pytest
 from _pytest.outcomes import Skipped
 
@@ -19,6 +19,7 @@ def test_oauth_url_generation():
 
     # Load environment variables from .env file
     from dotenv import load_dotenv
+
     load_dotenv()
 
     try:
@@ -32,19 +33,18 @@ def test_oauth_url_generation():
 
         # Test OAuth URL generation
         redirect_url = "http://localhost:8501"
-        auth_response = db.client.auth.sign_in_with_oauth({
-            "provider": "google",
-            "options": {"redirect_to": redirect_url}
-        })
+        auth_response = db.client.auth.sign_in_with_oauth(
+            {"provider": "google", "options": {"redirect_to": redirect_url}}
+        )
 
-        if hasattr(auth_response, 'url') and auth_response.url:
-            print(f"✅ OAuth URL generated successfully")
+        if hasattr(auth_response, "url") and auth_response.url:
+            print("✅ OAuth URL generated successfully")
             print(f"   URL: {auth_response.url[:50]}...")
             assert True
         else:
-            print(f"❌ OAuth URL not generated properly")
+            print("❌ OAuth URL not generated properly")
             print(f"   Response: {auth_response}")
-            assert False, "OAuth URL not generated properly"
+            raise AssertionError("OAuth URL not generated properly")
 
     except Exception as e:
         print(f"❌ Error testing OAuth: {e}")
@@ -53,6 +53,7 @@ def test_oauth_url_generation():
             pytest.skip("Supabase credentials not available for OAuth testing")
         else:
             import traceback
+
             print(f"   Full error: {traceback.format_exc()}")
             pytest.skip(f"OAuth test failed with error: {e}")
 

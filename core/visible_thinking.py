@@ -5,8 +5,6 @@ Provides stub functions to prevent import errors in streaming pipeline
 
 import logging
 
-import streamlit as st
-
 logger = logging.getLogger(__name__)
 
 

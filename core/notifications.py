@@ -3,11 +3,11 @@ Beautiful Notification System for WhisperForge
 Animated toast notifications and status updates
 """
 
-import streamlit as st
 import time
 from html import escape as html_escape
-from typing import Optional, Literal
-from datetime import datetime
+from typing import Literal
+
+import streamlit as st
 
 
 class NotificationManager:
@@ -16,21 +16,18 @@ class NotificationManager:
     def __init__(self):
         self.notifications = []
 
-    def show_toast(self,
-                   message: str,
-                   notification_type: Literal["success", "error", "warning", "info"] = "info",
-                   duration: float = 3.0,
-                   icon: Optional[str] = None):
+    def show_toast(
+        self,
+        message: str,
+        notification_type: Literal["success", "error", "warning", "info"] = "info",
+        duration: float = 3.0,
+        icon: str | None = None,
+    ):
         """Show a beautiful toast notification"""
 
         # Auto-select icon based on type if not provided
         if not icon:
-            icons = {
-                "success": "✅",
-                "error": "❌",
-                "warning": "⚠️",
-                "info": "ℹ️"
-            }
+            icons = {"success": "✅", "error": "❌", "warning": "⚠️", "info": "ℹ️"}
             icon = icons.get(notification_type, "ℹ️")
 
         # Sanitize user-controlled content
@@ -38,26 +35,10 @@ class NotificationManager:
 
         # Color scheme for different types
         colors = {
-            "success": {
-                "bg": "rgba(54, 211, 153, 0.1)",
-                "border": "rgba(54, 211, 153, 0.4)",
-                "text": "#36D399"
-            },
-            "error": {
-                "bg": "rgba(248, 114, 114, 0.1)",
-                "border": "rgba(248, 114, 114, 0.4)",
-                "text": "#F87272"
-            },
-            "warning": {
-                "bg": "rgba(251, 189, 35, 0.1)",
-                "border": "rgba(251, 189, 35, 0.4)",
-                "text": "#FBBD23"
-            },
-            "info": {
-                "bg": "rgba(58, 191, 248, 0.1)",
-                "border": "rgba(58, 191, 248, 0.4)",
-                "text": "#3ABFF8"
-            }
+            "success": {"bg": "rgba(54, 211, 153, 0.1)", "border": "rgba(54, 211, 153, 0.4)", "text": "#36D399"},
+            "error": {"bg": "rgba(248, 114, 114, 0.1)", "border": "rgba(248, 114, 114, 0.4)", "text": "#F87272"},
+            "warning": {"bg": "rgba(251, 189, 35, 0.1)", "border": "rgba(251, 189, 35, 0.4)", "text": "#FBBD23"},
+            "info": {"bg": "rgba(58, 191, 248, 0.1)", "border": "rgba(58, 191, 248, 0.4)", "text": "#3ABFF8"},
         }
 
         color = colors[notification_type]
@@ -75,8 +56,8 @@ class NotificationManager:
 
         <style>
         .toast-notification {{
-            background: {color['bg']};
-            border: 1px solid {color['border']};
+            background: {color["bg"]};
+            border: 1px solid {color["border"]};
             border-radius: 8px;
             padding: 12px 16px 4px 16px;
             margin: 8px 0;
@@ -113,7 +94,7 @@ class NotificationManager:
 
         .toast-progress-bar {{
             height: 100%;
-            background: {color['text']};
+            background: {color["text"]};
             animation: toast-progress {duration}s linear forwards;
         }}
 
@@ -149,10 +130,7 @@ class NotificationManager:
 
         return st.markdown(toast_html, unsafe_allow_html=True)
 
-    def show_status_indicator(self,
-                              status: str,
-                              details: str = "",
-                              animated: bool = True):
+    def show_status_indicator(self, status: str, details: str = "", animated: bool = True):
         """Show a status indicator with optional animation"""
 
         # Status configurations
@@ -161,26 +139,26 @@ class NotificationManager:
                 "icon": "🔄",
                 "color": "#3ABFF8",
                 "bg": "rgba(58, 191, 248, 0.1)",
-                "border": "rgba(58, 191, 248, 0.3)"
+                "border": "rgba(58, 191, 248, 0.3)",
             },
             "complete": {
                 "icon": "✅",
                 "color": "#36D399",
                 "bg": "rgba(54, 211, 153, 0.1)",
-                "border": "rgba(54, 211, 153, 0.3)"
+                "border": "rgba(54, 211, 153, 0.3)",
             },
             "error": {
                 "icon": "❌",
                 "color": "#F87272",
                 "bg": "rgba(248, 114, 114, 0.1)",
-                "border": "rgba(248, 114, 114, 0.3)"
+                "border": "rgba(248, 114, 114, 0.3)",
             },
             "waiting": {
                 "icon": "⏳",
                 "color": "#FBBD23",
                 "bg": "rgba(251, 189, 35, 0.1)",
-                "border": "rgba(251, 189, 35, 0.3)"
-            }
+                "border": "rgba(251, 189, 35, 0.3)",
+            },
         }
 
         config = status_configs.get(status, status_configs["waiting"])
@@ -189,16 +167,16 @@ class NotificationManager:
         status_html = f"""
         <div class="status-indicator {animation_class}">
             <div class="status-main">
-                <span class="status-icon">{config['icon']}</span>
+                <span class="status-icon">{config["icon"]}</span>
                 <span class="status-text">{status.title()}</span>
             </div>
-            {f'<div class="status-details">{details}</div>' if details else ''}
+            {f'<div class="status-details">{details}</div>' if details else ""}
         </div>
 
         <style>
         .status-indicator {{
-            background: {config['bg']};
-            border: 1px solid {config['border']};
+            background: {config["bg"]};
+            border: 1px solid {config["border"]};
             border-radius: 8px;
             padding: 12px;
             margin: 8px 0;
@@ -216,7 +194,7 @@ class NotificationManager:
         }}
 
         .status-text {{
-            color: {config['color']};
+            color: {config["color"]};
             font-weight: 600;
             font-size: 1rem;
         }}

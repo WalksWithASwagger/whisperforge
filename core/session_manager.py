@@ -1,7 +1,8 @@
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
 import streamlit as st
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,11 @@ class SessionManager:
     def _load(self):
         if self.session_file.exists():
             try:
-                with open(self.session_file, "r", encoding="utf-8") as f:
+                with open(self.session_file, encoding="utf-8") as f:
                     loaded = json.load(f)
                 if loaded.get("created_at"):
                     created = datetime.fromisoformat(loaded["created_at"])
-                    if datetime.now(timezone.utc) - created > timedelta(days=self.expiry_days):
+                    if datetime.now(UTC) - created > timedelta(days=self.expiry_days):
                         self.session_file.unlink()
                         return
                 self.data.update(loaded)
@@ -50,13 +51,15 @@ class SessionManager:
             logger.error(f"Session save failed: {e}")
 
     def authenticate_user(self, user_id: str, email: str) -> bool:
-        self.data.update({
-            "authenticated": True,
-            "user_id": str(user_id),
-            "user_email": email,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "last_activity": datetime.now(timezone.utc).isoformat(),
-        })
+        self.data.update(
+            {
+                "authenticated": True,
+                "user_id": str(user_id),
+                "user_email": email,
+                "created_at": datetime.now(UTC).isoformat(),
+                "last_activity": datetime.now(UTC).isoformat(),
+            }
+        )
         st.session_state.update(self.data)
         self._save()
         return True

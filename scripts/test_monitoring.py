@@ -7,16 +7,16 @@ Tests all monitoring components to ensure proper functionality
 in production environment.
 """
 
+import json
 import sys
 import time
-import json
-import os
 import traceback
 from pathlib import Path
+
 import pytest
 
 # Skip these script-style tests when executed under pytest
-SKIP_IN_PYTEST = 'pytest' in sys.modules
+SKIP_IN_PYTEST = "pytest" in sys.modules
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -29,7 +29,7 @@ def test_structured_logging():
     print("🔍 Testing Structured Logging...")  # pragma: allow-print
 
     try:
-        from core.monitoring import structured_logger, set_trace_context, trace_operation
+        from core.monitoring import set_trace_context, structured_logger, trace_operation
 
         # Test basic logging
         structured_logger.info("Test info message", test_component="monitoring")
@@ -37,7 +37,7 @@ def test_structured_logging():
         structured_logger.error("Test error message", test_component="monitoring")
 
         # Test trace context
-        trace_id = set_trace_context(user_id="test_user", operation="test_operation")
+        set_trace_context(user_id="test_user", operation="test_operation")
         structured_logger.info("Message with trace context", test_data="trace_test")
 
         # Test trace operation context manager
@@ -105,8 +105,10 @@ def test_metrics_export():
 
     try:
         from core.metrics_exporter import (
-            metrics_exporter, track_request, track_pipeline,
-            export_prometheus_metrics, export_json_metrics
+            export_json_metrics,
+            export_prometheus_metrics,
+            track_pipeline,
+            track_request,
         )
 
         # Test request tracking
@@ -150,17 +152,10 @@ def test_error_tracking():
         try:
             raise ValueError("Test error for monitoring")
         except Exception as e:
-            error_tracker.capture_exception(e, {
-                "test_context": "monitoring_test",
-                "user_id": "test_user"
-            })
+            error_tracker.capture_exception(e, {"test_context": "monitoring_test", "user_id": "test_user"})
 
         # Test message capture
-        error_tracker.capture_message(
-            "Test warning message",
-            level="warning",
-            context={"test": "monitoring"}
-        )
+        error_tracker.capture_message("Test warning message", level="warning", context={"test": "monitoring"})
 
         print("✅ Error tracking tests passed")
         return True
@@ -178,7 +173,7 @@ def test_performance_tracking():
     print("🔍 Testing Performance Tracking...")
 
     try:
-        from core.monitoring import performance_tracker, monitor_function
+        from core.monitoring import monitor_function, performance_tracker
 
         # Test context manager
         with performance_tracker.track_operation("test_operation"):
@@ -194,9 +189,7 @@ def test_performance_tracking():
         assert result == "test_result"
 
         # Test pipeline performance tracking
-        performance_tracker.track_pipeline_performance(
-            "test_pipeline", 1.5, True, file_size_mb=10
-        )
+        performance_tracker.track_pipeline_performance("test_pipeline", 1.5, True, file_size_mb=10)
 
         print("✅ Performance tracking tests passed")
         return True
@@ -214,9 +207,7 @@ def test_streamlit_integration():
     print("🔍 Testing Streamlit Integration...")
 
     try:
-        from core.streamlit_monitoring import (
-            streamlit_monitor, streamlit_page, streamlit_component
-        )
+        from core.streamlit_monitoring import streamlit_component, streamlit_page
 
         # Test decorators (without actual Streamlit context)
         @streamlit_page("test_page")
@@ -256,14 +247,14 @@ def test_log_file_creation():
             logs_dir.mkdir(exist_ok=True)
 
         # Check for structured log file
-        today = datetime.now().strftime('%Y%m%d')
+        today = datetime.now().strftime("%Y%m%d")
         log_file = logs_dir / f"whisperforge_structured_{today}.jsonl"
 
         if log_file.exists():
             print(f"   ✅ Log file exists: {log_file}")
 
             # Check file content
-            with open(log_file, 'r') as f:
+            with open(log_file) as f:
                 lines = f.readlines()
                 if lines:
                     print(f"   ✅ Log file has {len(lines)} entries")
@@ -271,13 +262,13 @@ def test_log_file_creation():
                     # Validate JSON format
                     try:
                         last_entry = json.loads(lines[-1].strip())
-                        print(f"   ✅ Last log entry is valid JSON")
-                        if 'timestamp' in last_entry and 'level' in last_entry:
-                            print(f"   ✅ Log entry has required fields")
+                        print("   ✅ Last log entry is valid JSON")
+                        if "timestamp" in last_entry and "level" in last_entry:
+                            print("   ✅ Log entry has required fields")
                     except json.JSONDecodeError:
-                        print(f"   ⚠️ Last log entry is not valid JSON")
+                        print("   ⚠️ Last log entry is not valid JSON")
                 else:
-                    print(f"   ⚠️ Log file is empty")
+                    print("   ⚠️ Log file is empty")
         else:
             print(f"   ⚠️ Log file not found: {log_file}")
 

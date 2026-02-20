@@ -4,12 +4,11 @@ WhisperForge CLI - Command Line Interface
 Run the WhisperForge pipeline from the command line
 """
 
-import click
 import os
 import sys
-import tempfile
 from pathlib import Path
-from typing import Optional, Dict, Any
+
+import click
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
@@ -17,15 +16,16 @@ sys.path.insert(0, str(project_root))
 
 # Import core functionality
 try:
+    from dotenv import load_dotenv
+
     from core.content_generation import (
-        transcribe_audio,
-        generate_wisdom,
-        generate_outline,
         generate_article,
+        generate_outline,
+        generate_wisdom,
+        transcribe_audio,
     )
     from core.logging_config import logger
     from core.utils import DEFAULT_PROMPTS
-    from dotenv import load_dotenv
 
     # Load environment variables
     load_dotenv()
@@ -159,14 +159,14 @@ def pipeline():
 def run(
     input_file: str,
     model: str,
-    output: Optional[str],
+    output: str | None,
     output_format: str,
     verbose: bool,
 ):
     """Run the complete WhisperForge pipeline on an audio file"""
 
     if verbose:
-        click.echo(f"🚀 Starting WhisperForge pipeline...")
+        click.echo("🚀 Starting WhisperForge pipeline...")
         click.echo(f"Input file: {input_file}")
         click.echo(f"Model: {model}")
         click.echo(f"Output format: {output_format}")
@@ -274,7 +274,7 @@ def run(
     type=click.Path(),
     help="Output file path (default: input_name_transcript.txt)",
 )
-def transcribe(input_file: str, output: Optional[str]):
+def transcribe(input_file: str, output: str | None):
     """Transcribe audio file to text only"""
 
     if not validate_audio_file(input_file):
@@ -284,10 +284,7 @@ def transcribe(input_file: str, output: Optional[str]):
         sys.exit(1)
 
     # Set up output file
-    if output:
-        output_file = Path(output)
-    else:
-        output_file = Path(f"{Path(input_file).stem}_transcript.txt")
+    output_file = Path(output) if output else Path(f"{Path(input_file).stem}_transcript.txt")
 
     # Create CLI file wrapper
     audio_file = CLIFile(input_file)
@@ -333,14 +330,14 @@ def status():
 
     # Check dependencies
     try:
-        import openai
+        import openai  # noqa: F401
 
         click.echo("OpenAI library: ✅ Available")
     except ImportError:
         click.echo("OpenAI library: ❌ Not available")
 
     try:
-        import anthropic
+        import anthropic  # noqa: F401
 
         click.echo("Anthropic library: ✅ Available")
     except ImportError:
@@ -348,7 +345,7 @@ def status():
 
     # Check audio processing
     try:
-        from pydub import AudioSegment
+        from pydub import AudioSegment  # noqa: F401
 
         click.echo("Audio processing (pydub): ✅ Available")
     except ImportError:

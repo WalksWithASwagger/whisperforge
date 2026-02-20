@@ -4,8 +4,6 @@ WhisperForge Deployment Verification Script
 Verifies all systems are ready for production deployment
 """
 
-import os
-import sys
 from datetime import datetime
 
 
@@ -14,13 +12,11 @@ def verify_database_tables():
     print("🔍 Verifying Database Tables")
     print("=" * 40)
 
-    required_tables = [
-        "users", "content", "api_keys", "prompts",
-        "knowledge_base", "pipeline_logs"
-    ]
+    required_tables = ["users", "content", "api_keys", "prompts", "knowledge_base", "pipeline_logs"]
 
     try:
         from core.supabase_integration import get_supabase_client
+
         client = get_supabase_client()
 
         if not client:
@@ -31,7 +27,7 @@ def verify_database_tables():
         for table in required_tables:
             try:
                 # Test table access
-                result = client.client.table(table).select("*").limit(1).execute()
+                client.client.table(table).select("*").limit(1).execute()
                 print(f"✅ {table}")
             except Exception:
                 print(f"❌ {table} - MISSING")
@@ -57,10 +53,8 @@ def test_core_functionality():
 
     try:
         # Test imports
-        from core.content_generation import transcribe_audio, generate_wisdom
-        from core.file_upload import FileUploadManager, EnhancedLargeFileProcessor
-        from core.utils import DEFAULT_PROMPTS, load_prompt_from_file
         from core.supabase_integration import get_supabase_client
+        from core.utils import DEFAULT_PROMPTS
 
         print("✅ Core imports successful")
 
@@ -95,7 +89,7 @@ def main():
     core_ok = test_core_functionality()
 
     # Final assessment
-    print(f"\n📊 DEPLOYMENT READINESS")
+    print("\n📊 DEPLOYMENT READINESS")
     print("=" * 60)
 
     if db_ok and core_ok:

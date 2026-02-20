@@ -4,6 +4,7 @@ Create missing database tables for WhisperForge
 """
 
 import os
+
 from core.supabase_integration import get_supabase_client
 
 
@@ -28,7 +29,7 @@ def create_prompts_table(client):
     """
 
     try:
-        result = client.client.rpc('exec_sql', {'sql': sql}).execute()
+        client.client.rpc("exec_sql", {"sql": sql}).execute()
         print("✅ Prompts table created successfully")
         return True
     except Exception as e:
@@ -57,7 +58,7 @@ def create_api_keys_table(client):
     """
 
     try:
-        result = client.client.rpc('exec_sql', {'sql': sql}).execute()
+        client.client.rpc("exec_sql", {"sql": sql}).execute()
         print("✅ API keys table created successfully")
         return True
     except Exception as e:
@@ -70,14 +71,14 @@ def test_table_creation(client):
 
     # Test prompts table
     try:
-        result = client.client.table('prompts').select('*').limit(1).execute()
+        client.client.table("prompts").select("*").limit(1).execute()
         print("✅ Prompts table accessible")
     except Exception as e:
         print(f"❌ Prompts table test failed: {e}")
 
     # Test api_keys table
     try:
-        result = client.client.table('api_keys').select('*').limit(1).execute()
+        client.client.table("api_keys").select("*").limit(1).execute()
         print("✅ API keys table accessible")
     except Exception as e:
         print(f"❌ API keys table test failed: {e}")
@@ -85,9 +86,10 @@ def test_table_creation(client):
 
 def main():
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    if not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_ANON_KEY'):
+    if not os.getenv("SUPABASE_URL") or not os.getenv("SUPABASE_ANON_KEY"):
         print("Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables.")
         print("Set them in your .env file or export them before running this script.")
         return

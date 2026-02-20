@@ -4,12 +4,12 @@ Integrates SessionManager with existing Supabase authentication
 Provides backward compatibility while adding session persistence
 """
 
-import streamlit as st
-from typing import Optional, Dict, Any
-from .session_manager import get_session_manager
-from .supabase_integration import get_supabase_client
-from .utils import hash_password, verify_password, legacy_hash_password
+from typing import Any
+
 from core.logging_config import logger
+
+from .session_manager import get_session_manager
+from .utils import hash_password, legacy_hash_password, verify_password
 
 
 class AuthWrapper:
@@ -27,6 +27,7 @@ class AuthWrapper:
         """Initialize Supabase client"""
         try:
             from .supabase_integration import get_supabase_client
+
             self.supabase_client = get_supabase_client()
         except Exception as e:
             logger.log_error(e, "Failed to initialize Supabase")
@@ -36,11 +37,11 @@ class AuthWrapper:
         """Check if user is authenticated (backward compatible)"""
         return self.session_manager.is_authenticated()
 
-    def get_user_id(self) -> Optional[str]:
+    def get_user_id(self) -> str | None:
         """Get current user ID (backward compatible)"""
         return self.session_manager.get_user_id()
 
-    def get_user_email(self) -> Optional[str]:
+    def get_user_email(self) -> str | None:
         """Get current user email (backward compatible)"""
         return self.session_manager.get_user_email()
 
@@ -68,23 +69,21 @@ class AuthWrapper:
 
             # Verify password (bcrypt or legacy)
             password_valid = False
-            password_migrated = False
 
-            if stored_password.startswith('$2b$'):
+            if stored_password.startswith("$2b$"):
                 # bcrypt password
                 password_valid = verify_password(password, stored_password)
             else:
                 # Legacy password - check and migrate
                 if legacy_hash_password(password) == stored_password:
                     password_valid = True
-                    password_migrated = True
 
                     # Migrate to bcrypt
                     try:
                         new_hash = hash_password(password)
-                        self.supabase_client.client.table("users").update(
-                            {"password": new_hash}
-                        ).eq("id", user["id"]).execute()
+                        self.supabase_client.client.table("users").update({"password": new_hash}).eq(
+                            "id", user["id"]
+                        ).execute()
                         logger.logger.info(f"Password migrated to bcrypt for user: {email}")
                     except Exception as e:
                         logger.log_error(e, "Failed to migrate password")
@@ -100,9 +99,8 @@ class AuthWrapper:
                     return True
                 else:
                     logger.log_error(
-                        Exception(
-                            f"Failed to create persistent session for: {email}"),
-                        "Authentication failed")
+                        Exception(f"Failed to create persistent session for: {email}"), "Authentication failed"
+                    )
                     return False
             else:
                 logger.logger.warning(f"Invalid password for user: {email}")
@@ -129,11 +127,7 @@ class AuthWrapper:
             hashed_password = hash_password(password)
 
             # Create user in database
-            user_data = {
-                "email": email,
-                "password": hashed_password,
-                "created_at": "now()"
-            }
+            user_data = {"email": email, "password": hashed_password, "created_at": "now()"}
 
             result = self.supabase_client.client.table("users").insert(user_data).execute()
 
@@ -147,9 +141,8 @@ class AuthWrapper:
                     return True
                 else:
                     logger.log_error(
-                        Exception(
-                            f"Failed to create session for new user: {email}"),
-                        "Registration failed")
+                        Exception(f"Failed to create session for new user: {email}"), "Registration failed"
+                    )
                     return False
             else:
                 logger.log_error(Exception(f"Failed to create user in database: {email}"), "Registration failed")
@@ -180,18 +173,24 @@ class AuthWrapper:
                 return
 
             # Load API keys
-            api_keys_result = self.supabase_client.client.table("api_keys").select(
-                "key_name, key_value"
-            ).eq("user_id", user_id).execute()
+            api_keys_result = (
+                self.supabase_client.client.table("api_keys")
+                .select("key_name, key_value")
+                .eq("user_id", user_id)
+                .execute()
+            )
 
             api_keys = {}
             for item in api_keys_result.data:
                 api_keys[item["key_name"]] = item["key_value"]
 
             # Load custom prompts
-            prompts_result = self.supabase_client.client.table("prompts").select(
-                "prompt_type, content"
-            ).eq("user_id", user_id).execute()
+            prompts_result = (
+                self.supabase_client.client.table("prompts")
+                .select("prompt_type, content")
+                .eq("user_id", user_id)
+                .execute()
+            )
 
             prompts = {}
             for item in prompts_result.data:
@@ -206,7 +205,7 @@ class AuthWrapper:
         except Exception as e:
             logger.log_error(e, "Failed to load user preferences")
 
-    def get_api_keys(self) -> Dict[str, str]:
+    def get_api_keys(self) -> dict[str, str]:
         """Get user API keys from session cache"""
         return self.session_manager.get_preference("api_keys", {})
 
@@ -219,12 +218,11 @@ class AuthWrapper:
             user_id = self.get_user_id()
 
             # Update in database
-            result = self.supabase_client.client.table("api_keys").upsert({
-                "user_id": user_id,
-                "key_name": key_name,
-                "key_value": key_value,
-                "updated_at": "now()"
-            }).execute()
+            result = (
+                self.supabase_client.client.table("api_keys")
+                .upsert({"user_id": user_id, "key_name": key_name, "key_value": key_value, "updated_at": "now()"})
+                .execute()
+            )
 
             if result.data:
                 # Update session cache
@@ -242,7 +240,7 @@ class AuthWrapper:
             logger.log_error(e, f"Error updating API key {key_name}")
             return False
 
-    def get_custom_prompts(self) -> Dict[str, str]:
+    def get_custom_prompts(self) -> dict[str, str]:
         """Get user custom prompts from session cache"""
         return self.session_manager.get_preference("custom_prompts", {})
 
@@ -255,12 +253,11 @@ class AuthWrapper:
             user_id = self.get_user_id()
 
             # Update in database
-            result = self.supabase_client.client.table("prompts").upsert({
-                "user_id": user_id,
-                "prompt_type": prompt_type,
-                "content": content,
-                "updated_at": "now()"
-            }).execute()
+            result = (
+                self.supabase_client.client.table("prompts")
+                .upsert({"user_id": user_id, "prompt_type": prompt_type, "content": content, "updated_at": "now()"})
+                .execute()
+            )
 
             if result.data:
                 # Update session cache
@@ -272,9 +269,8 @@ class AuthWrapper:
                 return True
             else:
                 logger.log_error(
-                    Exception(
-                        f"Failed to update custom prompt: {prompt_type}"),
-                    "Custom prompt update failed")
+                    Exception(f"Failed to update custom prompt: {prompt_type}"), "Custom prompt update failed"
+                )
                 return False
 
         except Exception as e:
@@ -307,7 +303,7 @@ class AuthWrapper:
         """Set pipeline active state (delegated to SessionManager)"""
         self.session_manager.set_pipeline_active(active)
 
-    def get_session_info(self) -> Dict[str, Any]:
+    def get_session_info(self) -> dict[str, Any]:
         """Get session information for debugging"""
         return self.session_manager.get_session_info()
 
@@ -335,7 +331,7 @@ def register_user_supabase(email: str, password: str) -> bool:
     return get_auth().register_user(email, password)
 
 
-def get_user_api_keys_supabase() -> Dict[str, str]:
+def get_user_api_keys_supabase() -> dict[str, str]:
     """Backward compatible API keys function"""
     return get_auth().get_api_keys()
 
@@ -345,7 +341,7 @@ def update_api_key_supabase(key_name: str, key_value: str) -> bool:
     return get_auth().update_api_key(key_name, key_value)
 
 
-def get_user_prompts_supabase() -> Dict[str, str]:
+def get_user_prompts_supabase() -> dict[str, str]:
     """Backward compatible prompts function"""
     return get_auth().get_custom_prompts()
 
