@@ -1,208 +1,196 @@
-"""WhisperForge Comprehensive Audit Script
+"""WhisperForge deep audit script.
 
-This utility provides a one-click health check that surfaces the current
-state of the codebase in a single Markdown report.  It is intentionally
-implemented as a standalone script (no external framework) so it can be
-invoked locally or in CI:
-
-    python scripts/audit_project.py --output AUDIT_REPORT.md
-
-The checklist it produces aligns with the rescue plan discussed in chat:
-1. Unit tests
-2. Health endpoint check
-3. Static analysis (ruff + mypy)
-4. Secret/credential scan
-5. Dependency freshness
-6. TODO / FIXME tally
-
-The script is SAFE to run: it is read-only except for writing the report
-file.  All subprocess calls are executed with a 30-second timeout to
-avoid hanging CI.
-
-Note that the audit relies on the project's virtualenv having pytest,
-ruff and mypy available.  If any tool is missing, the error is captured
-and surfaced in the report instead of crashing.
+Produces a markdown report with quality, security, and reliability checks.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import logging
-import os
 import re
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Sequence
 
-# Always use the project logger if available, but fall back to standard logging.
-try:
-    from core.logging_config import logger as _wf_logger  # type: ignore
-    SCRIPT_LOGGER = getattr(_wf_logger, "logger", _wf_logger)
-except Exception:
-    SCRIPT_LOGGER = logging.getLogger(__name__)
-    logging.basicConfig(level=logging.INFO)
-
-TRACE_ID = os.getenv("TRACE_ID")
-
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
-# Ensure the project root is on sys.path so imports like `core` work when
-# running this script directly.
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-REPORT_HEADER = "# WhisperForge Audit Report\n"
-
-SECRET_PATTERN = re.compile(r"(key|token|secret|password)\s*=\s*['\"]\w{16,}['\"]", re.IGNORECASE)
+REPORT_HEADER = "# WhisperForge Deep Audit Report\n"
 TODO_PATTERN = re.compile(r"\b(TODO|FIXME)\b")
+SECRET_PATTERN = re.compile(
+    r"(api[_-]?key|token|secret|password)\s*=\s*['\"][^'\"]{16,}['\"]",
+    re.IGNORECASE,
+)
+RISKY_PATTERN = re.compile(r"\b(eval|exec|pickle\.loads|yaml\.load\(|subprocess\.run\()")
+
+IGNORED_DIRS = {".git", "venv", ".venv", "__pycache__", ".mypy_cache", ".pytest_cache"}
 
 
-# ---------------------------------------------------------------------------
-# Helper utilities
-# ---------------------------------------------------------------------------
+def iter_python_files() -> list[Path]:
+    files: list[Path] = []
+    for path in ROOT.rglob("*.py"):
+        if any(part in IGNORED_DIRS for part in path.parts):
+            continue
+        files.append(path)
+    return sorted(files)
 
-def _run(cmd: List[str], cwd: Path | None = None) -> Tuple[int, str, str]:
-    """Run a subprocess and capture its output.
 
-    Returns (returncode, stdout, stderr).
-    """
-    SCRIPT_LOGGER.info(
-        "Executing command", extra={"trace_id": TRACE_ID, "cmd": " ".join(cmd)}
-    )
+def _run(cmd: Sequence[str], timeout: int = 60) -> tuple[int, str, str]:
+    """Run command and return (code, stdout, stderr)."""
+    LOGGER.info("Running: %s", " ".join(cmd))
     try:
         proc = subprocess.run(
-            cmd,
-            cwd=cwd or ROOT,
+            list(cmd),
+            cwd=ROOT,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=timeout,
         )
         return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
-    except subprocess.TimeoutExpired as exc:
-        return 1, "", f"Command timed out after 30s: {exc.cmd}"
+    except subprocess.TimeoutExpired:
+        return 124, "", f"Timed out after {timeout}s: {' '.join(cmd)}"
 
 
 def _section(title: str, body: str) -> str:
     return f"\n## {title}\n\n{body}\n"
 
 
-# ---------------------------------------------------------------------------
-# Audit tasks
-# ---------------------------------------------------------------------------
+def _code_block(text: str) -> str:
+    return f"```\n{text or '(no output)'}\n```"
+
 
 def unit_tests() -> str:
     rc, out, err = _run([sys.executable, "-m", "pytest", "-q"])
-    status = "✅" if rc == 0 else "❌"
-    details = err or out
-    return f"""**Status:** {status}  
-
-```
-{details}
-```"""
-
-
-def health_endpoint() -> str:
-    from core.health_check import health_checker  # local import to avoid heavy deps
-
-    status_data = health_checker.get_health_status()
-    status = "✅" if status_data.status == "healthy" else "❌"
-    return f"""**Status:** {status}  
-
-Payload:
-```json
-{json.dumps(status_data.__dict__, indent=2, default=str)}
-```"""
+    output = "\n".join(p for p in [out, err] if p).strip()
+    return f"**Status:** {'✅' if rc == 0 else '❌'}\n\n{_code_block(output)}"
 
 
 def static_analysis() -> str:
-    # Ruff
-    rc_r, out_r, err_r = _run(["ruff", "."])
-    # mypy in strict mode on core/
-    rc_m, out_m, err_m = _run(["mypy", "--strict", "core"])
+    checks: list[tuple[str, Sequence[str]]] = [
+        ("Ruff", ["ruff", "check", "."]),
+        ("Mypy (strict core)", ["mypy", "--strict", "core"]),
+        ("Bandit", [sys.executable, "-m", "bandit", "-q", "-r", "core", "shared", "app.py", "app_simple.py"]),
+    ]
+    parts: list[str] = []
+    for name, cmd in checks:
+        rc, out, err = _run(cmd)
+        output = "\n".join(p for p in [out, err] if p).strip()
+        parts.append(f"### {name}\nExit code: {rc}\n\n{_code_block(output)}")
+    return "\n\n".join(parts)
 
-    body = "### Ruff\n"
-    body += f"""Exit code: {rc_r}  
 
-```
-{out_r or err_r}
-```\n"""
+def syntax_audit() -> str:
+    failures: list[str] = []
+    for file_path in iter_python_files():
+        rel = file_path.relative_to(ROOT)
+        try:
+            source = file_path.read_text(encoding="utf-8")
+            ast.parse(source)
+        except SyntaxError as exc:
+            failures.append(f"- {rel}:{exc.lineno}:{exc.offset} {exc.msg}")
 
-    body += "### mypy\n"
-    body += f"""Exit code: {rc_m}  
-
-```
-{out_m or err_m}
-```"""
-    return body
+    if failures:
+        return "**Status:** ❌ Syntax errors detected\n\n" + "\n".join(failures)
+    return "**Status:** ✅ All Python files parse successfully."
 
 
 def secret_scan() -> str:
-    matches: List[str] = []
-    for file_path in ROOT.rglob("*.py"):
-        try:
-            content = file_path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        for m in SECRET_PATTERN.finditer(content):
-            snippet = content[max(0, m.start() - 20): m.end() + 20]
-            matches.append(f"{file_path}: {snippet.strip()}")
+    hits: list[str] = []
+    for file_path in iter_python_files():
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        for match in SECRET_PATTERN.finditer(content):
+            rel = file_path.relative_to(ROOT)
+            snippet = content[max(0, match.start() - 18): match.end() + 18].replace("\n", " ")
+            hits.append(f"- {rel}: `{snippet.strip()}`")
+    if hits:
+        return "**Status:** ❌ Potential hard-coded secrets found\n\n" + "\n".join(hits)
+    return "**Status:** ✅ No obvious hard-coded credentials found."
 
-    if not matches:
-        return "**Status:** ✅ No hard-coded secrets found."
-    return "**Status:** ❌ Found potential secrets:\n" + "\n".join(matches)
+
+def risky_api_scan() -> str:
+    counts: Counter[str] = Counter()
+    locations: list[str] = []
+    for file_path in iter_python_files():
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        for match in RISKY_PATTERN.finditer(content):
+            token = match.group(1)
+            counts[token] += 1
+            locations.append(f"- {file_path.relative_to(ROOT)}: `{token}`")
+
+    if not counts:
+        return "No risky APIs detected by heuristic scan."
+
+    summary = "\n".join(f"- `{k}`: {v}" for k, v in counts.most_common())
+    sample = "\n".join(locations[:25])
+    return f"### Counts\n{summary}\n\n### Sample locations\n{sample}"
 
 
 def dependency_freshness() -> str:
-    rc, out, err = _run([sys.executable, "-m", "pip", "list", "--outdated", "--format", "json"])
+    rc, out, err = _run([sys.executable, "-m", "pip", "list", "--outdated", "--format", "json"], timeout=90)
     if rc != 0:
-        return f"Failed to fetch outdated packages: {err}"
-    try:
-        data: List[Dict[str, Any]] = json.loads(out)
-    except json.JSONDecodeError:
-        return "Could not parse pip output."
-    if not data:
-        return "All dependencies are up to date."
-    lines = [f"- {p['name']} {p['version']} → {p['latest_version']}" for p in data]
+        output = "\n".join(p for p in [out, err] if p).strip()
+        return f"Unable to collect outdated dependencies.\n\n{_code_block(output)}"
+
+    raw = out.strip()
+    if not raw:
+        return "Could not parse pip outdated output (empty stdout)."
+    start = raw.find("[")
+    end = raw.rfind("]")
+    if start == -1 or end == -1 or end < start:
+        return f"Could not parse pip outdated output.\n\n{_code_block(raw)}"
+    packages = json.loads(raw[start:end+1])
+    if not packages:
+        return "All installed packages are up to date."
+    lines = [f"- {p['name']} {p['version']} → {p['latest_version']}" for p in packages]
     return "Outdated packages:\n" + "\n".join(lines)
 
 
 def todo_tally() -> str:
-    tally = 0
-    for file_path in ROOT.rglob("*.py"):
-        try:
-            content = file_path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
-        tally += len(TODO_PATTERN.findall(content))
-    return f"Total TODO/FIXME markers: **{tally}**"
+    total = 0
+    by_file: list[tuple[str, int]] = []
+    for file_path in iter_python_files():
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+        count = len(TODO_PATTERN.findall(content))
+        if count:
+            by_file.append((str(file_path.relative_to(ROOT)), count))
+            total += count
 
+    top = "\n".join(f"- {path}: {count}" for path, count in by_file[:20]) or "- none"
+    return f"Total TODO/FIXME markers: **{total}**\n\n{top}"
 
-# ---------------------------------------------------------------------------
-# Entry-point
-# ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a WhisperForge audit and emit a Markdown report.")
-    parser.add_argument("--output", type=Path, default=Path(f"AUDIT_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"))
+    parser = argparse.ArgumentParser(description="Run a deep audit and write a Markdown report.")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(f"AUDIT_REPORT_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"),
+    )
     args = parser.parse_args()
 
     report_parts = [REPORT_HEADER]
-    report_parts.append(_section("Metadata", f"Generated: {datetime.now().isoformat()}\n\nRoot: `{ROOT}`"))
+    report_parts.append(
+        _section(
+            "Metadata",
+            f"Generated: {datetime.now().isoformat()}\n\nRoot: `{ROOT}`",
+        )
+    )
     report_parts.append(_section("Unit Tests", unit_tests()))
-    report_parts.append(_section("Health Endpoint", health_endpoint()))
+    report_parts.append(_section("Syntax Audit", syntax_audit()))
     report_parts.append(_section("Static Analysis", static_analysis()))
     report_parts.append(_section("Secrets Scan", secret_scan()))
+    report_parts.append(_section("Risky API Scan", risky_api_scan()))
     report_parts.append(_section("Dependency Freshness", dependency_freshness()))
     report_parts.append(_section("TODO / FIXME Tally", todo_tally()))
 
-    output_text = "\n".join(report_parts)
-    args.output.write_text(output_text, encoding="utf-8")
-    SCRIPT_LOGGER.info(
-        "Audit completed", extra={"trace_id": TRACE_ID, "report": str(args.output)}
-    )
-    print(f"\n\nAudit report written to {args.output}")
+    args.output.write_text("\n".join(report_parts), encoding="utf-8")
+    print(f"Audit report written to {args.output}")
 
 
 if __name__ == "__main__":
-    main() 
+    main()
