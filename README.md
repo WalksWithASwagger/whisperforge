@@ -1,5 +1,17 @@
 # WhisperForge v3.0.0 🌌
 
+> [!IMPORTANT]
+> This repository is archived as the legacy WhisperForge implementation.
+> The canonical WhisperForge repo is now:
+> https://github.com/WalksWithASwagger/spektorAI
+>
+> The useful brand, prompt, and large-file processing ideas from this repo are
+> tracked in the canonical consolidation audit:
+> https://github.com/WalksWithASwagger/spektorAI/blob/main/docs/AUDIO-REPO-CONSOLIDATION-AUDIT-2026-05-18.md
+>
+> Do not start new work here. Future implementation belongs in
+> `WalksWithASwagger/spektorAI`.
+
 **Transform audio into structured, intelligent content with AI-powered processing**
 
 WhisperForge is a powerful Streamlit application that converts audio files into comprehensive content packages including transcripts, insights, articles, and social media posts. Now with **revolutionary large file processing** supporting files up to **2GB**.
@@ -333,5 +345,5 @@ def init_supabase():
 
 ### **Authentication Flow**
 1. User enters credentials → Verify against Supabase
-2. Set simple session state flags → No tokens or complex persistence  
-3. Load user preferences from database → Use `@st.cache_data` for performance 
+2. Set simple session state flags → No tokens or complex persistence
+3. Load user preferences from database → Use `@st.cache_data` for performance
